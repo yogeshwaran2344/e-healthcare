@@ -201,8 +201,16 @@ function openReviewModal(consultId) {
         repContainer.innerHTML = `<p class="small text-muted mb-0">No raw scan images uploaded.</p>`;
     }
 
-    // Pre-fill Diagnosis
-    document.getElementById('finalDiagnosis').value = c.predicted_disease || '';
+    // 1. Populate "Why Did AI Decide This?" Decision Map
+    loadCaseExplainableMap(c);
+
+    // 2. Pre-fill Diagnosis & Setup Disagreement Tracker
+    const aiPred = c.predicted_disease || 'Pneumonia';
+    document.getElementById('originalAiPrediction').value = aiPred;
+    document.getElementById('aiPredictedLabel').textContent = aiPred;
+    document.getElementById('finalDiagnosis').value = aiPred;
+    document.getElementById('disagreementAlertBox').classList.add('d-none');
+    document.getElementById('doctorRationaleText').value = '';
 
     // Initialize Medicines
     const medContainer = document.getElementById('medicineRowsContainer');
@@ -231,6 +239,51 @@ function openReviewModal(consultId) {
 
     bootstrap.Modal.getOrCreateInstance(document.getElementById('reviewModal')).show();
 }
+
+async function loadCaseExplainableMap(c) {
+    const barsContainer = document.getElementById('caseDecisionMapBars');
+    const missingContainer = document.getElementById('caseMissingParams');
+    if (!barsContainer) return;
+
+    try {
+        const syms = c.symptoms_list || [];
+        const disease = c.predicted_disease || 'Pneumonia';
+        const res = await API.post(`/api/closed-loop/explainable-decision-map?target_disease=${encodeURIComponent(disease)}`, syms);
+        
+        let html = '';
+        (res.positive_attributions || []).forEach(f => {
+            html += `
+                <div class="d-flex justify-content-between align-items-center p-1 px-2 rounded bg-white border">
+                    <span><strong class="text-dark">${f.feature}</strong> <small class="text-muted">(${f.category})</small></span>
+                    <span class="badge bg-success">+${f.weight}</span>
+                </div>
+            `;
+        });
+        (res.negative_attributions || []).forEach(f => {
+            html += `
+                <div class="d-flex justify-content-between align-items-center p-1 px-2 rounded bg-white border">
+                    <span><strong class="text-dark">${f.feature}</strong> <small class="text-muted">(${f.category})</small></span>
+                    <span class="badge bg-danger">${f.weight}</span>
+                </div>
+            `;
+        });
+        barsContainer.innerHTML = html || '<span class="text-muted">Baseline symptom weighting.</span>';
+
+        const missing = res.missing_information_penalties || [];
+        if (missing.length > 0) {
+            missingContainer.innerHTML = `<strong class="text-warning">Missing Dimensions:</strong> ` + 
+                missing.map(m => `${m.parameter} (${m.impact})`).join('; ');
+        } else {
+            missingContainer.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Complete clinical intake.</span>`;
+        }
+    } catch (e) {
+        // Fallback to xai_reasoning list
+        barsContainer.innerHTML = (c.xai_reasoning || []).map(r => `
+            <div class="p-1 px-2 rounded bg-white border small text-dark"><i class="bi bi-check-circle text-success me-1"></i> ${r}</div>
+        `).join('') || '<span class="text-muted">Clinical heuristic alignment.</span>';
+    }
+}
+
 
 function addMedicineRow(name = '', dosage = '500 mg', timing = '1-0-1 (After food)', duration = '5 days', instructions = '') {
     const container = document.getElementById('medicineRowsContainer');
@@ -343,10 +396,38 @@ async function submitPrescription(e) {
         const res = await API.post('/api/prescriptions', payload);
         bootstrap.Modal.getInstance(document.getElementById('reviewModal')).hide();
         
+        // Check if clinical disagreement occurred and log it
+        const originalAi = document.getElementById('originalAiPrediction').value.trim();
+        const finalDiag = diagnosis.trim();
+        const isDivergent = originalAi && finalDiag && (originalAi.toLowerCase() !== finalDiag.toLowerCase());
+
+        if (isDivergent && activeConsultation) {
+            try {
+                const category = document.getElementById('discrepancyCategorySelect').value || 'PHYSICAL_EXAM_OVERRIDE';
+                const rationale = document.getElementById('doctorRationaleText').value || 'Bedside evaluation superseded algorithm output.';
+                const disagPayload = {
+                    consultation_id: consultId,
+                    patient_id: activeConsultation.patient_id,
+                    ai_predicted_disease: originalAi,
+                    ai_confidence: activeConsultation.confidence_score || 70.0,
+                    ai_triage_level: activeConsultation.triage_level || "Doctor Consultation",
+                    doctor_diagnosed_disease: finalDiag,
+                    doctor_triage_level: "Doctor Consultation",
+                    discrepancy_category: category,
+                    doctor_rationale: rationale,
+                    tests_considered: []
+                };
+                await API.post('/api/closed-loop/disagreement-record', disagPayload);
+                console.log("Clinical Disagreement Record committed to audit trail.");
+            } catch (dErr) {
+                console.warn("Disagreement logging warning:", dErr);
+            }
+        }
+
         if (res.safety_alerts && !res.safety_alerts.is_safe) {
             alert("Prescription issued with safety alerts recorded: " + res.safety_alerts.alerts.map(a => a.message).join(' | '));
         } else {
-            alert("Official Prescription digitally signed and issued! Consultation completed.");
+            alert("Official Prescription digitally signed and issued! Consultation completed." + (isDivergent ? " (Clinician-AI divergence logged in audit trail)." : ""));
         }
         await loadDoctorConsultations();
     } catch (err) {
@@ -355,6 +436,19 @@ async function submitPrescription(e) {
         btn.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> Sign & Issue Prescription`;
     }
 }
+
+function checkDoctorAiDivergence() {
+    const originalAi = document.getElementById('originalAiPrediction').value.trim().toLowerCase();
+    const finalDiag = document.getElementById('finalDiagnosis').value.trim().toLowerCase();
+    const alertBox = document.getElementById('disagreementAlertBox');
+
+    if (originalAi && finalDiag && (originalAi !== finalDiag) && !originalAi.includes(finalDiag) && !finalDiag.includes(originalAi)) {
+        alertBox.classList.remove('d-none');
+    } else {
+        alertBox.classList.add('d-none');
+    }
+}
+
 
 function previewDoctorScan(url, title) {
     document.getElementById('docImageTitle').textContent = title;
@@ -583,4 +677,123 @@ async function doctorVerifyBlockchain() {
         alert("Error verifying: " + err.message);
     }
 }
+
+// ===================================================================
+// 5. CLINICIAN-AI DISAGREEMENT RECORDS
+// ===================================================================
+
+async function loadDoctorDisagreements() {
+    const container = document.getElementById('doctorDisagreementsContainer');
+    if (!container) return;
+    container.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-warning spinner-border-sm"></div><span class="small ms-2">Loading clinical disagreement records...</span></div>`;
+
+    try {
+        const res = await API.get('/api/closed-loop/disagreement-records');
+        const records = res.disagreement_records || [];
+        if (records.length === 0) {
+            container.innerHTML = `<div class="text-center py-4 text-muted small">No disagreement records logged yet. Concordance between clinical staff and AI models is currently 100%.</div>`;
+            return;
+        }
+
+        container.innerHTML = records.map(r => `
+            <div class="disagreement-card">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap">
+                    <span class="badge ${r.severity_grade.includes('CRITICAL') ? 'bg-danger text-white' : (r.severity_grade.includes('HIGH') ? 'bg-warning text-dark' : 'bg-secondary text-white')}">
+                        ${r.severity_grade.replace(/_/g, ' ')}
+                    </span>
+                    <small class="text-muted"><i class="bi bi-clock"></i> ${new Date(r.created_at).toLocaleString()}</small>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <strong class="small text-danger d-block"><i class="bi bi-robot me-1"></i> AI Prediction:</strong>
+                        <span class="fw-semibold text-dark">${r.ai_predicted_disease}</span> (${r.ai_confidence}%)
+                    </div>
+                    <div class="col-md-6">
+                        <strong class="small text-success d-block"><i class="bi bi-person-badge me-1"></i> Doctor Assessment:</strong>
+                        <span class="fw-semibold text-dark">${r.doctor_diagnosed_disease}</span>
+                    </div>
+                </div>
+                <div class="small mb-1">
+                    <strong>Taxonomy Category:</strong> <span class="badge bg-light text-dark border">${r.discrepancy_category.replace(/_/g, ' ')}</span>
+                </div>
+                <div class="small p-2 bg-white rounded-2 border text-dark">
+                    <strong>Physician Override Rationale:</strong> "${r.doctor_rationale}"
+                </div>
+                <div class="mt-2 text-end">
+                    <span class="badge ${r.reconciliation_status === 'reconciled' ? 'bg-success text-white' : 'bg-warning text-dark'}">
+                        ${r.reconciliation_status === 'reconciled' ? 'Ground-Truth Reconciled' : 'Pending Outcome Verification'}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger small">Error: ${err.message}</div>`;
+    }
+}
+
+// ===================================================================
+// 6. AI CALIBRATION & GROUND TRUTH OUTCOME CLOSED LOOP
+// ===================================================================
+
+async function loadDoctorCalibration() {
+    try {
+        const res = await API.get('/api/closed-loop/ai-performance-calibration');
+        
+        document.getElementById('kpiAiAccuracy').textContent = `${res.ai_accuracy_percentage}%`;
+        document.getElementById('kpiDoctorAccuracy').textContent = `${res.doctor_accuracy_percentage}%`;
+        document.getElementById('kpiOverridePrecision').textContent = `${res.clinician_override_precision}%`;
+        document.getElementById('kpiDisagreementRate').textContent = `${res.disagreement_rate_percentage}%`;
+
+        // Failure modes breakdown
+        const fContainer = document.getElementById('failureModesContainer');
+        const breakdown = res.failure_mode_breakdown || {};
+        if (Object.keys(breakdown).length === 0) {
+            fContainer.innerHTML = '<span class="text-muted small">No verified failure cases logged yet. System calibration index: OPTIMAL.</span>';
+        } else {
+            fContainer.innerHTML = Object.entries(breakdown).map(([mode, count]) => `
+                <div class="p-2 px-3 rounded-pill bg-white border shadow-sm small">
+                    <strong>${mode.replace(/_/g, ' ')}:</strong> <span class="badge bg-primary rounded-pill ms-1">${count}</span>
+                </div>
+            `).join('');
+        }
+    } catch (err) {
+        console.error("Error loading calibration:", err);
+    }
+}
+
+async function submitOutcomeVerification(e) {
+    e.preventDefault();
+    const consultId = parseInt(document.getElementById('outcomeConsultId').value);
+    const trueDisease = document.getElementById('outcomeTrueDisease').value.trim();
+    const method = document.getElementById('outcomeMethod').value;
+
+    const consult = allConsultations.find(c => c.id === consultId);
+    const aiPred = consult ? (consult.predicted_disease || 'Pneumonia') : 'Pneumonia';
+    const docPred = consult && consult.prescription ? consult.prescription.diagnosis : (consult ? consult.predicted_disease : 'Pneumonia');
+    const patientId = consult ? consult.patient_id : 4;
+
+    const payload = {
+        consultation_id: consultId,
+        patient_id: patientId,
+        ai_predicted_disease: aiPred,
+        doctor_diagnosed_disease: docPred,
+        confirmed_outcome_disease: trueDisease,
+        confirmation_method: method,
+        days_to_resolution: 5,
+        outcome_status: "Resolved"
+    };
+
+    try {
+        const res = await API.post('/api/closed-loop/verify-outcome', payload);
+        const r = res.reconciliation;
+        alert(`Outcome Verified!\nReconciliation Verdict: ${r.summary_verdict}\nClassification: ${r.reconciliation_type}\nFeedback Action: ${r.feedback_loop_action}`);
+        document.getElementById('verifyOutcomeForm').reset();
+        await loadDoctorCalibration();
+        await loadDoctorDisagreements();
+        await loadDoctorConsultations();
+    } catch (err) {
+        alert("Error verifying outcome: " + err.message);
+    }
+}
+
 

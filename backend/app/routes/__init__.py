@@ -14,4 +14,5 @@ from .blockchain_routes import router as blockchain_router
 from .queue_navigation_routes import router as queue_navigation_router
 from .emergency_routes import router as emergency_router
 from .community_preventive_routes import router as community_preventive_router
+from .closed_loop_routes import router as closed_loop_router
 

@@ -127,6 +127,10 @@ class NavigatorAssessmentResponse(BaseModel):
     xai_reasoning: List[str]
     biomarkers_detected: Dict[str, Any] = {}
     other_possibilities: List[Dict[str, Any]] = []
+    # Closed-loop additions
+    entropy_uncertainty: Optional[Dict[str, Any]] = None
+    explainable_decision_map: Optional[Dict[str, Any]] = None
+    minimum_diagnostic_test_set: Optional[Dict[str, Any]] = None
 
 # Consultation & Handover Schemas
 class ConsultationCreate(BaseModel):
@@ -231,3 +235,61 @@ class ConsultationOut(BaseModel):
     reports: List[MedicalReportOut] = []
     prescription: Optional[PrescriptionOut] = None
     recovery_checkins: List[RecoveryCheckInOut] = []
+
+# ========================================================
+# Closed-Loop Clinical Decision & Verification Schemas
+# ========================================================
+
+class UncertaintyAssessmentRequest(BaseModel):
+    symptoms: List[str]
+    qa_answers: Optional[Dict[str, Any]] = {}
+    uploaded_report_ids: Optional[List[int]] = []
+
+class NextQuestionRequest(BaseModel):
+    symptoms: List[str]
+    answered_question_ids: List[str] = []
+    qa_answers: Optional[Dict[str, Any]] = {}
+
+class MinimumTestOptimizationRequest(BaseModel):
+    top_disease: str
+    top_candidates: List[Dict[str, Any]] = []
+    current_uncertainty: float = 60.0
+    symptoms: List[str] = []
+    triage_level: str = "Doctor Consultation"
+
+class ClinicalDisagreementCreate(BaseModel):
+    consultation_id: Optional[int] = None
+    patient_id: int
+    ai_predicted_disease: str
+    ai_confidence: float
+    ai_triage_level: str
+    doctor_diagnosed_disease: str
+    doctor_triage_level: str
+    discrepancy_category: str
+    doctor_rationale: str
+    tests_considered: Optional[List[str]] = []
+
+class ClinicalOutcomeCreate(BaseModel):
+    consultation_id: Optional[int] = None
+    patient_id: int
+    ai_predicted_disease: str
+    doctor_diagnosed_disease: str
+    confirmed_outcome_disease: str
+    confirmation_method: str = "Laboratory / Radiology Report"
+    days_to_resolution: int = 5
+    outcome_status: str = "Resolved"
+
+class TimelineEntryCreate(BaseModel):
+    event_type: str
+    title: str
+    description: Optional[str] = None
+    metrics: Optional[Dict[str, Any]] = {}
+    severity_level: Optional[str] = "Normal"
+
+class ContextualTokenRequest(BaseModel):
+    context_scope: str = "PUBLIC_BASIC" # PUBLIC_BASIC, AMBULANCE_PARAMEDIC, HOSPITAL_ER_TRAUMA
+
+class ExplainableMapRequest(BaseModel):
+    target_disease: str
+    symptoms: List[str] = []
+    qa_answers: Optional[Dict[str, Any]] = {}

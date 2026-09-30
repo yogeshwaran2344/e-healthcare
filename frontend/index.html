@@ -64,17 +64,17 @@
                         </button>
                     </div>
 
-                    <!-- Quick Demo Credentials Banner -->
+                    <!-- Quick Role Demo Access Banner -->
                     <div class="alert alert-light border mt-4 p-3 rounded-3 shadow-sm">
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div>
-                                <small class="fw-bold text-secondary text-uppercase d-block">Demo One-Click Accounts:</small>
-                                <span class="badge bg-success-subtle text-success me-2"><i class="bi bi-person"></i> patient@example.com (patient123)</span>
-                                <span class="badge bg-info-subtle text-info"><i class="bi bi-hospital"></i> doctor@example.com (doctor123)</span>
+                                <small class="fw-bold text-secondary text-uppercase d-block"><i class="bi bi-person-badge me-1"></i> Interactive Role Simulation:</small>
+                                <span class="badge bg-success text-white me-2"><i class="bi bi-person"></i> Patient Account</span>
+                                <span class="badge bg-info text-white"><i class="bi bi-hospital"></i> Doctor Portal</span>
                             </div>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-success" onclick="loginDemo('patient')">Quick Patient Login</button>
-                                <button class="btn btn-outline-info" onclick="loginDemo('doctor')">Quick Doctor Login</button>
+                                <button class="btn btn-outline-success" onclick="loginDemo('patient')"><i class="bi bi-box-arrow-in-right"></i> Launch Patient Portal</button>
+                                <button class="btn btn-outline-primary" onclick="loginDemo('doctor')"><i class="bi bi-hospital"></i> Launch Doctor Portal</button>
                             </div>
                         </div>
                     </div>
@@ -83,36 +83,43 @@
                 <div class="col-lg-5">
                     <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
                         <div class="card-header bg-primary text-white p-3 d-flex align-items-center justify-content-between">
-                            <span class="fw-semibold"><i class="bi bi-shield-check me-2"></i> How It Works</span>
-                            <span class="badge bg-white text-primary">Workflow</span>
+                            <span class="fw-semibold"><i class="bi bi-arrow-repeat me-2"></i> Closed-Loop Workflow</span>
+                            <span class="badge bg-white text-primary">Continuous Loop</span>
                         </div>
                         <div class="card-body p-4">
-                            <div class="d-flex gap-3 mb-4">
-                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">1</div>
+                            <div class="d-flex gap-3 mb-3">
+                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">1</div>
                                 <div>
-                                    <h6 class="fw-bold mb-1">Enter Symptoms</h6>
-                                    <p class="small text-muted mb-0">Select observed symptoms like fever, cough, chest pain, or rash.</p>
+                                    <h6 class="fw-bold mb-1">Adaptive Intake & Entropy</h6>
+                                    <p class="small text-muted mb-0">Quantifies diagnostic uncertainty & identifies critical missing data.</p>
                                 </div>
                             </div>
-                            <div class="d-flex gap-3 mb-4">
-                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">2</div>
+                            <div class="d-flex gap-3 mb-3">
+                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">2</div>
                                 <div>
-                                    <h6 class="fw-bold mb-1">AI Health Prediction</h6>
-                                    <p class="small text-muted mb-0">Machine learning model predicts the most accurate illness & urgency.</p>
+                                    <h6 class="fw-bold mb-1">Targeted Questioning</h6>
+                                    <p class="small text-muted mb-0">Calculates Information Gain to ask the single question that cuts uncertainty.</p>
                                 </div>
                             </div>
-                            <div class="d-flex gap-3 mb-4">
-                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">3</div>
+                            <div class="d-flex gap-3 mb-3">
+                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">3</div>
                                 <div>
-                                    <h6 class="fw-bold mb-1">Lab Test & Scan Upload</h6>
-                                    <p class="small text-muted mb-0">Urges tests (Blood test, X-Ray, CT Scan) & enables image upload.</p>
+                                    <h6 class="fw-bold mb-1">Minimum-Test Optimization</h6>
+                                    <p class="small text-muted mb-0">Pareto optimizer selects lowest-cost, zero-redundancy test combination.</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3 mb-3">
+                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">4</div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Doctor Review & Disagreement</h6>
+                                    <p class="small text-muted mb-0">Doctor inspects Explainable Map; divergence logged in Disagreement Record.</p>
                                 </div>
                             </div>
                             <div class="d-flex gap-3">
-                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">4</div>
+                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">5</div>
                                 <div>
-                                    <h6 class="fw-bold mb-1">Doctor Review & Prescription</h6>
-                                    <p class="small text-muted mb-0">Doctor examines scans and issues official digital prescription.</p>
+                                    <h6 class="fw-bold mb-1">Outcome Learning Loop</h6>
+                                    <p class="small text-muted mb-0">Verified outcome feeds 3-way reconciliation to continuously calibrate models.</p>
                                 </div>
                             </div>
                         </div>
@@ -122,74 +129,100 @@
         </div>
     </section>
 
-    <!-- Key Features & Patentable Add-Ons Section -->
-    <section id="features" class="py-5">
+    <!-- Signature Architecture Section -->
+    <section id="features" class="py-5 bg-light">
         <div class="container py-3">
             <div class="text-center mb-5">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
-                    <i class="bi bi-patch-check-fill me-1"></i> Novel Patentable Healthcare Architecture
+                    <i class="bi bi-cpu-fill me-1"></i> Technical Architecture
                 </span>
-                <h2 class="fw-bold">6 Breakthrough Healthcare Add-Ons</h2>
-                <p class="text-muted">Layering predictive AI, edge IoT telemetry, tamper-evident blockchain, AR navigation, rapid SOS, and community gamification onto clinical care.</p>
+                <h2 class="fw-bold">Adaptive Closed-Loop Clinical Decision System</h2>
+                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
+                    Moving beyond superficial AI chatbots to a rigorous, closed-loop diagnostic framework that evaluates uncertainty, asks targeted discriminative questions, optimizes diagnostic test sets, logs clinical divergence, and learns from verified patient outcomes.
+                </p>
             </div>
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
                         <div class="card-body">
-                            <div class="text-primary mb-3" style="font-size: 2.2rem;"><i class="bi bi-graph-up-arrow"></i></div>
-                            <h5 class="fw-bold">1. AI + Predictive Care</h5>
-                            <p class="text-muted small">Longitudinal deterioration risk index (0-100) forecasting exacerbations. System proactively suggests follow-up appointment slots and provides real-time chronic condition alarms.</p>
+                            <div class="text-primary mb-3" style="font-size: 2.2rem;"><i class="bi bi-speedometer2"></i></div>
+                            <h5 class="fw-bold">1. Dynamic Shannon Entropy Engine</h5>
+                            <p class="text-muted small">Calculates posterior probabilities across candidate conditions and computes normalized Shannon entropy (0-100% uncertainty). Prevents premature diagnostic lock-in and flags missing critical clinical dimensions.</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
                         <div class="card-body">
-                            <div class="text-info mb-3" style="font-size: 2.2rem;"><i class="bi bi-smartwatch"></i></div>
-                            <h5 class="fw-bold">2. IoT Wearables & Vitals</h5>
-                            <p class="text-muted small">Pairs with Omron BP, Dexcom CGM, Kardia ECG, and Wellue SpO2. Streams real-time biometric telemetry and executes edge threshold anomaly triggers for immediate hospital alarms.</p>
+                            <div class="text-info mb-3" style="font-size: 2.2rem;"><i class="bi bi-question-diamond-fill"></i></div>
+                            <h5 class="fw-bold">2. Next-Best-Question Optimizer</h5>
+                            <p class="text-muted small">Evaluates Information Gain \(IG(Q) = H(D) - E[H(D|Q)]\) across candidate inquiry paths. Dynamically selects the single optimal question capable of maximally splitting competing disease hypotheses.</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
                         <div class="card-body">
-                            <div class="text-success mb-3" style="font-size: 2.2rem;"><i class="bi bi-shield-lock-fill"></i></div>
-                            <h5 class="fw-bold">3. Blockchain Health Ledger</h5>
-                            <p class="text-muted small">Patient-owned, SHA-256 tamper-evident cryptographic block ledger with Merkle root verification. Decentralized smart-consent matrix grants granular, time-bounded sharing permissions.</p>
+                            <div class="text-success mb-3" style="font-size: 2.2rem;"><i class="bi bi-funnel-fill"></i></div>
+                            <h5 class="fw-bold">3. Minimum Diagnostic Test Set</h5>
+                            <p class="text-muted small">Multi-objective Pareto knapsack optimizer selects the minimal, safest, and most cost-effective diagnostic test combination. Enforces hard safety overrides for acute cardiac, stroke, and thrombotic emergencies.</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
                         <div class="card-body">
-                            <div class="text-warning mb-3" style="font-size: 2.2rem;"><i class="bi bi-geo-alt-fill"></i></div>
-                            <h5 class="fw-bold">4. Indoor AR Nav & Live Queue</h5>
-                            <p class="text-muted small">Multi-floor topological routing with Dijkstra shortest-path algorithms and simulated AR Camera HUD. Priority queue dynamically auto-promotes emergency critical patients to head-of-line (P0).</p>
+                            <div class="text-warning mb-3" style="font-size: 2.2rem;"><i class="bi bi-diagram-3-fill"></i></div>
+                            <h5 class="fw-bold">4. Explainable Decision Map</h5>
+                            <p class="text-muted small">Replaces opaque confidence scores with granular positive (+18, +24) and negative (-10) numerical feature attributions. Gives reviewing physicians clear insight into every symptom, comorbidity, and biomarker weight.</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
                         <div class="card-body">
-                            <div class="text-danger mb-3" style="font-size: 2.2rem;"><i class="bi bi-hospital"></i></div>
-                            <h5 class="fw-bold">5. Rapid Emergency SOS</h5>
-                            <p class="text-muted small">1-Tap SOS autonomously dispatches nearest ALS Cardiac Ambulance, transmits digital Emergency Medical Passport (Allergies, Blood Group, Vitals) to ER, and pre-allocates trauma bay beds.</p>
+                            <div class="text-danger mb-3" style="font-size: 2.2rem;"><i class="bi bi-arrows-angle-expand"></i></div>
+                            <h5 class="fw-bold">5. Clinician-AI Disagreement Engine</h5>
+                            <p class="text-muted small">Detects diagnostic or triage divergence between AI and attending physicians. Stores standardized Clinical Disagreement Records categorized under atypical presentation, bedside exam override, or pre-test bias.</p>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
                         <div class="card-body">
-                            <div class="text-secondary mb-3" style="font-size: 2.2rem;"><i class="bi bi-people-fill"></i></div>
-                            <h5 class="fw-bold">6. Community & Gamification</h5>
-                            <p class="text-muted small">AI-moderated chronic peer circles filtering medical misinformation. Gamified preventive challenges (10k steps, 2.5L hydration, BP streak) with reward points, badges, and personalized lifestyle coaching.</p>
+                            <div class="text-secondary mb-3" style="font-size: 2.2rem;"><i class="bi bi-arrow-clockwise"></i></div>
+                            <h5 class="fw-bold">6. Outcome Verification & Learning Loop</h5>
+                            <p class="text-muted small">Executes 3-way reconciliation (AI Prediction \(\leftrightarrow\) Doctor Decision \(\leftrightarrow\) Confirmed Outcome). Automatically categorizes failure modes and feeds continuous recalibration into prior probabilities.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Emergency Passport & Data-Bound Smart Consent Highlight -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white border-start border-primary border-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <span class="badge bg-primary text-white"><i class="bi bi-qr-code-scan"></i> Context-Aware Emergency Passport</span>
+                                    <span class="badge bg-success text-white"><i class="bi bi-clock-history"></i> Auto-Expiring Consent</span>
+                                </div>
+                                <h5 class="fw-bold mb-1">Dynamic Context-Bound Health Passport & Consent That Follows the Data</h5>
+                                <p class="text-muted small mb-0">Emergency QR code dynamically morphs its payload based on accessor role: Public First Responder gets minimal life-saving allergies/blood group; ALS Ambulance Paramedics receive real-time vitals and medications; ER Trauma Surgeons access full radiology and lab biomarkers. All permissions strictly auto-expire and log immutable audit entries.</p>
+                            </div>
+                            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
+                                    <i class="bi bi-shield-check"></i> Experience Dynamic Passport
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
+
 
 
     <!-- Doctors Showcase Section -->

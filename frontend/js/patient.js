@@ -99,15 +99,49 @@ function stopVoiceInput() {
     }, 3000);
 }
 
-// Load Symptom Catalog
+// Load Categorized Symptom Catalog (75+ multi-system symptoms)
+let symptomsByCategory = {};
+let activeCategory = 'All';
+let answeredQuestionIds = [];
+
 async function loadSymptoms() {
     try {
-        const res = await API.get('/api/predict/symptoms');
-        allSymptoms = res.symptoms;
+        const res = await API.get('/api/closed-loop/symptoms-catalog');
+        symptomsByCategory = res.categories || {};
+        allSymptoms = [];
+        
+        for (const [catName, items] of Object.entries(symptomsByCategory)) {
+            items.forEach(item => {
+                allSymptoms.push({
+                    key: item.id,
+                    label: item.label,
+                    category: catName
+                });
+            });
+        }
         renderSymptomChips(allSymptoms);
     } catch (err) {
-        console.error("Error loading symptoms:", err);
+        console.error("Error loading categorized symptoms, falling back:", err);
+        try {
+            const fallback = await API.get('/api/predict/symptoms');
+            allSymptoms = fallback.symptoms.map(s => ({ key: s.key, label: s.label, category: 'General' }));
+            renderSymptomChips(allSymptoms);
+        } catch (e2) {
+            console.error("Critical fallback failed:", e2);
+        }
     }
+}
+
+function filterByCategory(cat) {
+    activeCategory = cat;
+    document.querySelectorAll('.category-filter-btn').forEach(btn => {
+        if (btn.textContent.includes(cat) || (cat === 'All' && btn.textContent.includes('All'))) {
+            btn.className = "btn btn-sm btn-primary py-1 px-2 rounded-pill category-filter-btn active";
+        } else {
+            btn.className = "btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn";
+        }
+    });
+    filterSymptoms();
 }
 
 function renderSymptomChips(list) {
@@ -151,7 +185,15 @@ function clearSelectedSymptoms() {
 
 function filterSymptoms() {
     const query = document.getElementById('symptomSearchInput').value.toLowerCase().trim();
-    const filtered = allSymptoms.filter(s => s.label.toLowerCase().includes(query) || s.key.includes(query));
+    let filtered = allSymptoms;
+    
+    if (activeCategory !== 'All') {
+        filtered = filtered.filter(s => s.category === activeCategory);
+    }
+    
+    if (query) {
+        filtered = filtered.filter(s => s.label.toLowerCase().includes(query) || s.key.includes(query));
+    }
     renderSymptomChips(filtered);
 }
 
@@ -184,8 +226,26 @@ async function goToStep2() {
     }
 
     updateStepper(2);
+    answeredQuestionIds = [];
+    
+    // 1. Initial Shannon Entropy & Uncertainty Assessment
+    try {
+        const uPayload = {
+            symptoms: Array.from(selectedSymptoms),
+            qa_answers: answeredQA
+        };
+        const uRes = await API.post('/api/closed-loop/uncertainty-assess', uPayload);
+        updateUncertaintyDisplay(uRes);
+    } catch (e) {
+        console.warn("Uncertainty assessment initial ping:", e);
+    }
+
+    // 2. Fetch Next-Best-Question (Information Gain)
+    await fetchAndRenderNextQuestion();
+
+    // 3. Load Contextual Questions
     const container = document.getElementById('questionsContainer');
-    container.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="small mt-2">Generating adaptive clinical questions...</p></div>`;
+    container.innerHTML = `<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div><span class="small ms-2">Generating adaptive inquiry questions...</span></div>`;
 
     try {
         const payload = { symptoms: Array.from(selectedSymptoms) };
@@ -195,7 +255,7 @@ async function goToStep2() {
         container.innerHTML = currentAdaptiveQuestions.map((q, idx) => `
             <div class="p-3 bg-light rounded-3 border">
                 <label class="form-label small fw-bold text-dark mb-2">${idx + 1}. ${q.question}</label>
-                <select class="form-select adaptive-input" data-qid="${q.id}" required>
+                <select class="form-select adaptive-input" data-qid="${q.id}" required onchange="handleAnswerChange()">
                     ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
                 </select>
             </div>
@@ -204,6 +264,85 @@ async function goToStep2() {
         container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
     }
 }
+
+function updateUncertaintyDisplay(data) {
+    if (!data) return;
+    const score = data.uncertainty_score || 50;
+    const entropy = data.shannon_entropy || 2.5;
+    const band = data.certainty_band || "Moderate Uncertainty";
+
+    document.getElementById('step2UncertaintyBadge').textContent = `Uncertainty: ${score}%`;
+    const bar = document.getElementById('step2UncertaintyBar');
+    bar.style.width = `${score}%`;
+    if (score <= 25) {
+        bar.className = "uncertainty-bar-fill uncertainty-low";
+    } else {
+        bar.className = "uncertainty-bar-fill uncertainty-high";
+    }
+
+    document.getElementById('step2EntropyVal').textContent = `${entropy} bits`;
+    const bandElem = document.getElementById('step2CertaintyBand');
+    bandElem.textContent = band;
+    bandElem.className = score <= 25 ? "badge bg-success" : (score <= 60 ? "badge bg-warning" : "badge bg-danger");
+}
+
+async function fetchAndRenderNextQuestion() {
+    try {
+        const payload = {
+            symptoms: Array.from(selectedSymptoms),
+            answered_question_ids: answeredQuestionIds,
+            qa_answers: answeredQA
+        };
+        const res = await API.post('/api/closed-loop/next-question', payload);
+        const card = document.getElementById('nextQuestionCard');
+        if (res.has_next_question && res.next_question) {
+            const q = res.next_question;
+            card.classList.remove('d-none');
+            document.getElementById('infoGainTag').innerHTML = `<i class="bi bi-lightning-charge-fill"></i> +${q.information_gain} bits Information Gain`;
+            document.getElementById('nextQuestionText').textContent = q.question;
+            document.getElementById('nextQuestionRationale').textContent = q.rationale;
+            
+            const optContainer = document.getElementById('nextQuestionOptions');
+            optContainer.innerHTML = q.options.map(opt => `
+                <button type="button" class="btn btn-outline-primary btn-sm text-start py-2 px-3 fw-semibold" onclick="selectNextQuestionAnswer('${q.question_id}', '${opt.replace(/'/g, "\\'")}')">
+                    <i class="bi bi-arrow-right-circle me-1"></i> ${opt}
+                </button>
+            `).join('');
+        } else {
+            card.classList.add('d-none');
+        }
+    } catch (e) {
+        console.warn("Next question engine error:", e);
+    }
+}
+
+async function selectNextQuestionAnswer(qId, answer) {
+    answeredQA[qId] = answer;
+    answeredQuestionIds.push(qId);
+    
+    // Re-assess uncertainty
+    try {
+        const uPayload = {
+            symptoms: Array.from(selectedSymptoms),
+            qa_answers: answeredQA
+        };
+        const uRes = await API.post('/api/closed-loop/uncertainty-assess', uPayload);
+        updateUncertaintyDisplay(uRes);
+    } catch (e) {
+        console.error(e);
+    }
+    
+    // Fetch subsequent next-question
+    await fetchAndRenderNextQuestion();
+}
+
+function handleAnswerChange() {
+    document.querySelectorAll('.adaptive-input').forEach(sel => {
+        const qid = sel.getAttribute('data-qid');
+        answeredQA[qid] = sel.value;
+    });
+}
+
 
 function goToStep3(e) {
     if (e) e.preventDefault();
@@ -281,6 +420,34 @@ async function goToStep4() {
 
     try {
         const res = await API.post('/api/navigator/assess', payload);
+        
+        // Enrich with Explainable Decision Map from Closed-Loop Engine
+        if (!res.explainable_decision_map) {
+            try {
+                res.explainable_decision_map = await API.post('/api/closed-loop/explainable-decision-map', {
+                    target_disease: res.top_disease,
+                    symptoms: Array.from(selectedSymptoms),
+                    qa_answers: answeredQA
+                });
+            } catch (xErr) {
+                console.warn("Could not load explainable map:", xErr);
+            }
+        }
+
+        // Enrich with Minimum Diagnostic Test Set from Closed-Loop Engine
+        if (!res.minimum_diagnostic_test_set) {
+            try {
+                res.minimum_diagnostic_test_set = await API.post('/api/closed-loop/minimum-tests', {
+                    top_disease: res.top_disease,
+                    current_uncertainty: 55.0,
+                    symptoms: Array.from(selectedSymptoms),
+                    triage_level: res.triage ? res.triage.triage_level : "Doctor Consultation"
+                });
+            } catch (tErr) {
+                console.warn("Could not load minimum tests:", tErr);
+            }
+        }
+
         latestAssessment = res;
         displayStep4Results(res);
     } catch (err) {
@@ -306,12 +473,80 @@ function displayStep4Results(res) {
         reasonsList.innerHTML = `<div class="text-muted">Standard clinical pathway. No acute emergency red-flags triggered.</div>`;
     }
 
-    // Explainable AI (XAI)
-    const xaiContainer = document.getElementById('xaiList');
-    xaiContainer.innerHTML = res.xai_reasoning.map(r => `<li>${r}</li>`).join('');
+    // 1. "Why Did AI Decide This?" Explainable Health Decision Map
+    const mapBox = document.getElementById('explainableDecisionMapContainer');
+    const xaiData = res.explainable_decision_map;
+    if (xaiData && mapBox) {
+        const netScore = (xaiData.net_positive_score || 0) + (xaiData.net_negative_score || 0);
+        document.getElementById('decisionMapNetScore').textContent = `Net Attributions: ${netScore >= 0 ? '+' : ''}${netScore}`;
+        
+        let mapHtml = '';
+        // Positive features
+        (xaiData.positive_attributions || []).forEach(f => {
+            mapHtml += `
+                <div class="decision-map-bar d-flex justify-content-between align-items-center p-2 rounded bg-light border">
+                    <div>
+                        <strong class="text-dark d-block">${f.feature}</strong>
+                        <small class="text-muted">${f.category} • ${f.effect}</small>
+                    </div>
+                    <span class="attribution-bar-pos">+${f.weight}</span>
+                </div>
+            `;
+        });
+        // Negative features
+        (xaiData.negative_attributions || []).forEach(f => {
+            mapHtml += `
+                <div class="decision-map-bar d-flex justify-content-between align-items-center p-2 rounded bg-light border">
+                    <div>
+                        <strong class="text-dark d-block">${f.feature}</strong>
+                        <small class="text-muted">${f.category} • ${f.effect}</small>
+                    </div>
+                    <span class="attribution-bar-neg">${f.weight}</span>
+                </div>
+            `;
+        });
+        mapBox.innerHTML = mapHtml || '<div class="text-muted small">Standard feature baseline.</div>';
 
-    // Suggested Tests
-    document.getElementById('step4TestsText').textContent = res.recommended_diagnostic_tests.join(', ');
+        // Missing information impact
+        const missing = xaiData.missing_information_penalties || [];
+        const missingText = document.getElementById('missingInfoText');
+        if (missing.length > 0) {
+            missingText.innerHTML = missing.map(m => `
+                <div class="mt-1"><span class="badge bg-warning text-dark me-1">${m.criticality}</span> <strong>${m.parameter}:</strong> ${m.impact}</div>
+            `).join('');
+        } else {
+            missingText.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> Sufficient clinical dimensions captured. No critical information gaps.</span>';
+        }
+    }
+
+    // 2. Minimum Diagnostic Test Set Optimization (Pareto Safety Knapsack)
+    const minTestSet = res.minimum_diagnostic_test_set;
+    const tableBody = document.getElementById('minimumTestsTableBody');
+    if (minTestSet && tableBody) {
+        document.getElementById('residualUncertaintyBadge').textContent = `Residual Uncertainty: ~${minTestSet.expected_residual_uncertainty_pct}%`;
+        document.getElementById('minTestTotalCost').textContent = `₹${minTestSet.total_estimated_cost_inr}`;
+        document.getElementById('radiationSafetyBadge').textContent = minTestSet.radiation_burden_profile.split('(')[0].trim();
+
+        tableBody.innerHTML = (minTestSet.minimum_test_set || []).map(t => `
+            <tr>
+                <td>
+                    <strong class="d-block text-dark">${t.test_name}</strong>
+                    <small class="text-muted">${t.rationale}</small>
+                </td>
+                <td>
+                    <span class="badge ${t.priority_tier === 1 ? 'bg-danger text-white' : 'bg-primary text-white'}">
+                        ${t.priority_tier === 1 ? 'MANDATORY' : 'RECOMMENDED'}
+                    </span>
+                </td>
+                <td class="fw-semibold">₹${t.cost_inr}</td>
+                <td>
+                    <span class="badge ${t.radiation_risk === 'None' ? 'bg-success text-white' : 'bg-warning text-dark'}">
+                        ${t.radiation_risk}
+                    </span>
+                </td>
+            </tr>
+        `).join('');
+    }
 
     // SBAR Handover Preview
     const readableSymptoms = Array.from(selectedSymptoms).map(s => s.replace(/_/g, ' ')).join(', ');
@@ -325,6 +560,7 @@ function displayStep4Results(res) {
     document.getElementById('sbarAssessment').textContent = `Triage Level: ${res.triage.triage_level}. Suspected: ${res.top_disease} (${res.confidence_percentage}% confidence). Specialist: ${res.specialist_recommended}.`;
     document.getElementById('sbarRecommendation').textContent = `Correlate symptom onset with physical exam. Ensure pharmacotherapy checks against declared allergy: "${allergyText}".`;
 }
+
 
 // Finalize and Transmit Handover to Doctor
 async function finalizeConsultation() {
@@ -536,6 +772,8 @@ async function loadRecoveryTab() {
             const id = select.value;
             if (id) loadRecoveryTimeline(id);
         };
+
+        await loadDigitalHealthTimeline();
     } catch (err) {
         console.error("Error loading recovery tab:", err);
     }
@@ -1170,6 +1408,9 @@ async function triggerOneTapSOS() {
 
 async function loadEmergencyTab() {
     try {
+        if (!currentPassportToken) {
+            switchPassportContext('PUBLIC_BASIC');
+        }
         const res = await API.get(currentEmergencyAlertId ? `/api/emergency/active-status?alert_id=${currentEmergencyAlertId}` : '/api/emergency/active-status');
         if (!res.has_active_emergency || !res.telemetry) return;
 
@@ -1346,4 +1587,145 @@ async function logProgress(challengeId, increment) {
         alert("Failed to log progress: " + err.message);
     }
 }
+
+// ===================================================================
+// 7. LONGITUDINAL DIGITAL HEALTH TIMELINE CONTROLLER
+// ===================================================================
+async function loadDigitalHealthTimeline() {
+    const container = document.getElementById('digitalHealthTimelineContainer');
+    if (!container) return;
+    
+    container.innerHTML = `<div class="text-center py-4 text-muted"><div class="spinner-border text-primary spinner-border-sm"></div> Loading timeline...</div>`;
+    
+    try {
+        const patientId = currentProfile ? currentProfile.id : (API.getUser() ? API.getUser().id : 4);
+        const res = await API.get(`/api/closed-loop/timeline/patient/${patientId}`);
+        const entries = res.timeline_entries || [];
+        
+        if (entries.length === 0) {
+            container.innerHTML = `<div class="text-center py-4 text-muted">No chronological health milestones recorded yet.</div>`;
+            return;
+        }
+
+        const iconMap = {
+            'SYMPTOM_ONSET': 'bi-activity text-warning',
+            'DIAGNOSTIC_TEST': 'bi-eyedropper text-info',
+            'DOCTOR_CONSULTATION': 'bi-person-badge text-primary',
+            'PRESCRIPTION_DISPENSED': 'bi-capsule text-success',
+            'OUTCOME_VERIFIED': 'bi-patch-check-fill text-emerald',
+            'RECOVERY_CHECKIN': 'bi-arrow-repeat text-success',
+            'EMERGENCY_DISPATCH': 'bi-truck text-danger'
+        };
+
+        container.innerHTML = entries.map(e => {
+            const icon = iconMap[e.event_type] || 'bi-calendar-check text-secondary';
+            const metrics = e.metrics || {};
+            const metricsHtml = Object.keys(metrics).length > 0 ? `
+                <div class="mt-2 p-2 bg-light rounded-2 small">
+                    ${Object.entries(metrics).map(([k, v]) => `<div><strong>${k.replace(/_/g, ' ')}:</strong> ${v}</div>`).join('')}
+                </div>
+            ` : '';
+
+            return `
+                <div class="timeline-item mb-3 pb-3 border-bottom position-relative ps-4">
+                    <div class="position-absolute start-0 top-0">
+                        <i class="bi ${icon} fs-5"></i>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                        <h6 class="fw-bold text-dark mb-0">${e.title}</h6>
+                        <small class="text-muted"><i class="bi bi-clock me-1"></i>${new Date(e.recorded_at).toLocaleDateString()} ${new Date(e.recorded_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
+                    </div>
+                    <div class="badge bg-light text-dark border small my-1">${e.event_type.replace(/_/g, ' ')} • ${e.severity_level || 'Normal'}</div>
+                    <p class="text-secondary small mb-1">${e.description}</p>
+                    ${metricsHtml}
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger small">Error loading timeline: ${err.message}</div>`;
+    }
+}
+
+// ===================================================================
+// 8. DYNAMIC CONTEXT-AWARE EMERGENCY PASSPORT & CONSENT CONTROLLER
+// ===================================================================
+let activePassportScope = 'PUBLIC_BASIC';
+let currentPassportToken = null;
+
+async function switchPassportContext(scope) {
+    activePassportScope = scope;
+    await fetchAndRenderPassport(scope);
+}
+
+async function regeneratePassportToken() {
+    await fetchAndRenderPassport(activePassportScope, true);
+}
+
+async function fetchAndRenderPassport(scope, forceNew = false) {
+    const previewBox = document.getElementById('passportDataPreviewBox');
+    const qrImg = document.getElementById('passportQrImg');
+    const label = document.getElementById('passportScopeLabel');
+    const tokenHash = document.getElementById('passportTokenHash');
+    const countdown = document.getElementById('passportCountdown');
+
+    if (!previewBox) return;
+    previewBox.innerHTML = `<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Generating context-scoped view...</div>`;
+
+    try {
+        const tokenRes = await API.post('/api/closed-loop/passport/generate-token', { context_scope: scope });
+        currentPassportToken = tokenRes.token;
+
+        if (label) label.textContent = tokenRes.scope_label;
+        if (tokenHash) tokenHash.textContent = tokenRes.token;
+        if (countdown) countdown.textContent = `Auto-Expires: ${tokenRes.validity_minutes} Minutes`;
+
+        // Update QR Code Image
+        const viewUrl = window.location.origin + tokenRes.qr_access_url;
+        if (qrImg) {
+            qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(viewUrl)}`;
+        }
+
+        // Fetch the filtered view as the accessor would see it
+        const viewRes = await API.get(tokenRes.qr_access_url);
+        const data = viewRes.data || viewRes;
+
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">${viewRes.scope_label}</span>
+                <span class="text-muted" style="font-size: 0.75rem;">Access Count: ${viewRes.access_count}</span>
+            </div>
+            <div class="text-dark">
+        `;
+
+        if (data.full_name) html += `<div><strong>Patient Name:</strong> ${data.full_name}</div>`;
+        if (data.blood_group) html += `<div><strong>Blood Group:</strong> <span class="badge bg-danger">${data.blood_group}</span></div>`;
+        if (data.drug_allergies) html += `<div><strong>Drug Allergies:</strong> <span class="text-danger fw-bold">${data.drug_allergies}</span></div>`;
+        if (data.emergency_contact_phone) html += `<div><strong>Emergency Phone:</strong> ${data.emergency_contact_phone}</div>`;
+        if (data.resuscitation_preference) html += `<div><strong>Code Status:</strong> <span class="badge bg-dark">${data.resuscitation_preference}</span></div>`;
+        if (data.pre_existing_conditions) html += `<div><strong>Conditions:</strong> ${data.pre_existing_conditions}</div>`;
+        if (data.current_medications) html += `<div><strong>Medications:</strong> ${data.current_medications}</div>`;
+        if (data.recent_vitals) {
+            html += `<div class="mt-1"><strong>Recent Vitals:</strong> BP ${data.recent_vitals.bp || '-'}, HR ${data.recent_vitals.hr || '-'}, SpO2 ${data.recent_vitals.spo2 || '-'}</div>`;
+        }
+        if (data.recent_lab_biomarkers) {
+            html += `<div class="mt-1"><strong>Lab Biomarkers:</strong> WBC ${data.recent_lab_biomarkers.wbc || '-'}, Platelets ${data.recent_lab_biomarkers.platelets || '-'}</div>`;
+        }
+        if (data.treating_physician_notes) {
+            html += `<div class="mt-1 p-2 bg-white rounded border"><strong>Physician Notes:</strong> ${data.treating_physician_notes}</div>`;
+        }
+
+        html += `
+            </div>
+            <div class="mt-2 text-muted" style="font-size: 0.72rem;">
+                <i class="bi bi-shield-lock me-1"></i> Data-bound consent active. Fields outside this scope are cryptographically masked.
+            </div>
+        `;
+
+        previewBox.innerHTML = html;
+
+    } catch (err) {
+        previewBox.innerHTML = `<div class="alert alert-danger small">Error: ${err.message}</div>`;
+    }
+}
+
 

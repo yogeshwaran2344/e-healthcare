@@ -103,6 +103,16 @@
                     <i class="bi bi-shield-lock-fill me-1"></i> 5. Blockchain Audit Verifier
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3 text-warning" data-bs-toggle="pill" data-bs-target="#doc-disagreements" onclick="loadDoctorDisagreements()">
+                    <i class="bi bi-arrows-angle-expand me-1"></i> 6. Clinician Disagreements
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3 text-primary" data-bs-toggle="pill" data-bs-target="#doc-calibration" onclick="loadDoctorCalibration()">
+                    <i class="bi bi-arrow-repeat me-1"></i> 7. AI Calibration & Outcome Loop
+                </button>
+            </li>
         </ul>
 
         <div class="tab-content">
@@ -256,8 +266,119 @@
                     </div>
                 </div>
             </div>
+
+            <!-- TAB 6: CLINICIAN-AI DISAGREEMENT & DIVERGENCE AUDIT -->
+            <div class="tab-pane fade" id="doc-disagreements">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h4 class="fw-bold mb-1"><i class="bi bi-arrows-angle-expand text-warning me-2"></i>Clinician-AI Disagreement Records</h4>
+                            <p class="text-muted small mb-0">Closed-loop divergence repository logging cases where doctor clinical judgment superseded AI automated triage or diagnosis.</p>
+                        </div>
+                        <button class="btn btn-outline-warning btn-sm" onclick="loadDoctorDisagreements()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh Audit Trail
+                        </button>
+                    </div>
+
+                    <div class="alert alert-light border small py-2 mb-3">
+                        <i class="bi bi-info-circle-fill text-primary me-1"></i> <strong>Clinical Discrepancy Taxonomy:</strong> Overrides are classified under Atypical Presentation, Bedside Exam Findings, Epidemiological Outbreak Context, or Risk-Aversion Upgrades.
+                    </div>
+
+                    <div id="doctorDisagreementsContainer" class="d-flex flex-column gap-3">
+                        <div class="text-center py-4 text-muted">Loading disagreement records...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: AI CALIBRATION & GROUND TRUTH OUTCOME CLOSED LOOP -->
+            <div class="tab-pane fade" id="doc-calibration">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h4 class="fw-bold mb-1"><i class="bi bi-arrow-repeat text-primary me-2"></i>AI Diagnostic Calibration & Outcome Verification Loop</h4>
+                            <p class="text-muted small mb-0">Closed-loop model telemetry triangulating AI Predictions \(\leftrightarrow\) Doctor Diagnoses \(\leftrightarrow\) Verified Ground-Truth Outcomes.</p>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadDoctorCalibration()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh Metrics
+                        </button>
+                    </div>
+
+                    <!-- Calibration KPI Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block">AI Accuracy</small>
+                                <h3 class="fw-bold text-primary mb-0" id="kpiAiAccuracy">--%</h3>
+                                <small class="text-muted">vs Ground Truth</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block">Doctor Accuracy</small>
+                                <h3 class="fw-bold text-success mb-0" id="kpiDoctorAccuracy">--%</h3>
+                                <small class="text-muted">vs Ground Truth</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block">Override Precision</small>
+                                <h3 class="fw-bold text-warning mb-0" id="kpiOverridePrecision">--%</h3>
+                                <small class="text-muted">Doctor overrule success</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <small class="text-muted text-uppercase fw-bold d-block">Disagreement Rate</small>
+                                <h3 class="fw-bold text-danger mb-0" id="kpiDisagreementRate">--%</h3>
+                                <small class="text-muted">Divergence frequency</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Failure Mode Distribution -->
+                    <div class="p-3 bg-light rounded-4 border mb-4">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-pie-chart-fill text-secondary me-1"></i> Root-Cause Diagnostic Failure Mode Breakdown:</h6>
+                        <div id="failureModesContainer" class="d-flex flex-wrap gap-2">
+                            <!-- Dynamic pills -->
+                        </div>
+                    </div>
+
+                    <!-- Verify New Ground-Truth Outcome Section -->
+                    <div class="border rounded-4 p-3 bg-white">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-check2-circle text-success me-1"></i> Confirm & Verify Ground-Truth Outcome (Feed the Loop)</h6>
+                        <p class="text-muted small mb-3">When follow-up laboratory culture, radiology, or biopsy reports confirm definitive diagnosis, record it here to close the loop.</p>
+                        
+                        <form id="verifyOutcomeForm" onsubmit="submitOutcomeVerification(event)" class="row g-2">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Consultation #</label>
+                                <input type="number" id="outcomeConsultId" class="form-control form-control-sm" placeholder="e.g. 1" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Confirmed True Condition</label>
+                                <input type="text" id="outcomeTrueDisease" class="form-control form-control-sm" placeholder="e.g. Acute Coronary Syndrome" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Confirmation Method</label>
+                                <select id="outcomeMethod" class="form-select form-select-sm">
+                                    <option value="Cardiac Catheterization / Angiography">Cardiac Catheterization / Angiography</option>
+                                    <option value="High-Resolution CT Scan">High-Resolution CT Scan</option>
+                                    <option value="Microbial Sputum / Blood Culture">Microbial Sputum / Blood Culture</option>
+                                    <option value="Dengue Serology NS1/IgM Panel">Dengue Serology NS1/IgM Panel</option>
+                                    <option value="Clinical Resolution on Antibiotics">Clinical Resolution on Antibiotics</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success btn-sm w-100 fw-semibold">
+                                    <i class="bi bi-save me-1"></i> Verify Outcome
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
 
 
     <!-- Review & Prescribe Modal -->
@@ -301,6 +422,15 @@
                                 </div>
                             </div>
 
+                            <!-- "Why Did AI Decide This?" Explainable Health Decision Map -->
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-diagram-3-fill text-primary me-1"></i> Explainable Health Decision Map (XAI)</h6>
+                            <div class="p-3 bg-light rounded-3 border mb-3 small" id="caseDecisionMapBox">
+                                <div id="caseDecisionMapBars" class="d-flex flex-column gap-1 mb-2">
+                                    <span class="text-muted">Loading feature attribution weights...</span>
+                                </div>
+                                <div id="caseMissingParams" class="small text-muted"></div>
+                            </div>
+
                             <!-- Extracted Lab Biomarkers & Radiology -->
                             <h6 class="fw-bold text-dark mb-2"><i class="bi bi-activity text-danger me-1"></i> Extracted Biomarkers & Imaging Findings</h6>
                             <div id="caseBiomarkersBox" class="p-3 bg-light rounded-3 border mb-3 small">
@@ -324,10 +454,35 @@
 
                             <form id="prescribeForm" onsubmit="submitPrescription(event)">
                                 <input type="hidden" id="prescribeConsultId">
+                                <input type="hidden" id="originalAiPrediction">
 
                                 <div class="mb-3">
                                     <label class="form-label small fw-semibold">Confirmed Clinical Diagnosis</label>
-                                    <input type="text" id="finalDiagnosis" class="form-control" placeholder="e.g. Acute Bacterial Pneumonia" required>
+                                    <input type="text" id="finalDiagnosis" class="form-control" placeholder="e.g. Acute Bacterial Pneumonia" required oninput="checkDoctorAiDivergence()">
+                                </div>
+
+                                <!-- Clinician-AI Disagreement Alert & Classification -->
+                                <div id="disagreementAlertBox" class="alert alert-warning py-2 px-3 small rounded-3 d-none mb-3">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <strong class="text-danger"><i class="bi bi-arrows-angle-expand me-1"></i> Clinician-AI Disagreement Detected</strong>
+                                        <span class="badge bg-warning text-dark">Will Record Discrepancy</span>
+                                    </div>
+                                    <p class="mb-2">Your confirmed diagnosis differs from the AI prediction (<span id="aiPredictedLabel" class="fw-bold">Pneumonia</span>). Please classify this divergence to improve the model:</p>
+                                    <div class="mb-2">
+                                        <label class="form-label fw-semibold mb-1">Discrepancy Taxonomy Category</label>
+                                        <select id="discrepancyCategorySelect" class="form-select form-select-sm">
+                                            <option value="PHYSICAL_EXAM_OVERRIDE">Bedside Physical Exam Override (Auscultation / Palpation)</option>
+                                            <option value="ATYPICAL_PRESENTATION">Atypical Clinical Presentation (Non-standard symptoms)</option>
+                                            <option value="EPIDEMIOLOGICAL_CONTEXT">Epidemiological Outbreak Context (Local surge)</option>
+                                            <option value="RISK_AVERSION_SAFETY_UPGRADE">Risk-Aversion Safety Upgrade (Prevent occult compromise)</option>
+                                            <option value="LAB_IMAGING_DISCORDANCE">Lab/Imaging Findings Discordant with Questionnaire</option>
+                                            <option value="INCOMPLETE_SYMPTOM_CAPTURE">Incomplete Digital Symptom Capture</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-1">
+                                        <label class="form-label fw-semibold mb-1">Clinical Override Rationale</label>
+                                        <textarea id="doctorRationaleText" class="form-control form-control-sm" rows="2" placeholder="Specify why clinical examination or evidence required superseding AI recommendation..."></textarea>
+                                    </div>
                                 </div>
 
                                 <!-- Dynamic Medicines Builder -->

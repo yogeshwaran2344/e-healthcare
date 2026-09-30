@@ -372,3 +372,110 @@ class PatientReward(Base):
 
     patient = relationship("User")
 
+# ==========================================
+# 7. CLOSED-LOOP CLINICAL DECISION & VERIFICATION
+# ==========================================
+
+class ClinicalTimelineEntry(Base):
+    """Longitudinal continuous patient health timeline tracking events and trends over time"""
+    __tablename__ = "clinical_timeline_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    event_type = Column(String(50), nullable=False) # symptom_report, vital_reading, lab_test, doctor_visit, prescription_issued, outcome_verified
+    title = Column(String(150), nullable=False)
+    description = Column(Text, nullable=True)
+    metrics_json = Column(Text, nullable=True) # JSON snapshot of vitals, scores, or values
+    severity_level = Column(String(30), default="Normal") # Normal, Mild, Moderate, Critical
+    recorded_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    patient = relationship("User")
+
+class AdaptiveDiagnosticSession(Base):
+    """Tracks dynamic Shannon-entropy uncertainty reduction across adaptive question iterations"""
+    __tablename__ = "adaptive_diagnostic_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    initial_symptoms_json = Column(Text, nullable=False) # JSON list
+    initial_entropy = Column(Float, default=3.0)
+    current_entropy = Column(Float, default=2.0)
+    current_uncertainty_score = Column(Float, default=70.0) # 0-100%
+    answered_questions_json = Column(Text, nullable=True) # JSON dict of Q&A
+    top_predicted_disease = Column(String(150), nullable=True)
+    confidence_score = Column(Float, default=0.0)
+    minimum_test_set_json = Column(Text, nullable=True) # Pareto-optimized test recommendation
+    session_status = Column(String(30), default="in_progress") # in_progress, completed, escalated_to_doctor
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    patient = relationship("User")
+
+class ClinicalDisagreementRecord(Base):
+    """Clinical Disagreement Record: captures divergence between AI prediction and Doctor decision"""
+    __tablename__ = "clinical_disagreement_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    consultation_id = Column(Integer, ForeignKey("consultations.id"), nullable=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    doctor_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    ai_predicted_disease = Column(String(150), nullable=False)
+    ai_confidence = Column(Float, default=0.0)
+    ai_triage_level = Column(String(50), default="Doctor Consultation")
+    
+    doctor_diagnosed_disease = Column(String(150), nullable=False)
+    doctor_triage_level = Column(String(50), default="Doctor Consultation")
+    discrepancy_category = Column(String(80), default="PHYSICAL_EXAM_OVERRIDE")
+    severity_grade = Column(String(50), default="MODERATE_DIAGNOSTIC_DIVERGENCE")
+    doctor_rationale = Column(Text, nullable=False)
+    tests_considered_json = Column(Text, nullable=True) # JSON list
+    reconciliation_status = Column(String(30), default="pending_outcome") # pending_outcome, reconciled
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    consultation = relationship("Consultation")
+    patient = relationship("User", foreign_keys=[patient_id])
+    doctor = relationship("User", foreign_keys=[doctor_id])
+
+class ClinicalOutcomeRecord(Base):
+    """Ground truth clinical outcome verification closing the learning loop"""
+    __tablename__ = "clinical_outcome_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    consultation_id = Column(Integer, ForeignKey("consultations.id"), nullable=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    ai_predicted_disease = Column(String(150), nullable=False)
+    doctor_diagnosed_disease = Column(String(150), nullable=False)
+    confirmed_outcome_disease = Column(String(150), nullable=False)
+    confirmation_method = Column(String(100), default="Laboratory / Radiology Report")
+    days_to_resolution = Column(Integer, default=5)
+    
+    ai_was_correct = Column(Boolean, default=False)
+    doctor_was_correct = Column(Boolean, default=True)
+    error_category = Column(String(80), default="NO_ERROR") # NO_ERROR, MISSING_SYMPTOM, INCORRECT_WEIGHTING, INSUFFICIENT_LAB_DATA, ATYPICAL_PRESENTATION
+    reconciliation_type = Column(String(80), default="PHYSICIAN_OVERRIDE_SAVED_ACCURACY")
+    calibration_feedback = Column(Text, nullable=True)
+    recorded_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    consultation = relationship("Consultation")
+    patient = relationship("User")
+
+class ContextualQRToken(Base):
+    """Dynamic context-aware emergency token with role-based access and automatic expiration"""
+    __tablename__ = "contextual_qr_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    context_scope = Column(String(50), default="PUBLIC_BASIC") # PUBLIC_BASIC, AMBULANCE_PARAMEDIC, HOSPITAL_ER_TRAUMA
+    expires_at = Column(DateTime, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+    access_count = Column(Integer, default=0)
+    last_accessed_at = Column(DateTime, nullable=True)
+    access_logs_json = Column(Text, nullable=True) # JSON list of {ip, role, timestamp, user_agent}
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    patient = relationship("User")
+
+

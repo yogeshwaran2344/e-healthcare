@@ -6,6 +6,9 @@ Adaptive Multi-Stage Question Engine, Context-Aware Bayesian Predictor,
 import math
 from typing import List, Dict, Any, Optional
 from .dataset import ALL_SYMPTOMS, DISEASES_DB
+from .uncertainty_engine import calculate_disease_posteriors, compute_entropy_and_uncertainty
+from .explainable_map_engine import generate_explainable_decision_map
+from .test_optimization_engine import optimize_minimum_diagnostic_test_set
 
 # Symptom-specific targeted clinical follow-up questions
 SYMPTOM_SPECIFIC_QUESTIONS = {
@@ -264,6 +267,30 @@ def compute_explainable_diagnosis(
         biomarkers=biomarkers
     )
 
+    # Closed-Loop Adaptive Intelligence Additions
+    posteriors = calculate_disease_posteriors(symptoms, qa_answers, patient_context, biomarkers)
+    entropy_uncertainty = compute_entropy_and_uncertainty(posteriors)
+    
+    candidate_list = [{"disease": d, "probability": p} for d, p in posteriors.items()]
+    candidate_list.sort(key=lambda x: x["probability"], reverse=True)
+
+    min_test_set = optimize_minimum_diagnostic_test_set(
+        top_disease=top["disease"],
+        top_candidates=candidate_list,
+        current_uncertainty=entropy_uncertainty["uncertainty_score"],
+        symptoms=symptoms,
+        triage_level=triage["triage_level"]
+    )
+
+    decision_map = generate_explainable_decision_map(
+        target_disease=top["disease"],
+        symptoms=symptoms,
+        qa_answers=qa_answers,
+        patient_context=patient_context,
+        biomarkers=biomarkers,
+        confidence_percentage=confidence
+    )
+
     return {
         "top_disease": top["disease"],
         "confidence_percentage": round(confidence, 1),
@@ -273,5 +300,10 @@ def compute_explainable_diagnosis(
         "recommended_diagnostic_tests": top["info"].get("recommended_tests", ["Complete Blood Count (CBC)"]),
         "triage": triage,
         "xai_reasoning": top["xai_factors"],
-        "other_possibilities": alternatives
+        "other_possibilities": alternatives,
+        # Closed-loop enhancements
+        "entropy_uncertainty": entropy_uncertainty,
+        "explainable_decision_map": decision_map,
+        "minimum_diagnostic_test_set": min_test_set
     }
+

@@ -21,7 +21,8 @@ from .routes import (
     blockchain_router,
     queue_navigation_router,
     emergency_router,
-    community_preventive_router
+    community_preventive_router,
+    closed_loop_router
 )
 
 # Initialize database tables
@@ -58,6 +59,7 @@ app.include_router(blockchain_router)
 app.include_router(queue_navigation_router)
 app.include_router(emergency_router)
 app.include_router(community_preventive_router)
+app.include_router(closed_loop_router)
 
 
 @app.get("/api/health")

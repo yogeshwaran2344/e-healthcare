@@ -126,10 +126,23 @@
                         <i class="bi bi-soundwave me-1"></i> Listening... Speak naturally (e.g. "I have severe fever and cough for two days").
                     </div>
 
-                    <!-- Search Filter -->
-                    <div class="input-group mb-3">
+                    <!-- Search Filter & Category Tabs -->
+                    <div class="input-group mb-2">
                         <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" id="symptomSearchInput" class="form-control border-start-0" placeholder="Filter symptoms (e.g. fever, cough, chest pain, rash)..." oninput="filterSymptoms()">
+                        <input type="text" id="symptomSearchInput" class="form-control border-start-0" placeholder="Filter 75+ multi-system symptoms (e.g. chest pain, dyspnea, chills, numbness, rash)..." oninput="filterSymptoms()">
+                    </div>
+
+                    <!-- Category Filter Tabs -->
+                    <div class="d-flex gap-1 flex-wrap mb-3" id="symptomCategoryFilters">
+                        <button class="btn btn-sm btn-primary py-1 px-2 rounded-pill category-filter-btn active" onclick="filterByCategory('All')">All (75+)</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Respiratory')">Respiratory</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Cardiovascular')">Cardiovascular</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Gastrointestinal & Hepatic')">GI & Hepatic</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Neurological & Sensory')">Neurological</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Systemic & Infectious')">Systemic</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Musculoskeletal')">Musculoskeletal</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Dermatological')">Skin</button>
+                        <button class="btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('Renal & Urological')">Renal</button>
                     </div>
 
                     <!-- Selected Count -->
@@ -139,7 +152,7 @@
                     </div>
 
                     <!-- Chips Container -->
-                    <div class="p-3 bg-light rounded-3 mb-4 border" style="max-height: 260px; overflow-y: auto;" id="symptomsList">
+                    <div class="p-3 bg-light rounded-3 mb-4 border" style="max-height: 280px; overflow-y: auto;" id="symptomsList">
                         <div class="text-center py-3 text-muted">Loading symptom database...</div>
                     </div>
 
@@ -152,12 +165,44 @@
 
                 <!-- WIZARD STEP 2: TARGETED ADAPTIVE AI QUESTIONS -->
                 <div id="wizardStep2" class="card border-0 shadow-sm rounded-4 p-4 mb-4 d-none">
-                    <h4 class="fw-bold mb-1"><i class="bi bi-chat-heart text-primary me-2"></i>Step 2: Adaptive Clinical Inquiry</h4>
-                    <p class="text-muted small mb-4">Our AI dynamic inquiry engine has generated these targeted questions based on your specific symptoms and health context.</p>
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-1"><i class="bi bi-chat-heart text-primary me-2"></i>Step 2: Adaptive Clinical Inquiry & Uncertainty Reduction</h4>
+                            <p class="text-muted small mb-0">System calculates Shannon entropy to ask questions that achieve maximum diagnostic information gain.</p>
+                        </div>
+                    </div>
+
+                    <!-- Shannon Entropy & Uncertainty Reduction Meter -->
+                    <div class="uncertainty-meter-container mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-bold text-dark"><i class="bi bi-speedometer2 text-primary me-1"></i> Diagnostic Uncertainty & Shannon Entropy:</span>
+                            <span class="badge bg-primary" id="step2UncertaintyBadge">Uncertainty: 68%</span>
+                        </div>
+                        <div class="uncertainty-bar mb-2">
+                            <div class="uncertainty-bar-fill uncertainty-high" id="step2UncertaintyBar" style="width: 68%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted">
+                            <span>Shannon Entropy \(H(D)\): <strong id="step2EntropyVal" class="text-dark">2.82 bits</strong></span>
+                            <span id="step2CertaintyBand" class="badge bg-warning">Moderate Uncertainty</span>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Next-Best Question Recommendation Box (Max Information Gain) -->
+                    <div id="nextQuestionCard" class="next-question-card mb-4 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="info-gain-tag" id="infoGainTag"><i class="bi bi-lightning-charge-fill"></i> +0.65 bits Information Gain</span>
+                            <span class="small text-muted"><i class="bi bi-cpu"></i> Adaptive Hypothesis Splitter</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-2" id="nextQuestionText">Dynamic Question</h6>
+                        <p class="small text-muted mb-3" id="nextQuestionRationale"></p>
+                        <div class="d-flex flex-column gap-2" id="nextQuestionOptions">
+                            <!-- Dynamic options -->
+                        </div>
+                    </div>
 
                     <form id="adaptiveQuestionsForm" onsubmit="goToStep3(event)">
                         <div id="questionsContainer" class="d-flex flex-column gap-3 mb-4">
-                            <!-- Dynamic questions injected here -->
+                            <!-- Standard Adaptive Questions -->
                         </div>
 
                         <div class="d-flex justify-content-between">
@@ -221,10 +266,10 @@
                 <!-- WIZARD STEP 4: TRIAGE, EXPLAINABLE AI & CLINICAL HANDOVER -->
                 <div id="wizardStep4" class="card border-0 shadow-sm rounded-4 p-4 mb-4 d-none">
                     <h4 class="fw-bold mb-1"><i class="bi bi-clipboard2-pulse text-primary me-2"></i>Step 4: AI Health Assessment & Clinical Handover</h4>
-                    <p class="text-muted small mb-4">Synthesizing multi-stage findings into risk triage, explainable rationale, and a clinical handover for your doctor.</p>
+                    <p class="text-muted small mb-4">Synthesizing multi-stage findings into risk triage, explainable decision map, minimum diagnostic test set, and SBAR clinical handover.</p>
 
                     <div class="row g-4">
-                        <!-- Left: Triage & XAI -->
+                        <!-- Left: Triage, XAI Map & Minimum Test Set -->
                         <div class="col-lg-6">
                             <!-- Triage Card -->
                             <div class="p-3 rounded-4 mb-3 border" id="triageBox">
@@ -240,20 +285,54 @@
                                 </div>
                             </div>
 
-                            <!-- Explainable AI (XAI) Box -->
-                            <div class="p-3 bg-light rounded-4 border mb-3">
-                                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-lightbulb-fill text-warning me-1"></i> Explainable AI (Why This Was Considered):</h6>
-                                <ul class="small ps-3 mb-0" id="xaiList">
-                                    <li>Matched core symptoms</li>
-                                </ul>
+                            <!-- "Why Did AI Decide This?" Explainable Health Decision Map -->
+                            <div class="p-3 bg-white rounded-4 border shadow-sm mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-diagram-3-fill text-primary me-1"></i> Explainable Health Decision Map (XAI)</h6>
+                                    <span class="badge bg-light text-dark border" id="decisionMapNetScore">Net +48</span>
+                                </div>
+                                <p class="text-muted small mb-3">Exact numerical attribution weights that elevated or reduced probability:</p>
+                                
+                                <div id="explainableDecisionMapContainer" class="d-flex flex-column gap-2 mb-2">
+                                    <!-- Dynamic attribution bars injected here -->
+                                </div>
+
+                                <div id="missingInformationBox" class="p-2 bg-light rounded-2 border small mt-2">
+                                    <strong class="text-secondary d-block"><i class="bi bi-info-circle me-1"></i> Missing Clinical Information Impact:</strong>
+                                    <span class="text-muted" id="missingInfoText">Evaluating missing parameters...</span>
+                                </div>
                             </div>
 
-                            <!-- Recommended Tests -->
-                            <div class="alert alert-warning border-warning-subtle rounded-3 p-3">
-                                <strong class="small d-block mb-1"><i class="bi bi-flask"></i> Suggested Diagnostic Tests:</strong>
-                                <span class="small" id="step4TestsText">Chest X-Ray, Complete Blood Count (CBC)</span>
+                            <!-- Minimum Diagnostic Test Set Optimization (Pareto Safety Knapsack) -->
+                            <div class="p-3 bg-white rounded-4 border shadow-sm mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-funnel-fill text-success me-1"></i> Minimum Diagnostic Test Set</h6>
+                                    <span class="badge bg-success text-white" id="residualUncertaintyBadge">Residual Uncertainty: ~8%</span>
+                                </div>
+                                <p class="text-muted small mb-2">Pareto-optimized smallest necessary test combination eliminating diagnostic uncertainty:</p>
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-sm test-table w-100 mb-2">
+                                        <thead>
+                                            <tr>
+                                                <th>Test Name</th>
+                                                <th>Priority</th>
+                                                <th>Cost (INR)</th>
+                                                <th>Radiation</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="minimumTestsTableBody">
+                                            <!-- Dynamic minimum test set rows -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center small text-muted">
+                                    <span>Total Est. Cost: <strong class="text-dark" id="minTestTotalCost">₹950</strong></span>
+                                    <span id="radiationSafetyBadge" class="badge bg-light text-dark border">Zero Radiation</span>
+                                </div>
                             </div>
                         </div>
+
 
                         <!-- Right: SBAR Handover Card -->
                         <div class="col-lg-6">
@@ -448,18 +527,30 @@
                     </div>
 
                     <div class="col-lg-7">
-                        <div class="card border-0 shadow-sm rounded-4 p-4">
-                            <h5 class="fw-bold mb-1"><i class="bi bi-clock-history text-primary me-2"></i>Longitudinal Health Timeline</h5>
-                            <p class="text-muted small mb-3">Tracks symptom evolution over time, closing the continuous clinical feedback loop.</p>
-
-                            <div id="recoveryTimelineContainer" class="d-flex flex-column gap-3">
-                                <div class="text-center py-4 text-muted">
-                                    <i class="bi bi-hourglass-split fs-2"></i>
-                                    <p class="small mt-2">Select a consultation on the left to inspect its recovery trajectory.</p>
+                        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history text-primary me-2"></i>Continuous Digital Health Timeline</h5>
+                                    <p class="text-muted small mb-0">Longitudinal milestone progression tracking symptoms, labs, doctor visits, and verified outcomes.</p>
                                 </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="loadDigitalHealthTimeline()">
+                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                </button>
+                            </div>
+
+                            <div class="timeline-container" id="digitalHealthTimelineContainer">
+                                <div class="text-center py-4 text-muted"><div class="spinner-border text-primary spinner-border-sm"></div> Loading timeline...</div>
+                            </div>
+                        </div>
+
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-journal-medical text-success me-1"></i> Consultation Recovery Log</h6>
+                            <div id="recoveryTimelineContainer" class="d-flex flex-column gap-2 small">
+                                <div class="text-muted">Select a consultation on the left to inspect specific check-ins.</div>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -881,38 +972,52 @@
                         </div>
                     </div>
 
-                    <!-- Digital Emergency Medical Passport -->
+                    <!-- Dynamic Context-Aware Emergency Medical Passport & Consent -->
                     <div class="col-lg-5">
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                            <h5 class="fw-bold mb-2"><i class="bi bi-file-earmark-medical-fill text-primary me-2"></i>Emergency Medical Passport</h5>
-                            <p class="text-muted small mb-3">Auto-transmitted to ER attending doctors upon SOS trigger.</p>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold mb-0"><i class="bi bi-qr-code-scan text-primary me-2"></i>Dynamic Emergency Passport</h5>
+                                <span class="badge bg-success" id="passportExpiryBadge">Active Token</span>
+                            </div>
+                            <p class="text-muted small mb-3">Context-aware QR code changes viewable data according to scanner role with time-bound consent.</p>
 
-                            <div class="p-3 bg-light rounded-3 border mb-3 small">
-                                <div class="row g-2">
-                                    <div class="col-6">
-                                        <span class="text-muted">Blood Group:</span>
-                                        <strong class="text-danger d-block fs-6" id="passportBloodGroup">B+</strong>
-                                    </div>
-                                    <div class="col-6">
-                                        <span class="text-muted">Critical Allergies:</span>
-                                        <strong class="text-danger d-block" id="passportAllergies">Penicillin, Amoxicillin</strong>
-                                    </div>
-                                    <div class="col-12 mt-2">
-                                        <span class="text-muted">Chronic Illnesses:</span>
-                                        <strong class="d-block text-dark" id="passportConditions">Type 2 Diabetes, Hypertension</strong>
-                                    </div>
-                                    <div class="col-12 mt-2">
-                                        <span class="text-muted">Current Medications:</span>
-                                        <strong class="d-block text-dark" id="passportMeds">Metformin 500mg, Telmisartan 40mg</strong>
-                                    </div>
+                            <!-- Role Context Selector -->
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Select Accessor Context Scope:</label>
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <input type="radio" class="btn-check" name="passportScopeRadio" id="scopePublic" value="PUBLIC_BASIC" checked onchange="switchPassportContext('PUBLIC_BASIC')">
+                                    <label class="btn btn-outline-primary" for="scopePublic"><i class="bi bi-person me-1"></i> Public</label>
+
+                                    <input type="radio" class="btn-check" name="passportScopeRadio" id="scopeParamedic" value="AMBULANCE_PARAMEDIC" onchange="switchPassportContext('AMBULANCE_PARAMEDIC')">
+                                    <label class="btn btn-outline-danger" for="scopeParamedic"><i class="bi bi-truck me-1"></i> Paramedic</label>
+
+                                    <input type="radio" class="btn-check" name="passportScopeRadio" id="scopeER" value="HOSPITAL_ER_TRAUMA" onchange="switchPassportContext('HOSPITAL_ER_TRAUMA')">
+                                    <label class="btn btn-outline-dark" for="scopeER"><i class="bi bi-hospital me-1"></i> ER Trauma</label>
                                 </div>
                             </div>
 
-                            <div class="alert alert-success py-2 small mb-0">
-                                <i class="bi bi-check-all me-1"></i> <strong>Pre-Hospital Handover Sent:</strong> Attending ER emergency physician notified of patient profile.
+                            <!-- QR Code & Token Info -->
+                            <div class="text-center p-3 bg-light rounded-4 mb-3 border">
+                                <div id="passportQrContainer" class="mb-2">
+                                    <img id="passportQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://e-healthcare-demo.com/emergency/token_preview" alt="Emergency QR Code" class="img-fluid rounded border p-2 bg-white" style="width: 140px; height: 140px;">
+                                </div>
+                                <span class="badge bg-primary px-3 py-1" id="passportScopeLabel">Public First Responder</span>
+                                <div class="small text-muted mt-2" id="passportTokenMeta">Token: <span class="hash-mono" id="passportTokenHash">token_pub_98234</span></div>
+                                <div class="small text-danger fw-bold mt-1" id="passportCountdown">Auto-Expires: 24 Hours</div>
                             </div>
+
+                            <!-- Filtered Data Live Preview -->
+                            <h6 class="fw-bold small text-dark mb-2"><i class="bi bi-eye me-1"></i> Data Granted to this Role:</h6>
+                            <div class="p-3 bg-light rounded-3 border mb-3 small" id="passportDataPreviewBox">
+                                <!-- Dynamic fields rendered by JS -->
+                            </div>
+
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="regeneratePassportToken()">
+                                <i class="bi bi-arrow-repeat me-1"></i> Re-Issue Time-Bound Emergency Token
+                            </button>
                         </div>
                     </div>
+
                 </div>
             </div>
 
