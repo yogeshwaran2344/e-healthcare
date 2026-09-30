@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Portal | AI Clinical Handover & Safety System</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-light">
+
+    <!-- Doctor Top Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary" href="/">
+                <span class="brand-icon"><i class="bi bi-hospital-fill"></i></span>
+                <span>AI Health Navigator</span>
+                <span class="badge bg-info-subtle text-info border border-info-subtle ms-2 fs-6">Clinician Portal</span>
+            </a>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <div class="text-end d-none d-sm-block">
+                    <span class="fw-bold text-dark d-block" id="docNameDisplay">Dr. Sarah Sharma</span>
+                    <small class="text-muted" id="docSpecDisplay">Pulmonology Specialist</small>
+                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="API.logout()">
+                    <i class="bi bi-box-arrow-right"></i> Sign Out
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <!-- Dashboard Statistics -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <small class="text-muted fw-bold text-uppercase">Total Handovers</small>
+                            <h3 class="fw-bold mb-0 text-dark" id="statTotal">0</h3>
+                        </div>
+                        <div class="badge bg-primary-subtle text-primary p-3 rounded-circle fs-4">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <small class="text-muted fw-bold text-uppercase">Pending Clinical Review</small>
+                            <h3 class="fw-bold mb-0 text-warning" id="statPending">0</h3>
+                        </div>
+                        <div class="badge bg-warning-subtle text-warning p-3 rounded-circle fs-4">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <small class="text-muted fw-bold text-uppercase">Prescriptions Signed</small>
+                            <h3 class="fw-bold mb-0 text-success" id="statCompleted">0</h3>
+                        </div>
+                        <div class="badge bg-success-subtle text-success p-3 rounded-circle fs-4">
+                            <i class="bi bi-check-circle-fill"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Navigation Tabs -->
+        <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-4 border d-flex flex-wrap gap-2" id="doctorTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-handovers">
+                    <i class="bi bi-file-medical-fill me-1"></i> 1. Clinical Handovers (SBAR)
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3 text-info" data-bs-toggle="pill" data-bs-target="#doc-telemetry" onclick="loadDoctorTelemetry()">
+                    <i class="bi bi-smartwatch me-1"></i> 2. IoT Telemetry & Vitals Monitor
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3 text-danger" data-bs-toggle="pill" data-bs-target="#doc-er" onclick="loadDoctorERFeed()">
+                    <i class="bi bi-hospital me-1"></i> 3. Inbound ER & Ambulance Board
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3 text-warning" data-bs-toggle="pill" data-bs-target="#doc-queue" onclick="loadDoctorQueue()">
+                    <i class="bi bi-ticket-perforated-fill me-1"></i> 4. Live OPD Queue Console
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3 text-success" data-bs-toggle="pill" data-bs-target="#doc-blockchain" onclick="loadDoctorBlockchain()">
+                    <i class="bi bi-shield-lock-fill me-1"></i> 5. Blockchain Audit Verifier
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <!-- TAB 1: SBAR CLINICAL HANDOVERS (Existing) -->
+            <div class="tab-pane fade show active" id="doc-handovers">
+                <!-- Consultation Management Card -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <h4 class="fw-bold mb-1">Patient Clinical Handover Queue</h4>
+                            <p class="text-muted small mb-0">Inspect AI-generated SBAR handovers, analyze extracted lab biomarkers, and prescribe with real-time allergy cross-checks.</p>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <select class="form-select form-select-sm" id="statusFilter" onchange="filterQueue()">
+                                <option value="all">All Handovers</option>
+                                <option value="pending" selected>Pending Review</option>
+                                <option value="completed">Completed / Prescribed</option>
+                            </select>
+                            <button class="btn btn-outline-primary btn-sm" onclick="loadDoctorConsultations()">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Queue List -->
+                    <div id="queueContainer" class="row g-3">
+                        <div class="col-12 text-center py-5 text-muted">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2">Loading clinical handovers...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: IOT TELEMETRY & RPM MONITOR -->
+            <div class="tab-pane fade" id="doc-telemetry">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-info"><i class="bi bi-smartwatch me-2"></i>Remote Patient Monitoring (RPM) Telemetry</h4>
+                            <p class="text-muted small mb-0">Real-time biometric data stream for admitted and teleconsultation patients.</p>
+                        </div>
+                        <button class="btn btn-outline-info btn-sm fw-semibold" onclick="loadDoctorTelemetry()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Stream
+                        </button>
+                    </div>
+
+                    <!-- Patient Vitals Display Strip -->
+                    <div class="p-3 bg-light rounded-4 mb-4 border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong class="text-dark">Patient: Rahul Verma (Age 48, Male) • B+ • Type 2 Diabetes, Hypertension</strong>
+                            <span class="badge bg-success-subtle text-success">Continuous Telemetry Active</span>
+                        </div>
+                        <div class="row g-3 text-center">
+                            <div class="col-md-3">
+                                <div class="bg-white p-3 rounded-3 border">
+                                    <small class="text-muted d-block">Blood Pressure</small>
+                                    <h4 class="fw-bold text-dark mb-0" id="docBpVal">128/84 mmHg</h4>
+                                    <span class="badge bg-success-subtle text-success small mt-1">Normal Range</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-white p-3 rounded-3 border">
+                                    <small class="text-muted d-block">Continuous Glucose</small>
+                                    <h4 class="fw-bold text-warning mb-0" id="docGlucoseVal">172 mg/dL</h4>
+                                    <span class="badge bg-warning-subtle text-warning small mt-1">Slight Elevation</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-white p-3 rounded-3 border">
+                                    <small class="text-muted d-block">Oxygen SpO2</small>
+                                    <h4 class="fw-bold text-info mb-0" id="docSpo2Val">98%</h4>
+                                    <span class="badge bg-success-subtle text-success small mt-1">Healthy</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="bg-white p-3 rounded-3 border">
+                                    <small class="text-muted d-block">Heart Rate</small>
+                                    <h4 class="fw-bold text-success mb-0" id="docHrVal">74 bpm</h4>
+                                    <span class="badge bg-success-subtle text-success small mt-1">Sinus Rhythm</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lead-II ECG Waveform Canvas -->
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-activity text-success me-1"></i>Synchronized Lead-II ECG Strip:</h6>
+                    <div class="ecg-canvas-container ecg-grid">
+                        <canvas id="docEcgCanvas" width="900" height="130" style="width: 100%; height: 130px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: INBOUND ER & AMBULANCE BOARD -->
+            <div class="tab-pane fade" id="doc-er">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-danger"><i class="bi bi-hospital me-2"></i>Inbound Emergency ER & Ambulance Telemetry Feed</h4>
+                            <p class="text-muted small mb-0">Live status of approaching emergency ambulances and reserved trauma bay beds.</p>
+                        </div>
+                        <button class="btn btn-outline-danger btn-sm fw-semibold" onclick="loadDoctorERFeed()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh ER Feed
+                        </button>
+                    </div>
+
+                    <div id="doctorErFeedContainer" class="d-flex flex-column gap-3">
+                        <div class="text-center py-4 text-muted">Loading inbound emergency alerts...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: OPD LIVE QUEUE CONSOLE -->
+            <div class="tab-pane fade" id="doc-queue">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-warning"><i class="bi bi-ticket-perforated-fill me-2"></i>OPD Patient Queue Calling Console</h4>
+                            <p class="text-muted small mb-0">Call waiting patients, view urgency levels, and execute Emergency Priority Bumps (P0).</p>
+                        </div>
+                        <button class="btn btn-outline-primary btn-sm fw-semibold" onclick="loadDoctorQueue()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Queue Board
+                        </button>
+                    </div>
+
+                    <div id="doctorQueueBoardContainer" class="table-responsive">
+                        <div class="text-center py-4 text-muted">Loading active queue...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: BLOCKCHAIN AUDIT VERIFIER -->
+            <div class="tab-pane fade" id="doc-blockchain">
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h4 class="fw-bold mb-1 text-success"><i class="bi bi-shield-lock-fill me-2"></i>Blockchain Medical Record Audit Trail</h4>
+                            <p class="text-muted small mb-0">Mathematical validation of patient health records to guarantee compliance and anti-tampering.</p>
+                        </div>
+                        <button class="btn btn-success btn-sm fw-semibold" onclick="doctorVerifyBlockchain()">
+                            <i class="bi bi-patch-check-fill me-1"></i> Verify Cryptographic Hashes
+                        </button>
+                    </div>
+
+                    <div id="docBlockchainAlert" class="alert alert-success py-2 small mb-3">
+                        <i class="bi bi-check-circle-fill me-1"></i> <strong>Cryptographic Assurance:</strong> All patient records are cryptographically anchored with SHA-256 Merkle proofs.
+                    </div>
+
+                    <div id="docBlockchainBlocksContainer" class="d-flex flex-column gap-3">
+                        <div class="text-center py-4 text-muted">Loading ledger blocks...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Review & Prescribe Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="reviewPatientTitle">Clinical Handover Review: Rahul Verma</h5>
+                        <small class="text-muted" id="reviewConsultSubtitle">Consultation #1 • 2026-09-29</small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-4">
+                        <!-- Left Column: SBAR Handover & Extracted Biomarkers -->
+                        <div class="col-lg-6 border-end">
+                            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-file-medical-fill me-1"></i> AI Clinical Handover (SBAR)</h6>
+                            
+                            <!-- SBAR Structured Box -->
+                            <div class="card sbar-card p-3 mb-3">
+                                <!-- Situation -->
+                                <div class="mb-2">
+                                    <div class="sbar-section-title text-primary"><span class="sbar-letter sbar-letter-s">S</span> Situation</div>
+                                    <div class="ps-4 small text-dark" id="caseSituation">Chief Complaint: High fever for 3 days.</div>
+                                </div>
+                                <!-- Background -->
+                                <div class="mb-2">
+                                    <div class="sbar-section-title text-secondary"><span class="sbar-letter sbar-letter-b">B</span> Background & Chronic Profile</div>
+                                    <div class="ps-4 small text-dark" id="caseBackground">Age: 48. Pre-existing Diabetes, Penicillin Allergy.</div>
+                                </div>
+                                <!-- Assessment -->
+                                <div class="mb-2">
+                                    <div class="sbar-section-title text-warning"><span class="sbar-letter sbar-letter-a">A</span> AI Assessment & Triage</div>
+                                    <div class="ps-4 small text-dark" id="caseAssessment">Suspected Pneumonia (96.5% match).</div>
+                                </div>
+                                <!-- Recommendation -->
+                                <div>
+                                    <div class="sbar-section-title text-success"><span class="sbar-letter sbar-letter-r">R</span> Clinician Inquiries</div>
+                                    <div class="ps-4 small text-dark" id="caseRecommendation">Auscultation & sputum culture.</div>
+                                </div>
+                            </div>
+
+                            <!-- Extracted Lab Biomarkers & Radiology -->
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-activity text-danger me-1"></i> Extracted Biomarkers & Imaging Findings</h6>
+                            <div id="caseBiomarkersBox" class="p-3 bg-light rounded-3 border mb-3 small">
+                                <p class="text-muted mb-0">No scans attached to this case.</p>
+                            </div>
+
+                            <!-- Uploaded Scan Attachments -->
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-paperclip me-1"></i> Uploaded Scans / Documents</h6>
+                            <div id="caseReportsContainer" class="d-flex flex-column gap-2"></div>
+                        </div>
+
+                        <!-- Right Column: Digital Prescription & Safety Engine -->
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold text-success mb-3"><i class="bi bi-prescription2 me-1"></i> Digital Prescription & Medication Safety</h6>
+
+                            <!-- Safety Warning Banner (Live Reactive) -->
+                            <div id="safetyAlertBanner" class="alert alert-danger d-none py-2 small mb-3">
+                                <i class="bi bi-exclamation-octagon-fill me-1"></i> <strong>Critical Drug Safety Alert:</strong>
+                                <div id="safetyAlertDetails" class="mt-1"></div>
+                            </div>
+
+                            <form id="prescribeForm" onsubmit="submitPrescription(event)">
+                                <input type="hidden" id="prescribeConsultId">
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Confirmed Clinical Diagnosis</label>
+                                    <input type="text" id="finalDiagnosis" class="form-control" placeholder="e.g. Acute Bacterial Pneumonia" required>
+                                </div>
+
+                                <!-- Dynamic Medicines Builder -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="form-label small fw-semibold mb-0">Prescribed Medications</label>
+                                        <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" onclick="addMedicineRow()">
+                                            <i class="bi bi-plus-lg"></i> Add Medicine
+                                        </button>
+                                    </div>
+                                    <div id="medicineRowsContainer" class="d-flex flex-column gap-2">
+                                        <!-- Dynamic medicine rows injected here -->
+                                    </div>
+                                    <div class="mt-2 text-end">
+                                        <button type="button" class="btn btn-link btn-sm text-decoration-none" onclick="triggerSafetyCheck()">
+                                            <i class="bi bi-shield-check"></i> Test Drug Allergies & Safety
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Medical Advice / Instructions</label>
+                                    <textarea id="generalAdvice" class="form-control" rows="3" placeholder="e.g. Complete antibiotic course. Hydrate with warm fluids. If oxygen saturation falls below 94%, report to ER." required></textarea>
+                                </div>
+
+                                <div class="row g-3 mb-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Follow-Up Review (Days)</label>
+                                        <input type="number" id="followUpDays" class="form-control" value="7" min="1" max="60">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Attending Physician</label>
+                                        <input type="text" id="prescribeDoctorName" class="form-control" readonly>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-end gap-2">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="submit" class="btn btn-success px-4 fw-semibold" id="issuePrescBtn">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Sign & Issue Prescription
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Image Preview Modal -->
+    <div class="modal fade" id="docImageModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 shadow-lg bg-dark text-white rounded-4 overflow-hidden">
+                <div class="modal-header border-secondary">
+                    <h6 class="modal-title" id="docImageTitle">Scan Viewer</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center p-2">
+                    <img id="docPreviewImg" src="" alt="Medical Scan" class="img-fluid rounded" style="max-height: 80vh;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle & Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/doctor.js"></script>
+</body>
+</html>

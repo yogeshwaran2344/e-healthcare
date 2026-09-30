@@ -1,0 +1,403 @@
+:root {
+    --primary-color: #0d6efd;
+    --primary-dark: #0a58ca;
+    --primary-light: #e7f1ff;
+    --secondary-color: #0dcaf0;
+    --accent-teal: #20c997;
+    --dark-bg: #0f172a;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    --text-primary: #1e293b;
+    --text-muted: #64748b;
+    --warning-bg: #fff3cd;
+    --danger-soft: #ffebe9;
+    --success-soft: #e6f9f0;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text-primary);
+    background-color: #f8fafc;
+    min-height: 100vh;
+}
+
+/* Navbar */
+.navbar-custom {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.brand-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, #0d6efd, #0dcaf0);
+    color: white;
+    border-radius: 10px;
+    font-size: 1.25rem;
+}
+
+/* Badges & Chips */
+.symptom-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 14px;
+    margin: 4px;
+    border-radius: 30px;
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.symptom-chip:hover {
+    background-color: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-dark);
+}
+
+.symptom-chip.selected {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.35);
+}
+
+.symptom-chip .chip-check {
+    margin-right: 6px;
+    font-size: 0.8rem;
+}
+
+/* Voice Mic Pulse Animation */
+.mic-btn.listening {
+    background-color: #dc3545 !important;
+    color: white !important;
+    animation: mic-pulse 1.2s infinite;
+}
+
+@keyframes mic-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 12px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* Triage Badges */
+.triage-badge-emergency {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #f87171;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.triage-badge-consultation {
+    background-color: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.triage-badge-selfcare {
+    background-color: #d1fae5;
+    color: #047857;
+    border: 1px solid #6ee7b7;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* SBAR Handover Card */
+.sbar-card {
+    background: #ffffff;
+    border-left: 5px solid #0d6efd;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+}
+
+.sbar-section-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.sbar-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-right: 8px;
+}
+
+.sbar-letter-s { background-color: #0d6efd; }
+.sbar-letter-b { background-color: #6c757d; }
+.sbar-letter-a { background-color: #fd7e14; }
+.sbar-letter-r { background-color: #198754; }
+
+/* Biomarker Results Table */
+.biomarker-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin: 2px;
+}
+
+.biomarker-pill.abnormal {
+    background-color: #ffebe9;
+    color: #dc3545;
+    border: 1px solid #f5c2c7;
+}
+
+.biomarker-pill.normal {
+    background-color: #e6f9f0;
+    color: #198754;
+    border: 1px solid #badbcc;
+}
+
+/* Prescription Preview */
+.prescription-sheet {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 35px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    position: relative;
+}
+
+.rx-symbol {
+    font-family: Georgia, serif;
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* Stepper Wizard */
+.wizard-step {
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background: #f1f5f9;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.wizard-step.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.wizard-step.completed {
+    background: #d1fae5;
+    color: #047857;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #printablePrescription, #printablePrescription * {
+        visibility: visible;
+    }
+    #printablePrescription {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: none;
+        box-shadow: none;
+    }
+}
+
+/* ===================================================
+   6 PATENTABLE ADD-ONS STYLES
+   =================================================== */
+
+/* 1. Emergency SOS Beacon */
+.sos-btn-pulse {
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #ffffff !important;
+    font-weight: 700;
+    border: none;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: sos-pulse 1.5s infinite;
+}
+
+@keyframes sos-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    50% { transform: scale(1.04); box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.critical-flash-border {
+    border: 2px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+    animation: flash-border 1s infinite alternate;
+}
+
+@keyframes flash-border {
+    0% { box-shadow: 0 0 4px #ef4444; }
+    100% { box-shadow: 0 0 16px rgba(239, 68, 68, 0.8); }
+}
+
+/* 2. IoT Telemetry Cards & Canvas ECG */
+.ecg-canvas-container {
+    background: #0f172a;
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid #1e293b;
+    position: relative;
+    overflow: hidden;
+}
+
+.ecg-grid {
+    background-size: 20px 20px;
+    background-image: 
+        linear-gradient(to right, rgba(16, 185, 129, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+}
+
+.vital-gauge-card {
+    border-radius: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #e2e8f0;
+}
+
+.vital-gauge-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+/* 3. Blockchain Ledger Chips */
+.hash-mono {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.78rem;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+    word-break: break-all;
+}
+
+.block-card {
+    border-left: 5px solid #0d6efd;
+    background: #ffffff;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.block-card.genesis {
+    border-left-color: #10b981;
+}
+
+/* 4. Indoor AR Hospital Map & HUD Viewfinder */
+.hospital-map-svg {
+    background-color: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    width: 100%;
+    height: 380px;
+}
+
+.ar-hud-viewfinder {
+    background: radial-gradient(circle at center, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.98) 100%);
+    border-radius: 16px;
+    color: #38bdf8;
+    position: relative;
+    overflow: hidden;
+    min-height: 260px;
+    border: 2px solid #0284c7;
+}
+
+.ar-crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border: 2px dashed rgba(56, 189, 248, 0.6);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.ar-waypoint-pin {
+    background: rgba(14, 165, 233, 0.25);
+    border: 1px solid #38bdf8;
+    backdrop-filter: blur(4px);
+    border-radius: 10px;
+    padding: 8px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #f0f9ff;
+    font-size: 0.85rem;
+}
+
+/* 5. Smart Queue Ticket Badge */
+.queue-ticket {
+    background: #ffffff;
+    border: 2px dashed #0d6efd;
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.08);
+}
+
+.queue-token-display {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #0d6efd;
+}
+
+/* 6. Gamification Badge & Challenge Ring */
+.gamify-badge {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.streak-flame {
+    color: #f97316;
+    animation: flame-flicker 1.8s infinite alternate;
+}
+
+@keyframes flame-flicker {
+    0% { transform: scale(1); filter: drop-shadow(0 0 2px #f97316); }
+    100% { transform: scale(1.15); filter: drop-shadow(0 0 8px #ea580c); }
+}
+

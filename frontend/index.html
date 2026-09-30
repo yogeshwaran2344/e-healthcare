@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Healthcare | Online Consultation & Disease Prediction</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary" href="/">
+                <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+                <span>E-Healthcare</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
+                    <li class="nav-item"><a class="nav-link active" href="/">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#doctors">Specialists</a></li>
+                    <li class="nav-item"><a class="nav-link text-primary fw-semibold" href="/docs" target="_blank"><i class="bi bi-code-slash"></i> API Docs</a></li>
+                </ul>
+                <div class="d-flex align-items-center gap-2" id="navAuthArea">
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
+                        <i class="bi bi-box-arrow-in-right"></i> Sign In
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('register')">
+                        <i class="bi bi-person-plus"></i> Get Started
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="py-5 bg-white border-bottom">
+        <div class="container py-4">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-7">
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill mb-3">
+                        <i class="bi bi-cpu-fill me-1"></i> Intelligent Health Prediction & Teleconsultation
+                    </span>
+                    <h1 class="display-4 fw-bold text-dark lh-sm mb-3">
+                        Instant Health Guidance & <span class="text-primary">Online Doctor Consultation</span>
+                    </h1>
+                    <p class="lead text-muted mb-4">
+                        Fed with intelligent disease-symptom data mining, our system evaluates your symptoms to predict probable illnesses. If inconclusive, it guides you to specific lab tests (Blood Test, X-Ray, CT Scan) and connects you directly with verified doctors.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <button class="btn btn-primary btn-lg px-4" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
+                            <i class="bi bi-activity"></i> Start Symptom Check
+                        </button>
+                        <button class="btn btn-outline-secondary btn-lg px-4" onclick="loginDemo('doctor')">
+                            <i class="bi bi-hospital"></i> Doctor Portal Demo
+                        </button>
+                    </div>
+
+                    <!-- Quick Demo Credentials Banner -->
+                    <div class="alert alert-light border mt-4 p-3 rounded-3 shadow-sm">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <small class="fw-bold text-secondary text-uppercase d-block">Demo One-Click Accounts:</small>
+                                <span class="badge bg-success-subtle text-success me-2"><i class="bi bi-person"></i> patient@example.com (patient123)</span>
+                                <span class="badge bg-info-subtle text-info"><i class="bi bi-hospital"></i> doctor@example.com (doctor123)</span>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="loginDemo('patient')">Quick Patient Login</button>
+                                <button class="btn btn-outline-info" onclick="loginDemo('doctor')">Quick Doctor Login</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                        <div class="card-header bg-primary text-white p-3 d-flex align-items-center justify-content-between">
+                            <span class="fw-semibold"><i class="bi bi-shield-check me-2"></i> How It Works</span>
+                            <span class="badge bg-white text-primary">Workflow</span>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="d-flex gap-3 mb-4">
+                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">1</div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Enter Symptoms</h6>
+                                    <p class="small text-muted mb-0">Select observed symptoms like fever, cough, chest pain, or rash.</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3 mb-4">
+                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">2</div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">AI Health Prediction</h6>
+                                    <p class="small text-muted mb-0">Machine learning model predicts the most accurate illness & urgency.</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3 mb-4">
+                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">3</div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Lab Test & Scan Upload</h6>
+                                    <p class="small text-muted mb-0">Urges tests (Blood test, X-Ray, CT Scan) & enables image upload.</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-3">
+                                <div class="badge bg-primary rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">4</div>
+                                <div>
+                                    <h6 class="fw-bold mb-1">Doctor Review & Prescription</h6>
+                                    <p class="small text-muted mb-0">Doctor examines scans and issues official digital prescription.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Features & Patentable Add-Ons Section -->
+    <section id="features" class="py-5">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-patch-check-fill me-1"></i> Novel Patentable Healthcare Architecture
+                </span>
+                <h2 class="fw-bold">6 Breakthrough Healthcare Add-Ons</h2>
+                <p class="text-muted">Layering predictive AI, edge IoT telemetry, tamper-evident blockchain, AR navigation, rapid SOS, and community gamification onto clinical care.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="card-body">
+                            <div class="text-primary mb-3" style="font-size: 2.2rem;"><i class="bi bi-graph-up-arrow"></i></div>
+                            <h5 class="fw-bold">1. AI + Predictive Care</h5>
+                            <p class="text-muted small">Longitudinal deterioration risk index (0-100) forecasting exacerbations. System proactively suggests follow-up appointment slots and provides real-time chronic condition alarms.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="card-body">
+                            <div class="text-info mb-3" style="font-size: 2.2rem;"><i class="bi bi-smartwatch"></i></div>
+                            <h5 class="fw-bold">2. IoT Wearables & Vitals</h5>
+                            <p class="text-muted small">Pairs with Omron BP, Dexcom CGM, Kardia ECG, and Wellue SpO2. Streams real-time biometric telemetry and executes edge threshold anomaly triggers for immediate hospital alarms.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="card-body">
+                            <div class="text-success mb-3" style="font-size: 2.2rem;"><i class="bi bi-shield-lock-fill"></i></div>
+                            <h5 class="fw-bold">3. Blockchain Health Ledger</h5>
+                            <p class="text-muted small">Patient-owned, SHA-256 tamper-evident cryptographic block ledger with Merkle root verification. Decentralized smart-consent matrix grants granular, time-bounded sharing permissions.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="card-body">
+                            <div class="text-warning mb-3" style="font-size: 2.2rem;"><i class="bi bi-geo-alt-fill"></i></div>
+                            <h5 class="fw-bold">4. Indoor AR Nav & Live Queue</h5>
+                            <p class="text-muted small">Multi-floor topological routing with Dijkstra shortest-path algorithms and simulated AR Camera HUD. Priority queue dynamically auto-promotes emergency critical patients to head-of-line (P0).</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="card-body">
+                            <div class="text-danger mb-3" style="font-size: 2.2rem;"><i class="bi bi-hospital"></i></div>
+                            <h5 class="fw-bold">5. Rapid Emergency SOS</h5>
+                            <p class="text-muted small">1-Tap SOS autonomously dispatches nearest ALS Cardiac Ambulance, transmits digital Emergency Medical Passport (Allergies, Blood Group, Vitals) to ER, and pre-allocates trauma bay beds.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
+                        <div class="card-body">
+                            <div class="text-secondary mb-3" style="font-size: 2.2rem;"><i class="bi bi-people-fill"></i></div>
+                            <h5 class="fw-bold">6. Community & Gamification</h5>
+                            <p class="text-muted small">AI-moderated chronic peer circles filtering medical misinformation. Gamified preventive challenges (10k steps, 2.5L hydration, BP streak) with reward points, badges, and personalized lifestyle coaching.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Doctors Showcase Section -->
+    <section id="doctors" class="py-5 bg-white border-top border-bottom">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Our Consulting Specialists</h2>
+                <p class="text-muted">Certified medical doctors ready for online review and consultation.</p>
+            </div>
+            <div class="row g-4" id="doctorsListContainer">
+                <div class="col-12 text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 bg-dark text-white text-center">
+        <div class="container">
+            <p class="mb-1 fw-semibold">E-Healthcare System &copy; 2026</p>
+            <small class="text-secondary">Online Consultation, Symptom Analysis, and Medical Prescription Platform.</small>
+        </div>
+    </footer>
+
+    <!-- Auth Modal (Sign In / Register) -->
+    <div class="modal fade" id="authModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <ul class="nav nav-pills w-100 gap-2 p-1 bg-light rounded-3" role="tablist">
+                        <li class="nav-item flex-fill">
+                            <button class="nav-link w-100 active" id="tab-login-btn" data-bs-toggle="pill" data-bs-target="#tab-login" type="button">Sign In</button>
+                        </li>
+                        <li class="nav-item flex-fill">
+                            <button class="nav-link w-100" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#tab-register" type="button">Register</button>
+                        </li>
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="tab-content">
+                        <!-- Sign In Tab -->
+                        <div class="tab-pane fade show active" id="tab-login">
+                            <div id="loginAlert" class="alert alert-danger d-none"></div>
+                            <form id="loginForm" onsubmit="handleLogin(event)">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Email Address</label>
+                                    <input type="email" id="loginEmail" class="form-control" placeholder="name@example.com" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Password</label>
+                                    <input type="password" id="loginPassword" class="form-control" placeholder="••••••••" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Sign In</button>
+                            </form>
+                        </div>
+
+                        <!-- Register Tab -->
+                        <div class="tab-pane fade" id="tab-register">
+                            <div id="registerAlert" class="alert alert-danger d-none"></div>
+                            <form id="registerForm" onsubmit="handleRegister(event)">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Account Role</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="roleRadio" id="rolePatient" value="patient" checked onchange="toggleDoctorFields(false)">
+                                        <label class="btn btn-outline-primary" for="rolePatient"><i class="bi bi-person"></i> Patient</label>
+                                        
+                                        <input type="radio" class="btn-check" name="roleRadio" id="roleDoctor" value="doctor" onchange="toggleDoctorFields(true)">
+                                        <label class="btn btn-outline-primary" for="roleDoctor"><i class="bi bi-hospital"></i> Doctor</label>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Full Name</label>
+                                    <input type="text" id="regName" class="form-control" placeholder="John Doe" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Email</label>
+                                    <input type="email" id="regEmail" class="form-control" placeholder="john@example.com" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Password</label>
+                                    <input type="password" id="regPassword" class="form-control" placeholder="Create a password" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small fw-semibold">Phone Number</label>
+                                    <input type="tel" id="regPhone" class="form-control" placeholder="+91 98765 43210">
+                                </div>
+
+                                <!-- Doctor-Specific Fields -->
+                                <div id="doctorFields" class="d-none border-top pt-2 mt-2">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">Specialization</label>
+                                        <select id="regSpecialization" class="form-select">
+                                            <option value="General Physician">General Physician</option>
+                                            <option value="Pulmonologist">Pulmonologist (Respiratory)</option>
+                                            <option value="Cardiologist">Cardiologist (Heart)</option>
+                                            <option value="Gastroenterologist">Gastroenterologist (Digestive)</option>
+                                            <option value="Dermatologist">Dermatologist (Skin)</option>
+                                            <option value="Neurologist">Neurologist (Brain & Nerves)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">Medical License #</label>
+                                        <input type="text" id="regLicense" class="form-control" placeholder="e.g. MCI-12345">
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary w-100 py-2 mt-3 fw-semibold">Create Account</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script>
+        function openAuthTab(tab) {
+            const btn = tab === 'login' ? document.getElementById('tab-login-btn') : document.getElementById('tab-register-btn');
+            if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+        }
+
+        function toggleDoctorFields(isDoctor) {
+            const el = document.getElementById('doctorFields');
+            if (isDoctor) {
+                el.classList.remove('d-none');
+            } else {
+                el.classList.add('d-none');
+            }
+        }
+
+        async function loginDemo(role) {
+            const email = role === 'doctor' ? 'doctor@example.com' : 'patient@example.com';
+            const pass = role === 'doctor' ? 'doctor123' : 'patient123';
+            try {
+                const res = await API.login(email, pass);
+                if (res.user.role === 'doctor') {
+                    window.location.href = '/doctor';
+                } else {
+                    window.location.href = '/patient';
+                }
+            } catch (err) {
+                alert("Demo login error: " + err.message);
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const alertEl = document.getElementById('loginAlert');
+            alertEl.classList.add('d-none');
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+
+            try {
+                const res = await API.login(email, pass);
+                if (res.user.role === 'doctor') {
+                    window.location.href = '/doctor';
+                } else {
+                    window.location.href = '/patient';
+                }
+            } catch (err) {
+                alertEl.textContent = err.message;
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const alertEl = document.getElementById('registerAlert');
+            alertEl.classList.add('d-none');
+
+            const isDoctor = document.getElementById('roleDoctor').checked;
+            const payload = {
+                full_name: document.getElementById('regName').value,
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                phone: document.getElementById('regPhone').value,
+                role: isDoctor ? 'doctor' : 'patient'
+            };
+
+            if (isDoctor) {
+                payload.specialization = document.getElementById('regSpecialization').value;
+                payload.license_number = document.getElementById('regLicense').value || 'MED-' + Math.floor(Math.random() * 9000 + 1000);
+            }
+
+            try {
+                const res = await API.register(payload);
+                if (res.user.role === 'doctor') {
+                    window.location.href = '/doctor';
+                } else {
+                    window.location.href = '/patient';
+                }
+            } catch (err) {
+                alertEl.textContent = err.message;
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        async function loadDoctors() {
+            try {
+                const doctors = await API.get('/api/doctors');
+                const container = document.getElementById('doctorsListContainer');
+                if (!doctors || doctors.length === 0) {
+                    container.innerHTML = '<div class="col-12 text-center text-muted">No doctors currently registered.</div>';
+                    return;
+                }
+
+                container.innerHTML = doctors.map(d => `
+                    <div class="col-md-6 col-lg-3">
+                        <div class="card h-100 border shadow-sm rounded-4 text-center p-3">
+                            <div class="rounded-circle bg-primary-subtle text-primary mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 70px; height: 70px; font-size: 1.8rem;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <h5 class="fw-bold mb-1">${d.full_name}</h5>
+                            <span class="badge bg-primary-subtle text-primary mb-2">${d.specialization}</span>
+                            <p class="small text-muted mb-2">${d.qualification} • ${d.experience_years} yrs exp</p>
+                            <small class="text-secondary d-block mb-3"><i class="bi bi-geo-alt"></i> ${d.hospital_affiliation}</small>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill mt-auto" onclick="openAuthTab('login'); bootstrap.Modal.getOrCreateInstance(document.getElementById('authModal')).show();">
+                                Book Consultation
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error("Failed to load doctors:", err);
+            }
+        }
+
+        // On page load check session
+        window.addEventListener('DOMContentLoaded', () => {
+            const user = API.getUser();
+            if (user) {
+                const navAuthArea = document.getElementById('navAuthArea');
+                const dest = user.role === 'doctor' ? '/doctor' : '/patient';
+                navAuthArea.innerHTML = `
+                    <a href="${dest}" class="btn btn-primary"><i class="bi bi-speedometer2"></i> My Dashboard (${user.role})</a>
+                    <button onclick="API.logout()" class="btn btn-outline-secondary"><i class="bi bi-box-arrow-right"></i> Logout</button>
+                `;
+            }
+            loadDoctors();
+        });
+    </script>
+</body>
+</html>
