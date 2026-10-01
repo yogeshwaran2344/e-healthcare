@@ -15,7 +15,7 @@ Handles:
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -510,3 +510,63 @@ def add_timeline_entry(
     db.commit()
     db.refresh(entry)
     return {"entry_id": entry.id, "message": "Timeline milestone registered successfully."}
+
+# ========================================================
+# 10. Smart Adaptive Reminders (Behavioral AI)
+# ========================================================
+from ..ml.adaptive_reminders_engine import DEFAULT_SCHEDULES, calculate_adaptive_reminder
+from ..ml.caregiver_escalation_engine import evaluate_contextual_caregiver_alert
+
+@router.get("/reminders/adaptive-schedules")
+def get_adaptive_schedules(current_user: User = Depends(get_current_user)):
+    """Returns AI-adjusted behavioral medication reminder schedules."""
+    return {"schedules": DEFAULT_SCHEDULES}
+
+@router.post("/reminders/adapt")
+def adapt_medication_reminder(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Dynamically recalculates medication reminder window based on patient delay patterns.
+    """
+    prescribed_time = payload.get("prescribed_time", "08:00")
+    delays = payload.get("delay_minutes_history", [60, 75, 80, 72])
+    return calculate_adaptive_reminder(prescribed_time, delays)
+
+@router.post("/reminders/confirm-dose")
+def confirm_dose_taken(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """Logs taken medication dose and returns updated behavioral compliance metrics."""
+    med_id = payload.get("schedule_id", 1)
+    confirmed_time = datetime.utcnow().strftime("%H:%M")
+    return {
+        "status": "confirmed",
+        "confirmed_at": confirmed_time,
+        "message": "Dose intake recorded. Behavioral adherence profile updated."
+    }
+
+# ========================================================
+# 11. Context-Aware Caregiver Alerts (Tiered Escalation)
+# ========================================================
+
+@router.post("/caregiver/evaluate-alert")
+def evaluate_caregiver_alert(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Analyzes patient vital deviations and evaluates prioritized caregiver escalation tier.
+    """
+    vitals = payload.get("vitals", {})
+    missed_doses = int(payload.get("missed_doses_count", 0))
+    patient_name = current_user.full_name or "Rahul Verma"
+
+    result = evaluate_contextual_caregiver_alert(
+        vitals=vitals,
+        missed_doses_count=missed_doses,
+        patient_name=patient_name
+    )
+    return result

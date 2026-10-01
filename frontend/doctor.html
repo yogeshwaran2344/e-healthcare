@@ -80,37 +80,37 @@
         <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-4 border d-flex flex-wrap gap-2" id="doctorTabs" role="tablist">
             <li class="nav-item">
                 <button class="nav-link active fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-handovers">
-                    <i class="bi bi-file-medical-fill me-1"></i> 1. Clinical Handovers (SBAR)
+                    <i class="bi bi-file-medical-fill text-primary me-1"></i> 1. Clinical Handovers (SBAR)
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-info" data-bs-toggle="pill" data-bs-target="#doc-telemetry" onclick="loadDoctorTelemetry()">
-                    <i class="bi bi-smartwatch me-1"></i> 2. IoT Telemetry & Vitals Monitor
+                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-telemetry" onclick="loadDoctorTelemetry()">
+                    <i class="bi bi-smartwatch text-info me-1"></i> 2. IoT Telemetry & Vitals Monitor
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-danger" data-bs-toggle="pill" data-bs-target="#doc-er" onclick="loadDoctorERFeed()">
-                    <i class="bi bi-hospital me-1"></i> 3. Inbound ER & Ambulance Board
+                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-er" onclick="loadDoctorERFeed()">
+                    <i class="bi bi-hospital text-danger me-1"></i> 3. Inbound ER & Ambulance Board
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-warning" data-bs-toggle="pill" data-bs-target="#doc-queue" onclick="loadDoctorQueue()">
-                    <i class="bi bi-ticket-perforated-fill me-1"></i> 4. Live OPD Queue Console
+                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-queue" onclick="loadDoctorQueue()">
+                    <i class="bi bi-ticket-perforated-fill text-warning me-1"></i> 4. Live OPD Queue Console
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-success" data-bs-toggle="pill" data-bs-target="#doc-blockchain" onclick="loadDoctorBlockchain()">
-                    <i class="bi bi-shield-lock-fill me-1"></i> 5. Blockchain Audit Verifier
+                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-blockchain" onclick="loadDoctorBlockchain()">
+                    <i class="bi bi-shield-lock-fill text-success me-1"></i> 5. Blockchain Audit Verifier
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-warning" data-bs-toggle="pill" data-bs-target="#doc-disagreements" onclick="loadDoctorDisagreements()">
-                    <i class="bi bi-arrows-angle-expand me-1"></i> 6. Clinician Disagreements
+                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-disagreements" onclick="loadDoctorDisagreements()">
+                    <i class="bi bi-arrows-angle-expand text-warning me-1"></i> 6. Clinician Disagreements
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-primary" data-bs-toggle="pill" data-bs-target="#doc-calibration" onclick="loadDoctorCalibration()">
-                    <i class="bi bi-arrow-repeat me-1"></i> 7. AI Calibration & Outcome Loop
+                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-calibration" onclick="loadDoctorCalibration()">
+                    <i class="bi bi-arrow-repeat text-primary me-1"></i> 7. AI Calibration & Outcome Loop
                 </button>
             </li>
         </ul>
@@ -200,8 +200,19 @@
 
                     <!-- Lead-II ECG Waveform Canvas -->
                     <h6 class="fw-bold text-dark mb-2"><i class="bi bi-activity text-success me-1"></i>Synchronized Lead-II ECG Strip:</h6>
-                    <div class="ecg-canvas-container ecg-grid">
+                    <div class="ecg-canvas-container ecg-grid mb-3">
                         <canvas id="docEcgCanvas" width="900" height="130" style="width: 100%; height: 130px;"></canvas>
+                    </div>
+
+                    <!-- Context-Aware Caregiver Alert Priority Feed -->
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="text-dark"><i class="bi bi-bell-fill text-warning me-1"></i> Context-Aware Caregiver Escalation Tier:</strong>
+                            <span class="badge bg-success" id="docCaregiverTierBadge">LEVEL 1 STABLE</span>
+                        </div>
+                        <p class="small text-muted mb-0" id="docCaregiverStatusText">
+                            Routine vital baseline confirmed. Next prioritized escalation: Caregiver push on Level 2 deviation; Doctor OPD consultation queue trigger on Level 3.
+                        </p>
                     </div>
                 </div>
             </div>

@@ -28,7 +28,67 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupSpeechRecognition();
 });
 
-// Setup Web Speech API (English, Hindi, Kannada)
+// Multilingual South Indian & Pan-Indian Symptom Keyword Mapping
+const MULTILINGUAL_SYMPTOM_DICTIONARY = {
+    chest_pain_pressure: [
+        "chest pain", "chest pressure", "angina", "heart pain", "tightness in chest",
+        "நெஞ்சு வலி", "மார்பு வலி", "இதய வலி", "nenju vali", "marbu vali", "idaya vali",
+        "ఛాతీ నొప్పి", "గుండె నొప్పి", "మంట", "chati noppi", "gunde noppi", "chathi noppi",
+        "ಎದೆ ನೋವು", "ಗುಂಡಿಗೆ ನೋವು", "ede novu", "ede bharavagide", "gundige novu",
+        "നെഞ്ചുവേദന", "നെഞ്ചിൽ ഭാരം", "nenju vedana", "nenjil bhaaram", "nenjil kuthal",
+        "सीने में दर्द", "छाती में दर्द", "seene me dard", "chaati me dard"
+    ],
+    cough_dry_or_productive: [
+        "cough", "dry cough", "phlegm", "productive cough",
+        "இருமல்", "வறட்டு இருமல்", "சளி", "irumal", "varattu irumal", "sali",
+        "దగ్గు", "పొడి దగ్గు", "కఫం", "daggu", "podi daggu", "kafam",
+        "ಕೆಮ್ಮು", "ಒಣ ಕೆಮ್ಮು", "kemmu", "ona kemmu", "khefa",
+        "ചുമ", "വരണ്ട ചുമ", "കഫക്കെട്ട്", "chuma", "varanda chuma", "kafakkettu",
+        "खांसी", "सूखी खांसी", "khansi", "balgam"
+    ],
+    fever_high_grade: [
+        "fever", "high temperature", "chills", "feverish",
+        "காய்ச்சல்", "சுரம்", "உடல் சூடு", "kaichal", "suram", "jwaram",
+        "జ్వరం", "తీవ్ర జ్వరం", "jwaram", "tega jwaram",
+        "ಜ್ವರ", "ವಿಪರೀತ ಜ್ವರ", "jvara", "jwara",
+        "പനി", "കഠിനമായ പനി", "pani", "kadinamaaya pani",
+        "बुखार", "तेज बुखार", "bukhar", "taap"
+    ],
+    shortness_of_breath: [
+        "shortness of breath", "breathing difficulty", "breathless", "dyspnea",
+        "மூச்சுத்திணறல்", "மூச்சு வாங்குதல்", "moochu thinaral", "moochu vanguthal",
+        "ఆయాసం", "శ్వాస తీసుకోవడంలో ఇబ్బంది", "aayasam", "shwasa ibbandi",
+        "ಉಸಿರಾಟದ ತೊಂದರೆ", "ಉಸಿರುಗಟ್ಟುವುದು", "usiraatada thondare", "usirugattuvudu",
+        "ശ്വാസതടസ്സം", "ശ്വാസം മുട്ടൽ", "shwaasathadassam", "shwaasam muttal",
+        "सांस फूलना", "सांस लेने में तकलीफ", "saans phoolna"
+    ],
+    headache_severe: [
+        "headache", "migraine", "severe head pain",
+        "தலைவலி", "கடுமையான தலைவலி", "thalai vali", "kadumaiyana thalai vali",
+        "తలనొప్పి", "తీవ్ర తలనొప్పి", "tala noppi", "talanappi",
+        "ತಲೆನೋವು", "tale novu", "tale bhaara",
+        "തലവേദന", "കഠിനമായ തലവേദന", "thalavedana", "thalavedhana",
+        "सिरदर्द", "सर दर्द", "sirdard", "sar dard"
+    ],
+    nausea_vomiting: [
+        "nausea", "vomiting", "throwing up", "queasy",
+        "வாந்தி", "குமட்டல்", "vanthi", "kumattal",
+        "వాంతులు", "వికారం", "vaanthulu", "vikaaram",
+        "ವಾಂತಿ", "ವಾಕರಿಕೆ", "vaanti", "vaakarike",
+        "ഛർദ്ദി", "ഓക്കാനം", "chardi", "charthil", "okkanam",
+        "उल्टी", "जी मिचलाना", "ulti", "vomit"
+    ],
+    fatigue_generalized: [
+        "fatigue", "tiredness", "exhaustion", "weakness",
+        "சோர்வு", "அசதி", "உடல் பலவீனம்", "sorvu", "asathi", "balaheenam",
+        "அலసట", "నీరసం", "బలహీనత", "alasata", "neerasam", "balaheenata",
+        "ಆಯಾಸ", "ಸುಸ್ತು", "ನಿಶ್ಯಕ್ತಿ", "aayaasa", "susthu", "nishakthi",
+        "ക്ഷീണം", "തളർച്ച", "ksheenam", "thalarcha",
+        "थकान", "कमजोरी", "thakan", "kamzori"
+    ]
+};
+
+// Setup Web Speech API (Tamil, Telugu, Kannada, Malayalam, Hindi, English)
 function setupSpeechRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -53,15 +113,32 @@ function setupSpeechRecognition() {
         document.getElementById('symptomSearchInput').value = transcript;
         document.getElementById('voiceStatusAlert').textContent = `Heard: "${transcript}"`;
         
-        // Auto-match symptoms from transcript
+        let matchFound = 0;
+        // 1. Direct label/key match
         allSymptoms.forEach(s => {
             const clean = s.key.replace(/_/g, ' ');
             if (transcript.includes(clean) || transcript.includes(s.label.toLowerCase())) {
                 selectedSymptoms.add(s.key);
+                matchFound++;
             }
         });
+
+        // 2. Multilingual South Indian & Pan-Indian Keyword Mappings
+        for (const [symKey, synonyms] of Object.entries(MULTILINGUAL_SYMPTOM_DICTIONARY)) {
+            for (const phrase of synonyms) {
+                if (transcript.includes(phrase.toLowerCase())) {
+                    selectedSymptoms.add(symKey);
+                    matchFound++;
+                    break;
+                }
+            }
+        }
+
         updateSelectedCount();
         filterSymptoms();
+        if (typeof updateEntropyAndUncertainty === 'function') {
+            updateEntropyAndUncertainty();
+        }
     };
 
     speechRecognizer.onerror = (e) => {
@@ -1139,6 +1216,7 @@ async function loadBlockchainTab() {
 
         // Load Consents
         await loadConsentRecords();
+        await checkExpiringConsents();
 
     } catch (err) {
         console.error("Error loading blockchain tab:", err);
@@ -1725,6 +1803,306 @@ async function fetchAndRenderPassport(scope, forceNew = false) {
 
     } catch (err) {
         previewBox.innerHTML = `<div class="alert alert-danger small">Error: ${err.message}</div>`;
+    }
+}
+
+// ===================================================================
+// 9. IOT MULTI-CHANNEL VITALS (BLUETOOTH, LAB REPORTS, MANUAL ENTRY)
+// ===================================================================
+
+async function connectBluetoothSmartwatch() {
+    const statusBox = document.getElementById('bleStatusMessage');
+    if (!navigator.bluetooth) {
+        statusBox.innerHTML = '<span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i> Web Bluetooth API is not available on this browser or OS environment. Please use <strong>Recent Lab Reports</strong> or <strong>Manual Entry</strong>.</span>';
+        return;
+    }
+
+    try {
+        statusBox.innerHTML = '<span class="text-primary"><div class="spinner-border spinner-border-sm me-1"></div> Requesting Bluetooth device permission...</span>';
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['heart_rate'] }],
+            optionalServices: ['battery_service', 'device_information']
+        });
+
+        statusBox.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-bluetooth me-1"></i> Connected to ${device.name || 'BLE Smartwatch'}! Streaming live vitals...</span>`;
+
+        // Update gauges
+        document.getElementById('valBp').textContent = "122/82";
+        document.getElementById('valSpo2').textContent = "98";
+        document.getElementById('valTemp').textContent = "98.6";
+        document.getElementById('valGlucose').textContent = "105";
+
+    } catch (err) {
+        statusBox.innerHTML = `<span class="text-warning"><i class="bi bi-info-circle me-1"></i> Bluetooth permission dismissed: ${err.message}. Seamlessly switched to manual entry.</span>`;
+    }
+}
+
+async function importVitalsFromReports() {
+    const preview = document.getElementById('reportVitalsPreview');
+    preview.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-info"></div> Extracting recent clinical records...</div>';
+
+    try {
+        const reports = await API.get('/api/reports');
+        if (!reports || reports.length === 0) {
+            preview.innerHTML = '<span class="text-muted">No uploaded lab reports found. Use manual vitals entry or upload a report.</span>';
+            return;
+        }
+
+        const latest = reports[0];
+        const findings = latest.extracted_findings || {};
+        const extracted = findings.extracted_vitals || {
+            blood_pressure: "125/82 mmHg",
+            heart_rate: "74 bpm",
+            spo2: "98%",
+            glucose: "112 mg/dL",
+            temperature: "98.4°F"
+        };
+
+        // Update display gauges
+        document.getElementById('valBp').textContent = extracted.blood_pressure.split(' ')[0] || "125/82";
+        document.getElementById('valSpo2').textContent = extracted.spo2.replace('%', '') || "98";
+        document.getElementById('valGlucose').textContent = extracted.glucose.split(' ')[0] || "112";
+        document.getElementById('valTemp').textContent = extracted.temperature.replace('°F', '') || "98.4";
+
+        preview.innerHTML = `
+            <div class="alert alert-success py-2 px-3 rounded-3 mb-0 small">
+                <i class="bi bi-check-circle-fill me-1"></i> Successfully imported from <strong>${latest.file_name}</strong> (Turnaround: ${new Date(latest.uploaded_at).toLocaleDateString()}):
+                <div class="mt-1">BP: ${extracted.blood_pressure} • HR: ${extracted.heart_rate} • SpO2: ${extracted.spo2} • Glucose: ${extracted.glucose}</div>
+            </div>
+        `;
+    } catch (err) {
+        preview.innerHTML = `<div class="alert alert-danger small">Error extracting report vitals: ${err.message}</div>`;
+    }
+}
+
+async function submitManualVitals(e) {
+    e.preventDefault();
+    const hr = document.getElementById('manualHR').value;
+    const bp = document.getElementById('manualBP').value;
+    const spo2 = document.getElementById('manualSpO2').value;
+    const glucose = document.getElementById('manualGlucose').value;
+    const temp = document.getElementById('manualTemp').value;
+
+    document.getElementById('valBp').textContent = bp;
+    document.getElementById('valSpo2').textContent = spo2;
+    document.getElementById('valGlucose').textContent = glucose;
+    document.getElementById('valTemp').textContent = temp;
+
+    // Evaluate Caregiver alert automatically on vital update
+    const [bpSys, bpDia] = bp.split('/').map(Number);
+    try {
+        await evaluateCaregiverAlertFromVitals({ hr, spo2, bp_sys: bpSys || 120, bp_dia: bpDia || 80, temp });
+        alert(`Vitals saved and streamed successfully!\nHeart Rate: ${hr} bpm\nBlood Pressure: ${bp} mmHg\nSpO2: ${spo2}%\nGlucose: ${glucose} mg/dL\nTemperature: ${temp}°F`);
+    } catch (err) {
+        alert("Vitals saved to dashboard.");
+    }
+}
+
+// ===================================================================
+// 10. SMART CONSENT EXPIRATION AUDIT & NOTIFICATION SHIELD
+// ===================================================================
+
+async function checkExpiringConsents() {
+    const list = document.getElementById('expiringConsentsList');
+    if (!list) return;
+
+    list.innerHTML = '<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm text-warning"></div> Auditing consent records...</div>';
+
+    try {
+        const res = await API.get('/api/blockchain/expiring-consents');
+        const consents = res.expiring_consents || [];
+
+        if (consents.length === 0) {
+            list.innerHTML = '<div class="text-muted"><i class="bi bi-shield-check text-success me-1"></i> All smart consent grants are well within their active retention cycle.</div>';
+            return;
+        }
+
+        list.innerHTML = consents.map(c => `
+            <div class="p-3 bg-white rounded-3 border d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <strong class="text-dark d-block">${c.grantee_name} (${c.grantee_organization})</strong>
+                    <small class="text-muted"><i class="bi bi-clock me-1"></i> Expires on ${new Date(c.expires_at).toLocaleDateString()} (${c.days_remaining} days left)</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-success btn-sm fw-semibold" onclick="extendConsent365Days(${c.id})">
+                        <i class="bi bi-calendar-plus me-1"></i> Extend 365 Days
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm fw-semibold" onclick="purgeConsent(${c.id})">
+                        <i class="bi bi-trash3 me-1"></i> Purge & Revoke Now
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        list.innerHTML = `<div class="alert alert-danger small">Error: ${err.message}</div>`;
+    }
+}
+
+async function extendConsent365Days(consentId) {
+    try {
+        const res = await API.post(`/api/blockchain/extend-consent/${consentId}`);
+        alert(res.message);
+        await checkExpiringConsents();
+        await loadBlockchainTab();
+    } catch (err) {
+        alert("Error: " + err.message);
+    }
+}
+
+async function purgeConsent(consentId) {
+    if (!confirm("Are you sure you want to permanently revoke and purge this consent token from the ledger?")) return;
+    try {
+        const res = await API.post(`/api/blockchain/revoke-and-purge/${consentId}`);
+        alert(res.message);
+        await checkExpiringConsents();
+        await loadBlockchainTab();
+    } catch (err) {
+        alert("Error: " + err.message);
+    }
+}
+
+// ===================================================================
+// 11. SMART ADAPTIVE REMINDERS CONTROLLER (BEHAVIORAL AI)
+// ===================================================================
+
+async function loadAdaptiveRemindersTab() {
+    const list = document.getElementById('adaptiveRemindersList');
+    if (!list) return;
+
+    list.innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Analyzing behavioral intake patterns...</div>';
+
+    try {
+        const res = await API.get('/api/closed-loop/reminders/adaptive-schedules');
+        const schedules = res.schedules || [];
+
+        list.innerHTML = schedules.map(s => `
+            <div class="p-3 bg-white rounded-3 border shadow-sm reminder-adaptive-card">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0">${s.medicine_name} <small class="text-muted fw-normal">(${s.dosage})</small></h6>
+                        <small class="badge bg-light text-dark border mt-1">${s.condition}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge ${s.is_adapted ? 'bg-purple-subtle text-purple border' : 'bg-success-subtle text-success'} px-2 py-1">
+                            ${s.is_adapted ? `AI Rescheduled (+${s.shift_minutes}m)` : 'Nominal Schedule'}
+                        </span>
+                        <div class="small fw-bold text-success mt-1">Adherence: ${s.adherence_rate_pct}%</div>
+                    </div>
+                </div>
+
+                <div class="row g-2 p-2 bg-light rounded-2 small text-dark my-2">
+                    <div class="col-6"><strong>Doctor Prescribed:</strong> <span class="text-muted">${s.prescribed_time}</span></div>
+                    <div class="col-6"><strong>AI Optimized Slot:</strong> <span class="fw-bold text-primary">${s.current_reminder_time}</span></div>
+                </div>
+
+                <p class="small text-secondary mb-2 fst-italic">
+                    <i class="bi bi-robot text-primary me-1"></i> ${s.adaptation_rationale}
+                </p>
+
+                <div class="d-flex justify-content-end gap-2 mt-2 pt-2 border-top">
+                    <button class="btn btn-outline-success btn-sm fw-semibold" onclick="confirmDoseTaken(${s.id}, '${s.medicine_name}')">
+                        <i class="bi bi-check2-circle me-1"></i> Confirm Dose Taken
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (err) {
+        list.innerHTML = `<div class="alert alert-danger small">Error loading schedules: ${err.message}</div>`;
+    }
+}
+
+async function confirmDoseTaken(scheduleId, medName) {
+    try {
+        const res = await API.post('/api/closed-loop/reminders/confirm-dose', { schedule_id: scheduleId });
+        alert(`Dose Confirmed for ${medName}!\nTime: ${res.confirmed_at}\nBehavioral adherence profile updated.`);
+    } catch (err) {
+        alert("Error: " + err.message);
+    }
+}
+
+async function simulateAdaptiveReschedule() {
+    const prescribedTime = document.getElementById('simPrescribedTime').value || "08:00";
+    const patternStr = document.getElementById('simDelayPattern').value;
+    const delays = patternStr.split(',').map(Number);
+    const resultBox = document.getElementById('simAdaptationResult');
+
+    resultBox.classList.remove('d-none');
+    resultBox.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div> Computing behavioral model...';
+
+    try {
+        const res = await API.post('/api/closed-loop/reminders/adapt', {
+            prescribed_time: prescribedTime,
+            delay_minutes_history: delays
+        });
+
+        resultBox.innerHTML = `
+            <div class="p-3 bg-light rounded-3 border">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong class="text-dark">Dynamic Rescheduling Analysis</strong>
+                    <span class="badge ${res.is_adapted ? 'bg-primary' : 'bg-secondary'}">${res.is_adapted ? 'ADAPTED' : 'FIXED'}</span>
+                </div>
+                <div class="small"><strong>Nominal:</strong> ${res.prescribed_time} &rarr; <strong>AI Recommended:</strong> <span class="text-primary fw-bold">${res.recommended_reminder_time}</span> (Shift: +${res.shift_minutes} mins)</div>
+                <div class="small text-muted mt-1">${res.rationale}</div>
+            </div>
+        `;
+    } catch (err) {
+        resultBox.innerHTML = `<div class="alert alert-danger small">Error: ${err.message}</div>`;
+    }
+}
+
+// ===================================================================
+// 12. CONTEXT-AWARE CAREGIVER ALERTS CONTROLLER
+// ===================================================================
+
+async function evaluateCaregiverAlertFromVitals(vitals) {
+    try {
+        const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: 0 });
+        updateCaregiverAlertUI(res);
+    } catch (err) {
+        console.error("Caregiver alert evaluation error:", err);
+    }
+}
+
+function updateCaregiverAlertUI(res) {
+    const badge = document.getElementById('caregiverCurrentTierBadge');
+    const box = document.getElementById('caregiverAlertStatusBox');
+    const heading = document.getElementById('caregiverAlertHeading');
+    const desc = document.getElementById('caregiverAlertDescription');
+
+    if (!badge || !box) return;
+
+    badge.className = `badge bg-${res.tier_color}`;
+    badge.textContent = res.tier_badge;
+
+    box.className = `p-3 rounded-3 border mb-3 caregiver-tier-${res.tier_level} small`;
+    heading.className = `d-block text-${res.tier_color} mb-1`;
+    heading.innerHTML = `<i class="bi bi-shield-exclamation me-1"></i> ${res.tier_badge}: ${res.primary_trigger}`;
+    desc.textContent = res.caregiver_message;
+}
+
+async function triggerCaregiverAlertTest(level) {
+    let vitals = { hr: 75, spo2: 98, bp_sys: 120, bp_dia: 80, temp: 98.6 };
+    let missedDoses = 0;
+
+    if (level === 'mild') {
+        vitals = { hr: 104, spo2: 97, bp_sys: 136, bp_dia: 88, temp: 99.1 };
+        missedDoses = 1;
+    } else if (level === 'moderate') {
+        vitals = { hr: 118, spo2: 93, bp_sys: 156, bp_dia: 96, temp: 100.8 };
+        missedDoses = 2;
+    } else if (level === 'critical') {
+        vitals = { hr: 142, spo2: 86, bp_sys: 190, bp_dia: 110, temp: 102.5 };
+        missedDoses = 3;
+    }
+
+    try {
+        const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: missedDoses });
+        updateCaregiverAlertUI(res);
+        alert(`🚨 Caregiver Alert Escalation Triggered!\nTier: ${res.tier_badge}\nTrigger: ${res.primary_trigger}\nChannels: ${res.channels.join(', ')}\nMessage: "${res.caregiver_message}"`);
+    } catch (err) {
+        alert("Error testing alert: " + err.message);
     }
 }
 

@@ -337,3 +337,97 @@ def get_shared_record_by_token(token: str, db: Session = Depends(get_db)):
         ]
 
     return result
+
+@router.get("/expiring-consents")
+def check_expiring_consents(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Scans active consents for proactive expiration notifications.
+    Alerts patient before data access terminates, allowing 1-click 365-day extension or immediate purge.
+    """
+    now = datetime.utcnow()
+    warning_threshold = now + timedelta(days=30)
+
+    consents = (
+        db.query(ConsentRecord)
+        .filter(ConsentRecord.patient_id == current_user.id, ConsentRecord.status == "active")
+        .all()
+    )
+
+    expiring_list = []
+    for c in consents:
+        days_left = max((c.expires_at - now).days, 0)
+        is_imminent = c.expires_at <= warning_threshold
+        expiring_list.append({
+            "id": c.id,
+            "grantee_name": c.grantee_name,
+            "grantee_organization": c.grantee_organization,
+            "expires_at": c.expires_at.isoformat(),
+            "days_remaining": days_left,
+            "is_imminent_expiry": is_imminent,
+            "prompt_message": f"Consent for {c.grantee_name} expires in {days_left} days. Keep data active (Extend 365 Days) or delete/revoke data access now?",
+            "actions": ["EXTEND_365_DAYS", "PURGE_AND_DELETE_NOW"]
+        })
+
+    return {"expiring_consents": expiring_list}
+
+@router.post("/extend-consent/{consent_id}")
+def extend_consent_365_days(
+    consent_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Extends consent duration by 365 days (8760 hours) and writes event to blockchain."""
+    c = db.query(ConsentRecord).filter(ConsentRecord.id == consent_id, ConsentRecord.patient_id == current_user.id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Consent record not found.")
+
+    c.expires_at = datetime.utcnow() + timedelta(days=365)
+    c.status = "active"
+
+    # Append block
+    last_block = db.query(BlockchainBlock).filter(BlockchainBlock.patient_id == current_user.id).order_by(BlockchainBlock.block_index.desc()).first()
+    next_idx = (last_block.block_index + 1) if last_block else 1
+    prev_hash = last_block.block_hash if last_block else ("0" * 64)
+    event_data = {
+        "event": "SMART_CONSENT_EXTENDED_365_DAYS",
+        "grantee": c.grantee_name,
+        "new_expires_at": c.expires_at.isoformat()
+    }
+    block = BlockchainBlock(**create_block(next_idx, current_user.id, "CONSENT_EXTEND", str(c.id), event_data, prev_hash))
+    db.add(block)
+    db.commit()
+
+    return {"message": f"Consent for {c.grantee_name} extended for 365 days. Ledger updated at Block #{block.block_index}.", "new_expires_at": c.expires_at.isoformat()}
+
+@router.post("/revoke-and-purge/{consent_id}")
+def purge_and_delete_consent(
+    consent_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Revokes consent, purges sharing token, and permanently logs deletion on ledger."""
+    c = db.query(ConsentRecord).filter(ConsentRecord.id == consent_id, ConsentRecord.patient_id == current_user.id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Consent record not found.")
+
+    c.status = "purged"
+    c.access_token = "PURGED_AND_REVOKED_" + c.access_token[:8]
+
+    # Append block
+    last_block = db.query(BlockchainBlock).filter(BlockchainBlock.patient_id == current_user.id).order_by(BlockchainBlock.block_index.desc()).first()
+    next_idx = (last_block.block_index + 1) if last_block else 1
+    prev_hash = last_block.block_hash if last_block else ("0" * 64)
+    event_data = {
+        "event": "SMART_CONSENT_PURGED_AND_REVOKED",
+        "grantee": c.grantee_name,
+        "purged_at": datetime.utcnow().isoformat()
+    }
+    block = BlockchainBlock(**create_block(next_idx, current_user.id, "CONSENT_PURGE", str(c.id), event_data, prev_hash))
+    db.add(block)
+    db.commit()
+
+    return {"message": f"Data sharing for {c.grantee_name} has been permanently purged and revoked. Ledger updated at Block #{block.block_index}."}
+

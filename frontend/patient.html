@@ -37,52 +37,57 @@
         <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-4 border d-flex flex-wrap gap-1" id="patientTabs" role="tablist">
             <li class="nav-item">
                 <button class="nav-link active fw-semibold py-2 px-3" id="tab-navigator-btn" data-bs-toggle="pill" data-bs-target="#tab-navigator">
-                    <i class="bi bi-compass me-1"></i> Health Navigator
+                    <i class="bi bi-compass text-primary me-1"></i> Health Navigator
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-primary" id="tab-predictive-btn" data-bs-toggle="pill" data-bs-target="#tab-predictive" onclick="loadPredictiveTab()">
-                    <i class="bi bi-graph-up-arrow me-1"></i> 1. AI Predictive Care
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-predictive-btn" data-bs-toggle="pill" data-bs-target="#tab-predictive" onclick="loadPredictiveTab()">
+                    <i class="bi bi-graph-up-arrow text-primary me-1"></i> 1. AI Predictive Care
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-info" id="tab-iot-btn" data-bs-toggle="pill" data-bs-target="#tab-iot" onclick="loadIoTTab()">
-                    <i class="bi bi-smartwatch me-1"></i> 2. IoT Wearables
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-iot-btn" data-bs-toggle="pill" data-bs-target="#tab-iot" onclick="loadIoTTab()">
+                    <i class="bi bi-smartwatch text-info me-1"></i> 2. IoT Wearables
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-success" id="tab-blockchain-btn" data-bs-toggle="pill" data-bs-target="#tab-blockchain" onclick="loadBlockchainTab()">
-                    <i class="bi bi-shield-lock-fill me-1"></i> 3. Blockchain Records
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-blockchain-btn" data-bs-toggle="pill" data-bs-target="#tab-blockchain" onclick="loadBlockchainTab()">
+                    <i class="bi bi-shield-lock-fill text-success me-1"></i> 3. Blockchain Records
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-warning" id="tab-navigation-btn" data-bs-toggle="pill" data-bs-target="#tab-navigation-pane" onclick="loadNavQueueTab()">
-                    <i class="bi bi-geo-alt-fill me-1"></i> 4. Indoor AR Nav & Queue
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-navigation-btn" data-bs-toggle="pill" data-bs-target="#tab-navigation-pane" onclick="loadNavQueueTab()">
+                    <i class="bi bi-geo-alt-fill text-warning me-1"></i> 4. Indoor AR Nav & Queue
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-danger" id="tab-emergency-btn" data-bs-toggle="pill" data-bs-target="#tab-emergency" onclick="loadEmergencyTab()">
-                    <i class="bi bi-hospital me-1"></i> 5. Emergency SOS
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-emergency-btn" data-bs-toggle="pill" data-bs-target="#tab-emergency" onclick="loadEmergencyTab()">
+                    <i class="bi bi-hospital text-danger me-1"></i> 5. Emergency SOS
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3 text-secondary" id="tab-community-btn" data-bs-toggle="pill" data-bs-target="#tab-community" onclick="loadCommunityTab()">
-                    <i class="bi bi-people-fill me-1"></i> 6. Community & Wellness
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-community-btn" data-bs-toggle="pill" data-bs-target="#tab-community" onclick="loadCommunityTab()">
+                    <i class="bi bi-people-fill text-secondary me-1"></i> 6. Community & Wellness
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-reminders-btn" data-bs-toggle="pill" data-bs-target="#tab-reminders" onclick="loadAdaptiveRemindersTab()">
+                    <i class="bi bi-alarm-fill text-purple me-1"></i> 7. Smart Reminders
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-profile-btn" data-bs-toggle="pill" data-bs-target="#tab-profile" onclick="loadProfileData()">
-                    <i class="bi bi-person-vcard me-1"></i> Profile
+                    <i class="bi bi-person-vcard text-primary me-1"></i> Profile
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-history-btn" data-bs-toggle="pill" data-bs-target="#tab-history" onclick="loadConsultations()">
-                    <i class="bi bi-clock-history me-1"></i> Consultations
+                    <i class="bi bi-clock-history text-secondary me-1"></i> Consultations
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-recovery-btn" data-bs-toggle="pill" data-bs-target="#tab-recovery" onclick="loadRecoveryTab()">
-                    <i class="bi bi-activity me-1"></i> Timeline
+                    <i class="bi bi-activity text-success me-1"></i> Timeline
                 </button>
             </li>
         </ul>
@@ -112,8 +117,11 @@
                         <div class="d-flex align-items-center gap-2">
                             <select id="voiceLangSelect" class="form-select form-select-sm" style="width: auto;">
                                 <option value="en-IN" selected>English (India)</option>
-                                <option value="hi-IN">Hindi (हिन्दी)</option>
+                                <option value="ta-IN">Tamil (தமிழ்)</option>
+                                <option value="te-IN">Telugu (తెలుగు)</option>
                                 <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+                                <option value="ml-IN">Malayalam (മലയാളം)</option>
+                                <option value="hi-IN">Hindi (हिन्दी)</option>
                             </select>
                             <button class="btn btn-outline-danger btn-sm mic-btn px-3" id="voiceMicBtn" onclick="toggleVoiceInput()">
                                 <i class="bi bi-mic-fill me-1"></i> <span id="micText">Speak Symptoms</span>
@@ -668,6 +676,87 @@
                     </div>
                 </div>
 
+                <!-- 3-Channel Vitals Acquisition Options -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                    <h5 class="fw-bold mb-2"><i class="bi bi-broadcast-pin text-primary me-2"></i>Vitals Acquisition Channel</h5>
+                    <p class="text-muted small mb-3">Pair your smartwatch via Web Bluetooth, extract recent report biomarkers, or enter vitals manually.</p>
+                    
+                    <ul class="nav nav-pills mb-3" id="vitalsSourceTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-ble">
+                                <i class="bi bi-bluetooth me-1"></i> 1. Bluetooth Smartwatch
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-report">
+                                <i class="bi bi-file-earmark-medical me-1"></i> 2. Recent Lab Reports
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-manual">
+                                <i class="bi bi-pencil-square me-1"></i> 3. Manual Vitals Entry
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content border-top pt-3">
+                        <!-- 1. Web Bluetooth Scan -->
+                        <div class="tab-pane fade show active" id="vitals-ble">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-smartwatch text-primary me-1"></i> Pair Smartwatch / BLE Vitals Sensor</h6>
+                                <p class="text-muted small mb-3">Browser prompts for Bluetooth access to stream Heart Rate, SpO2, and Pulse data.</p>
+                                <button type="button" class="btn btn-primary fw-semibold px-4" onclick="connectBluetoothSmartwatch()">
+                                    <i class="bi bi-bluetooth me-1"></i> Request Bluetooth Permission & Pair
+                                </button>
+                                <div id="bleStatusMessage" class="small mt-2 text-muted">Ready to pair. If your device doesn't have Bluetooth, choose Lab Reports or Manual Entry.</div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Recent Lab Reports Extract -->
+                        <div class="tab-pane fade" id="vitals-report">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> Extract Vitals from Recent Medical Reports</h6>
+                                <p class="text-muted small mb-3">Pulls clinical vitals & biomarkers (BP, Glucose, Heart Rate) extracted from your uploaded records.</p>
+                                <button type="button" class="btn btn-info text-white fw-semibold px-4" onclick="importVitalsFromReports()">
+                                    <i class="bi bi-cloud-arrow-down me-1"></i> Import from Latest Lab Record
+                                </button>
+                                <div id="reportVitalsPreview" class="mt-2 small text-muted">Awaiting import request.</div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Manual Entry -->
+                        <div class="tab-pane fade" id="vitals-manual">
+                            <form id="manualVitalsForm" onsubmit="submitManualVitals(event)" class="row g-2">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Heart Rate (BPM)</label>
+                                    <input type="number" id="manualHR" class="form-control" placeholder="76" value="76" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Blood Pressure (mmHg)</label>
+                                    <input type="text" id="manualBP" class="form-control" placeholder="120/80" value="120/80" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-semibold">SpO2 (%)</label>
+                                    <input type="number" id="manualSpO2" class="form-control" placeholder="98" min="70" max="100" value="98" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-semibold">Glucose (mg/dL)</label>
+                                    <input type="number" id="manualGlucose" class="form-control" placeholder="110" value="110" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-semibold">Temp (°F)</label>
+                                    <input type="text" id="manualTemp" class="form-control" placeholder="98.6" value="98.6" required>
+                                </div>
+                                <div class="col-12 mt-3 text-end">
+                                    <button type="submit" class="btn btn-success fw-semibold px-4">
+                                        <i class="bi bi-check-circle me-1"></i> Save & Broadcast Manual Vitals
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Paired Devices Strip -->
                 <div class="row g-3 mb-4" id="iotDevicesContainer">
                     <div class="col-12 text-center py-3 text-muted">Discovering paired medical wearables...</div>
@@ -756,13 +845,27 @@
                 </div>
 
                 <!-- Integrity Banner -->
-                <div id="blockchainVerifyAlert" class="alert alert-success py-3 px-4 rounded-4 shadow-sm mb-4">
+                <div id="blockchainVerifyAlert" class="alert alert-success py-3 px-4 rounded-4 shadow-sm mb-3">
                     <div class="d-flex align-items-center gap-3">
                         <i class="bi bi-patch-check-fill fs-3 text-success"></i>
                         <div>
                             <strong class="d-block text-success-emphasis">Cryptographic Chain Integrity: 100% Intact</strong>
                             <span class="small text-muted" id="blockchainVerifyText">All blocks verified against root genesis anchor. Zero tampering detected.</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Proactive Expiration & Retention Notification Shield -->
+                <div id="consentExpiryAlertBox" class="alert alert-warning py-3 px-4 rounded-4 shadow-sm mb-4 border border-warning-subtle">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div>
+                            <strong class="text-dark"><i class="bi bi-hourglass-bottom text-warning me-1"></i> Smart Consent Lifecycle & Data Retention Shield</strong>
+                            <p class="small text-muted mb-0">Active sharing grants are audited before expiration to confirm if records should be retained for 365 days or permanently purged.</p>
+                        </div>
+                        <button class="btn btn-outline-warning btn-sm" onclick="checkExpiringConsents()"><i class="bi bi-arrow-repeat me-1"></i> Audit Expiration Dates</button>
+                    </div>
+                    <div id="expiringConsentsList" class="d-flex flex-column gap-2 small">
+                        <!-- Dynamic list of expiring consents with Extend/Purge buttons -->
                     </div>
                 </div>
 
@@ -1110,6 +1213,111 @@
                 </div>
             </div>
 
+            <!-- =========================================================
+                 TAB 7: SMART ADAPTIVE REMINDERS & CAREGIVER ALERTS
+                 ========================================================= -->
+            <div class="tab-pane fade" id="tab-reminders">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div>
+                        <h4 class="fw-bold mb-1 text-purple"><i class="bi bi-alarm-fill me-2"></i>Smart Adaptive Reminders & Caregiver Alerts</h4>
+                        <p class="text-muted small mb-0">AI adjusts reminder timing based on patient behavioral habits, and prioritizes tiered caregiver alerts based on predictive health risk.</p>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" onclick="loadAdaptiveRemindersTab()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Behavioral AI
+                    </button>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <!-- Left: Smart Adaptive Reminders -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-capsule text-primary me-2"></i>Behavior-Adapted Medication Schedules</h5>
+                                    <small class="text-muted">Patent-Pending: Dynamic Behavioral Rescheduling Engine</small>
+                                </div>
+                                <span class="badge bg-purple-subtle text-purple border fs-6 px-3 py-1">AI Behavioral Engine Active</span>
+                            </div>
+
+                            <p class="small text-muted mb-3">
+                                Fixed reminders fail when life intervenes. When our AI detects consistent delays (e.g., commute, meals), it reschedules nominal reminder windows to maximize patient compliance.
+                            </p>
+
+                            <div id="adaptiveRemindersList" class="d-flex flex-column gap-3 mb-3">
+                                <div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Loading behavioral schedules...</div>
+                            </div>
+                        </div>
+
+                        <!-- Manual Delay Logger / Simulate Routine Shift -->
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-sliders text-secondary me-1"></i> Simulate Patient Behavioral Habit Shift</h6>
+                            <p class="text-muted small mb-3">Test how the AI recalculates reminders when a patient develops a new routine:</p>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">Nominal Prescription Time</label>
+                                    <input type="time" id="simPrescribedTime" class="form-control form-control-sm" value="08:00">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">Typical Delay Pattern</label>
+                                    <select id="simDelayPattern" class="form-select form-select-sm">
+                                        <option value="60,75,80,72">+72 mins delay (Morning commute pattern)</option>
+                                        <option value="90,95,85,90">+90 mins delay (Late breakfast / dinner shift)</option>
+                                        <option value="0,5,-2,3">0 mins delay (High on-time adherence)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2 mt-auto">
+                                    <button class="btn btn-primary btn-sm w-100 fw-semibold" onclick="simulateAdaptiveReschedule()">
+                                        <i class="bi bi-cpu me-1"></i> Adapt
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="simAdaptationResult" class="mt-3 small d-none"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Context-Aware Caregiver Alerts -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="fw-bold text-dark mb-0"><i class="bi bi-shield-exclamation text-danger me-2"></i>Tiered Caregiver Alerts</h5>
+                                <span class="badge bg-success" id="caregiverCurrentTierBadge">LEVEL 1 STABLE</span>
+                            </div>
+                            <p class="text-muted small mb-3">Predictive risk scoring triggers tiered notifications rather than indiscriminately blasting raw vitals.</p>
+
+                            <!-- Caregiver Profile Card -->
+                            <div class="p-3 bg-light rounded-3 border mb-3 small">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-dark">Primary Designated Caregiver:</strong>
+                                    <span class="badge bg-primary-subtle text-primary">Emergency Proxy</span>
+                                </div>
+                                <div><strong>Name:</strong> Anjali Verma (Daughter)</div>
+                                <div><strong>Contact:</strong> +91 98450 12345</div>
+                                <div><strong>Notification Tier:</strong> Automated SMS, WhatsApp & Priority Voice Call</div>
+                            </div>
+
+                            <!-- Live Caregiver Alert Status Box -->
+                            <div id="caregiverAlertStatusBox" class="p-3 rounded-3 border mb-3 caregiver-tier-1 small">
+                                <strong class="d-block text-success mb-1" id="caregiverAlertHeading"><i class="bi bi-check-circle me-1"></i> Patient Condition Baseline: Stable</strong>
+                                <span class="text-muted" id="caregiverAlertDescription">All vital parameters within target baseline. Zero interruption needed.</span>
+                            </div>
+
+                            <!-- Interactive Severity Test Buttons -->
+                            <label class="form-label small fw-bold text-dark d-block mb-2">Simulate Tiered Health Deviations:</label>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-info btn-sm text-start" onclick="triggerCaregiverAlertTest('mild')">
+                                    <i class="bi bi-info-circle me-1"></i> <strong>Level 2 (Mild):</strong> HR 102 bpm / 1 Missed Dose &rarr; <span class="badge bg-info text-white">Notify Caregiver Only</span>
+                                </button>
+                                <button class="btn btn-outline-warning btn-sm text-start" onclick="triggerCaregiverAlertTest('moderate')">
+                                    <i class="bi bi-exclamation-triangle me-1"></i> <strong>Level 3 (Moderate):</strong> BP 155/95, SpO2 93% &rarr; <span class="badge bg-warning text-dark">Caregiver Alert + Doctor OPD</span>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm text-start" onclick="triggerCaregiverAlertTest('critical')">
+                                    <i class="bi bi-lightning-fill me-1"></i> <strong>Level 4 (Critical):</strong> SpO2 86%, HR 140 &rarr; <span class="badge bg-danger text-white">1-Tap SOS + Trauma Bay Dispatch</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
@@ -1244,10 +1452,12 @@
                         <div class="mb-4">
                             <label class="form-label small fw-bold">Expiration Window:</label>
                             <select id="consentHours" class="form-select">
-                                <option value="24">24 Hours</option>
-                                <option value="72" selected>72 Hours (3 Days)</option>
-                                <option value="168">7 Days</option>
-                                <option value="720">30 Days</option>
+                                <option value="24">24 Hours (Single Encounter)</option>
+                                <option value="72">72 Hours (3 Days Follow-up)</option>
+                                <option value="168">7 Days (Acute Episode)</option>
+                                <option value="720">30 Days (Care Management)</option>
+                                <option value="2160">90 Days (Chronic Review)</option>
+                                <option value="8760" selected>365 Days (1-Year Long-Term Medical Consent)</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-success w-100 fw-semibold">
