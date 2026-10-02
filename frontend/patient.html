@@ -31,8 +31,155 @@
         </div>
     </nav>
 
-    <!-- Main Container with Tabs -->
+    <!-- Main Container with Accessibility Bar, Family Vault, Dashboard, and Tabs -->
     <div class="container py-4">
+
+        <!-- 1. ACCESSIBILITY & MULTILINGUAL TOOLBAR -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white border-start border-primary border-4" id="accessibilityToolbar">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary-subtle text-primary"><i class="bi bi-universal-access"></i> Accessibility</span>
+                    <!-- Font Resizer -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary" onclick="changeFontSize(-1)" title="Smaller Text">A-</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="changeFontSize(0)" title="Default Text Size">A</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="changeFontSize(1)" title="Larger Text">A+</button>
+                    </div>
+                    <!-- High Contrast Toggle -->
+                    <button type="button" class="btn btn-sm btn-outline-dark" id="highContrastToggleBtn" onclick="toggleAccessibilityHighContrast()">
+                        <i class="bi bi-circle-half me-1"></i> <span id="contrastBtnText">High Contrast</span>
+                    </button>
+                    <!-- Read Aloud (Web Speech Synthesis) -->
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="readAloudBtn" onclick="toggleReadAloudPage()">
+                        <i class="bi bi-volume-up-fill me-1"></i> <span id="readAloudText">Read Aloud</span>
+                    </button>
+                    <!-- Simple Language Medical Translator -->
+                    <button type="button" class="btn btn-sm btn-outline-info" id="plainLanguageBtn" onclick="togglePlainLanguageMode()">
+                        <i class="bi bi-translate me-1"></i> <span id="plainLanguageText">Plain Language (Active)</span>
+                    </button>
+                </div>
+                <!-- Multilingual South Indian & Pan-Indian Selector -->
+                <div class="d-flex align-items-center gap-2">
+                    <small class="text-muted fw-semibold d-none d-md-inline"><i class="bi bi-globe me-1"></i>Language:</small>
+                    <select id="portalLangSelector" class="form-select form-select-sm" style="width: auto;" onchange="changePortalLanguage(this.value)">
+                        <option value="en-IN" selected>English (India)</option>
+                        <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
+                        <option value="ta-IN">Tamil (தமிழ்)</option>
+                        <option value="te-IN">Telugu (తెలుగు)</option>
+                        <option value="ml-IN">Malayalam (മലയാളം)</option>
+                        <option value="hi-IN">Hindi (हिन्दी)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. FAMILY HEALTH VAULT SWITCHER -->
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="badge bg-success-subtle text-success p-2 rounded-circle fs-5">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div>
+                        <strong class="d-block text-dark">Family Health Vault</strong>
+                        <small class="text-muted">Manage segregated medical records and permissions across household members</small>
+                    </div>
+                </div>
+                <div class="btn-group btn-group-sm flex-wrap" role="group" id="familyVaultBtnGroup">
+                    <button type="button" class="btn btn-outline-primary active" id="fVault-self" onclick="switchFamilyVault('self')">
+                        <i class="bi bi-person-check-fill me-1"></i> Self (John Doe - 35y)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="fVault-child" onclick="switchFamilyVault('child')">
+                        <i class="bi bi-balloon-fill me-1"></i> Child (Aarav - 7y)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="fVault-parent" onclick="switchFamilyVault('parent')">
+                        <i class="bi bi-heart-pulse me-1"></i> Parent (Saraswathi - 68y)
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="fVault-spouse" onclick="switchFamilyVault('spouse')">
+                        <i class="bi bi-person-heart me-1"></i> Spouse (Priya - 34y)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. MY HEALTH DASHBOARD METRICS SUMMARY GRID (Item 3 in User Spec) -->
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-speedometer2 text-primary me-2"></i>My Health Dashboard
+                </h5>
+                <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">
+                    <i class="bi bi-shield-check me-1"></i> Patient-Owned Sovereign Data
+                </span>
+            </div>
+            
+            <div class="row g-3 text-center">
+                <!-- Health Passport -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">HEALTH PASSPORT</small>
+                        <strong class="text-success small d-block mt-1"><i class="bi bi-check-circle-fill"></i> Verified</strong>
+                    </div>
+                </div>
+                <!-- Emergency Passport -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">EMERGENCY PASSPORT</small>
+                        <strong class="text-danger small d-block mt-1">🟢 Active</strong>
+                    </div>
+                </div>
+                <!-- Medical Records -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">MEDICAL RECORDS</small>
+                        <strong class="text-dark small d-block mt-1" id="dashMetricRecords">17 verified</strong>
+                    </div>
+                </div>
+                <!-- Medications -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">MEDICATIONS</small>
+                        <strong class="text-primary small d-block mt-1" id="dashMetricMeds">4 active</strong>
+                    </div>
+                </div>
+                <!-- Allergies -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">ALLERGIES</small>
+                        <strong class="text-danger small d-block mt-1" id="dashMetricAllergies">2 critical</strong>
+                    </div>
+                </div>
+                <!-- Vaccinations -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">VACCINATIONS</small>
+                        <strong class="text-info small d-block mt-1">8 verified</strong>
+                    </div>
+                </div>
+                <!-- Lab Reports -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">LAB REPORTS</small>
+                        <strong class="text-secondary small d-block mt-1" id="dashMetricLabs">12 records</strong>
+                    </div>
+                </div>
+                <!-- Doctor Access -->
+                <div class="col-6 col-md-4 col-lg-custom" style="flex: 1 0 11%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">DOCTOR ACCESS</small>
+                        <strong class="text-warning-emphasis small d-block mt-1" id="dashMetricPermissions">2 active</strong>
+                    </div>
+                </div>
+                <!-- Blockchain Integrity -->
+                <div class="col-12 col-md-4 col-lg-custom" style="flex: 1 0 12%;">
+                    <div class="p-2 border rounded-3 bg-light h-100">
+                        <small class="text-muted d-block" style="font-size: 0.72rem;">BLOCKCHAIN INTEGRITY</small>
+                        <strong class="text-success small d-block mt-1"><i class="bi bi-shield-check"></i> 100% Intact</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Tab Navigation (Categorized Pills) -->
         <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-4 border d-flex flex-wrap gap-1" id="patientTabs" role="tablist">
             <li class="nav-item">
@@ -56,23 +203,33 @@
                 </button>
             </li>
             <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-access-audit-btn" data-bs-toggle="pill" data-bs-target="#tab-access-audit" onclick="loadAccessHistoryTab()">
+                    <i class="bi bi-eye-fill text-danger me-1"></i> 4. Who Accessed My Data?
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-semibold py-2 px-3" id="tab-travel-btn" data-bs-toggle="pill" data-bs-target="#tab-travel" onclick="initTravelTab()">
+                    <i class="bi bi-airplane-fill text-info me-1"></i> 5. Travel Passport
+                </button>
+            </li>
+            <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-navigation-btn" data-bs-toggle="pill" data-bs-target="#tab-navigation-pane" onclick="loadNavQueueTab()">
-                    <i class="bi bi-geo-alt-fill text-warning me-1"></i> 4. Indoor AR Nav & Queue
+                    <i class="bi bi-geo-alt-fill text-warning me-1"></i> 6. AR Nav & Queue
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-emergency-btn" data-bs-toggle="pill" data-bs-target="#tab-emergency" onclick="loadEmergencyTab()">
-                    <i class="bi bi-hospital text-danger me-1"></i> 5. Emergency SOS
+                    <i class="bi bi-hospital text-danger me-1"></i> 7. Emergency SOS
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-community-btn" data-bs-toggle="pill" data-bs-target="#tab-community" onclick="loadCommunityTab()">
-                    <i class="bi bi-people-fill text-secondary me-1"></i> 6. Community & Wellness
+                    <i class="bi bi-people-fill text-secondary me-1"></i> 8. Community
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-reminders-btn" data-bs-toggle="pill" data-bs-target="#tab-reminders" onclick="loadAdaptiveRemindersTab()">
-                    <i class="bi bi-alarm-fill text-purple me-1"></i> 7. Smart Reminders
+                    <i class="bi bi-alarm-fill text-purple me-1"></i> 9. Smart Reminders
                 </button>
             </li>
             <li class="nav-item">
@@ -87,10 +244,11 @@
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-recovery-btn" data-bs-toggle="pill" data-bs-target="#tab-recovery" onclick="loadRecoveryTab()">
-                    <i class="bi bi-activity text-success me-1"></i> Timeline
+                    <i class="bi bi-activity text-success me-1"></i> Medical Timeline
                 </button>
             </li>
         </ul>
+
 
 
         <div class="tab-content">
@@ -869,6 +1027,79 @@
                     </div>
                 </div>
 
+                <!-- 5. BLOCKCHAIN RECORD VERIFICATION (Item 5 in User Spec) -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white border-top border-success border-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-diagram-3-fill text-success me-2"></i>Blockchain Record Verification Flow</h5>
+                            <small class="text-muted">How medical authenticity is guaranteed without exposing sensitive health data</small>
+                        </div>
+                        <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Zero On-Chain PII</span>
+                    </div>
+
+                    <!-- Flow Diagram -->
+                    <div class="p-3 bg-light rounded-4 mb-3 border">
+                        <div class="row g-2 text-center align-items-center">
+                            <div class="col-6 col-md-2">
+                                <div class="p-2 bg-white rounded-3 shadow-sm border">
+                                    <small class="text-muted d-block" style="font-size: 0.7rem;">SOURCE DATA</small>
+                                    <strong class="small text-dark">Medical Record</strong>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-1 text-muted fs-5 d-none d-md-block"><i class="bi bi-arrow-right"></i></div>
+                            <div class="col-6 col-md-2">
+                                <div class="p-2 bg-white rounded-3 shadow-sm border border-primary">
+                                    <small class="text-primary d-block" style="font-size: 0.7rem;">DIGEST</small>
+                                    <strong class="small text-primary">SHA-256 Hash</strong>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-1 text-muted fs-5 d-none d-md-block"><i class="bi bi-arrow-right"></i></div>
+                            <div class="col-6 col-md-2">
+                                <div class="p-2 bg-white rounded-3 shadow-sm border">
+                                    <small class="text-muted d-block" style="font-size: 0.7rem;">LEDGER ANCHOR</small>
+                                    <strong class="small text-dark">Blockchain Block</strong>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-1 text-muted fs-5 d-none d-md-block"><i class="bi bi-arrow-right"></i></div>
+                            <div class="col-6 col-md-2">
+                                <div class="p-2 bg-white rounded-3 shadow-sm border border-success">
+                                    <small class="text-success d-block" style="font-size: 0.7rem;">IMMUTABILITY</small>
+                                    <strong class="small text-success">✓ Verified</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Concrete Verification Proof Box -->
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <div class="p-3 bg-white rounded-3 border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong class="text-dark"><i class="bi bi-file-earmark-medical me-1"></i> Record: Blood Test (Complete Metabolic Panel)</strong>
+                                    <span class="badge bg-success"><i class="bi bi-check-lg"></i> Verified</span>
+                                </div>
+                                <div class="small text-muted mb-1">
+                                    <strong>Cryptographic Hash:</strong> <code class="text-primary">8f3a992bc018fe4b8109d94821a7c5b6e4d2...</code>
+                                </div>
+                                <div class="small text-muted mb-1">
+                                    <strong>Anchor Timestamp:</strong> 28 Sep 2026, 10:45 AM IST &bull; <strong>Modified:</strong> <span class="text-success fw-bold">No (Tamper Proof)</span>
+                                </div>
+                                <div class="small text-muted">
+                                    <strong>Issued By:</strong> Apex Central Diagnostic Laboratory (Verified Key: <code>LAB-0982-KMC</code>)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="p-3 bg-success-subtle rounded-3 border border-success-subtle h-100">
+                                <strong class="text-success-emphasis d-block mb-1"><i class="bi bi-info-circle-fill me-1"></i> Technical Architecture Notice:</strong>
+                                <p class="small text-secondary mb-0" style="font-size: 0.8rem;">
+                                    Sensitive medical records and images are <strong>NEVER stored on-chain</strong>. They are encrypted (AES-256 GCM) in patient-controlled off-chain storage. The blockchain functions strictly as an integrity anchor, timestamp registry, and consent audit ledger.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-4">
                     <!-- Blockchain Blocks Explorer -->
                     <div class="col-lg-7">
@@ -896,6 +1127,202 @@
                     </div>
                 </div>
             </div>
+
+            <!-- =========================================================
+                 TAB: WHO ACCESSED MY HEALTH DATA? (Item 6 & 8 in Spec)
+                 ========================================================= -->
+            <div class="tab-pane fade" id="tab-access-audit">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div>
+                        <h4 class="fw-bold mb-1 text-danger"><i class="bi bi-eye-fill me-2"></i>Who Accessed My Health Data?</h4>
+                        <p class="text-muted small mb-0">Transparent access audit trail. Review who viewed your records and instantly revoke active permissions.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-danger btn-sm" onclick="loadAccessHistoryTab()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Access Audit
+                        </button>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#doctorConsentRequestModal">
+                            <i class="bi bi-person-plus-fill me-1"></i> Test Doctor Consent Request
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Access History Table -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                    <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-table me-2 text-primary"></i>Data Access History Log</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Accessor</th>
+                                    <th>Role / Facility</th>
+                                    <th>Purpose</th>
+                                    <th>Data Scope</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accessHistoryTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-primary"></div> Loading access audit trail...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Emergency Break-Glass Override Audit Feed (Item 8) -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white border-start border-danger border-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-danger"><i class="bi bi-exclamation-octagon-fill me-2"></i>Emergency Break-Glass Access Logs</h5>
+                            <small class="text-muted">Unconsented emergency overrides invoked by trauma physicians under Good Samaritan law</small>
+                        </div>
+                        <span class="badge bg-danger text-white">Immutable Blockchain Audit</span>
+                    </div>
+
+                    <div id="breakGlassLogsFeed" class="d-flex flex-column gap-3">
+                        <div class="text-center py-3 text-muted">Loading emergency break-glass logs...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =========================================================
+                 TAB: DIGITAL HEALTH PASSPORT FOR TRAVEL (Item 14 in Spec)
+                 ========================================================= -->
+            <div class="tab-pane fade" id="tab-travel">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div>
+                        <h4 class="fw-bold mb-1 text-info"><i class="bi bi-airplane-fill me-2"></i>Digital Health Passport for International Travel</h4>
+                        <p class="text-muted small mb-0">Generate a cryptographically-verifiable, selective-disclosure health clearance pass for border authorities.</p>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Generator Configuration -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                            <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-sliders text-info me-2"></i>Travel Clearance Settings</h5>
+                            <form id="travelPassportForm" onsubmit="generateTravelPassport(event)">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Destination Country</label>
+                                    <select id="travelDestination" class="form-select" required>
+                                        <option value="United Kingdom" selected>United Kingdom (UK)</option>
+                                        <option value="United States">United States (USA)</option>
+                                        <option value="Singapore">Singapore</option>
+                                        <option value="Germany">Germany (Schengen Zone)</option>
+                                        <option value="United Arab Emirates">United Arab Emirates (UAE)</option>
+                                        <option value="Australia">Australia</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Departure Date</label>
+                                    <input type="date" id="travelDate" class="form-control" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Travel Purpose</label>
+                                    <select id="travelPurpose" class="form-select">
+                                        <option value="Tourism & Leisure" selected>Tourism & Leisure</option>
+                                        <option value="Business / Conference">Business / Conference</option>
+                                        <option value="Academic Study">Academic Study</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold d-block">Selective Disclosure (Privacy Control)</label>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="travelCheckVaccines" checked>
+                                        <label class="form-check-label small" for="travelCheckVaccines">
+                                            Include Verified Vaccinations (COVID-19, Yellow Fever, Hep-B)
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="travelCheckAllergies" checked>
+                                        <label class="form-check-label small" for="travelCheckAllergies">
+                                            Include Severe Drug Allergies (Anaphylaxis warnings)
+                                        </label>
+                                    </div>
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" id="travelCheckFitToFly" checked>
+                                        <label class="form-check-label small" for="travelCheckFitToFly">
+                                            Include Cardiopulmonary Fit-to-Fly Certification
+                                        </label>
+                                    </div>
+                                    <div class="form-check text-muted">
+                                        <input class="form-check-input" type="checkbox" id="travelCheckRedact" checked disabled>
+                                        <label class="form-check-label small" for="travelCheckRedact">
+                                            <i class="bi bi-shield-lock-fill text-success"></i> Auto-Redact Unrelated Sensitive History (GI, Psych, Dermatology)
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-info text-white w-100 fw-semibold" id="btnGenTravelPassport">
+                                    <i class="bi bi-qr-code-scan me-1"></i> Generate Verifiable Travel Passport
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Output Passport Card -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white" id="travelPassportOutputCard">
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                                <div>
+                                    <span class="badge bg-info-subtle text-info mb-1">INTERNATIONAL HEALTH CLEARANCE</span>
+                                    <h4 class="fw-bold mb-0">Digital Health Travel Passport</h4>
+                                </div>
+                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> Clear for Travel</span>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">PASSPORT HOLDER</small>
+                                    <strong class="text-dark" id="travelHolderName">John Doe</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">DESTINATION</small>
+                                    <strong class="text-dark" id="travelDestDisplay">United Kingdom</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">VALID UNTIL</small>
+                                    <strong class="text-dark" id="travelValidUntil">30 Nov 2026</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">BLOOD GROUP</small>
+                                    <strong class="text-danger" id="travelBloodGroup">O+</strong>
+                                </div>
+                            </div>
+
+                            <!-- Verified Disclosures List -->
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-patch-check-fill text-success me-1"></i>Disclosed & Cryptographically Verified Attributes:</h6>
+                                <ul class="small mb-0 ps-3" id="travelDisclosuresList">
+                                    <li>COVID-19 mRNA Booster (Verified: 10 Nov 2025, Batch: BNT-8821)</li>
+                                    <li>Yellow Fever Vaccine (Verified: 15 Mar 2024, Lifetime Clearance)</li>
+                                    <li>Severe Allergy: Penicillin (Anaphylaxis Risk)</li>
+                                    <li>Fit-to-fly: Unrestricted commercial aviation approved</li>
+                                </ul>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center p-3 bg-white border rounded-3">
+                                <div>
+                                    <small class="text-muted d-block">BLOCKCHAIN MERKLE VERIFICATION TOKEN</small>
+                                    <code class="fw-bold text-primary" id="travelTokenDisplay">TRAVEL-8F3A992BC018FE4B8109</code>
+                                </div>
+                                <button class="btn btn-outline-primary btn-sm" onclick="alert('Digital Travel Certificate QR generated and signed with SHA-256 root anchor!')">
+                                    <i class="bi bi-printer me-1"></i> Export Verifiable Pass
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- =========================================================
                  TAB 8: SMART INDOOR AR HOSPITAL NAVIGATION & QUEUE
@@ -1404,70 +1831,151 @@
         </div>
     </div>
 
-    <!-- Grant New Smart Consent Modal -->
-    <div class="modal fade" id="grantConsentModal" tabindex="-1">
+    <!-- Timeline Entry Detail Modal (Item 4 in User Spec) -->
+    <div class="modal fade" id="timelineEntryDetailModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header border-bottom">
-                    <h5 class="modal-title fw-bold text-success"><i class="bi bi-key-fill me-2"></i>Grant Smart Medical Consent</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="tModalTitle"><i class="bi bi-file-medical-fill me-2"></i>Medical Milestone Detail</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <form id="grantConsentForm" onsubmit="submitNewConsent(event)">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Grantee Name (Doctor / Insurer / Researcher):</label>
-                            <input type="text" id="consentGranteeName" class="form-control" placeholder="e.g. Dr. Rajesh Mehta or Star Health" required>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <div>
+                            <span class="badge bg-primary-subtle text-primary mb-1" id="tModalCategory">LABORATORY REPORT</span>
+                            <h5 class="fw-bold mb-0 text-dark" id="tModalRecordName">Blood Test (Lipid & Metabolic Panel)</h5>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Grantee Category:</label>
-                            <select id="consentGranteeType" class="form-select">
-                                <option value="doctor">Consulting Doctor</option>
-                                <option value="insurer">Insurance Claims Auditor</option>
-                                <option value="researcher">Medical Research Consortium</option>
-                            </select>
+                        <span class="badge bg-success fs-6" id="tModalStatus"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
+                    </div>
+
+                    <div class="row g-2 mb-3 small">
+                        <div class="col-6">
+                            <span class="text-muted d-block">ATTENDING DOCTOR / FACILITY:</span>
+                            <strong class="text-dark" id="tModalDoctor">Dr. Rajesh Kumar (Cardiologist) &bull; Apollo Super-Specialty</strong>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">Organization / Hospital:</label>
-                            <input type="text" id="consentOrg" class="form-control" placeholder="e.g. Metro Heart Institute" value="Metro Heart Institute">
+                        <div class="col-6">
+                            <span class="text-muted d-block">RECORDED DATE & TIME:</span>
+                            <strong class="text-dark" id="tModalDate">28 Sep 2026, 09:30 AM IST</strong>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold d-block">Granular Permissions:</label>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="permDiag" value="diagnoses" checked>
-                                <label class="form-check-label small" for="permDiag">Diagnoses</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="permLabs" value="lab_reports" checked>
-                                <label class="form-check-label small" for="permLabs">Lab Reports</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="permRx" value="prescriptions" checked>
-                                <label class="form-check-label small" for="permRx">Prescriptions</label>
-                            </div>
-                            <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" id="permVitals" value="live_vitals">
-                                <label class="form-check-label small" for="permVitals">IoT Live Vitals</label>
-                            </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <small class="text-muted fw-bold d-block mb-1">DIAGNOSIS & CLINICAL FINDINGS:</small>
+                        <p class="small text-dark mb-0" id="tModalDiagnosis">Mild hypercholesterolemia with borderline LDL elevation (138 mg/dL). Fasting blood glucose optimal at 94 mg/dL. Renal and liver panel normal.</p>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <small class="text-muted fw-bold d-block mb-1">PRESCRIPTION / INTERVENTION:</small>
+                        <p class="small text-dark mb-0" id="tModalPrescription">Dietary modification (Mediterranean protocol), Atorvastatin 10mg once daily at bedtime for 90 days. Repeat lipid profile in 3 months.</p>
+                    </div>
+
+                    <div class="p-3 bg-white rounded-3 border mb-3">
+                        <small class="text-muted fw-bold d-block mb-1"><i class="bi bi-link-45deg text-success"></i> BLOCKCHAIN INTEGRITY ANCHOR:</small>
+                        <div class="small text-muted">
+                            <div><strong>Block Hash:</strong> <code class="text-primary" id="tModalHash">0x8f3a992bc018fe4b8109d94821a7c5b6...</code></div>
+                            <div><strong>Merkle Root Proof:</strong> <code>0x44ae1298c...PASS</code> &bull; <strong>Modified:</strong> <span class="text-success fw-bold">No</span></div>
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label small fw-bold">Expiration Window:</label>
-                            <select id="consentHours" class="form-select">
-                                <option value="24">24 Hours (Single Encounter)</option>
-                                <option value="72">72 Hours (3 Days Follow-up)</option>
-                                <option value="168">7 Days (Acute Episode)</option>
-                                <option value="720">30 Days (Care Management)</option>
-                                <option value="2160">90 Days (Chronic Review)</option>
-                                <option value="8760" selected>365 Days (1-Year Long-Term Medical Consent)</option>
-                            </select>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 rounded-3 small mb-0">
+                        <strong class="d-block mb-1"><i class="bi bi-shield-lock me-1"></i> Access Audit History:</strong>
+                        <div id="tModalAccessLog">
+                            <div>&bull; 28 Sep 2026: Accessed by Dr. Rajesh Kumar (Authorized Consultation)</div>
+                            <div>&bull; 01 Oct 2026: Accessed by Apollo ER Trauma Unit (Emergency Protocol)</div>
                         </div>
-                        <button type="submit" class="btn btn-success w-100 fw-semibold">
-                            <i class="bi bi-shield-check me-1"></i> Cryptographically Sign & Issue Token
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Doctor Granular Consent Request Modal (Item 7 in User Spec) -->
+    <div class="modal fade" id="doctorConsentRequestModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-warning-subtle text-dark border-bottom">
+                    <h5 class="modal-title fw-bold text-dark"><i class="bi bi-shield-exclamation text-warning me-2"></i>Doctor Access Request Pending</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary-subtle text-primary p-3 fs-3">
+                                <i class="bi bi-person-badge"></i>
+                            </div>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">Dr. Sarah Sharma</h6>
+                                <small class="text-muted">Pulmonology Specialist &bull; Apex Multi-Specialty Hospital</small>
+                                <div class="mt-1">
+                                    <span class="badge bg-success-subtle text-success small"><i class="bi bi-patch-check-fill"></i> NMC Verified #MCI-2018-98421</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Clinical Purpose of Request:</label>
+                        <p class="small text-muted p-2 bg-light rounded border mb-0">
+                            "Second opinion consultation for exertional dyspnea and post-viral pulmonary evaluation."
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold d-block">Requested Record Categories (Granular Consent):</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="reqMedHistory" checked>
+                            <label class="form-check-label small fw-semibold" for="reqMedHistory">
+                                ☑ Medical History & Vitals (Recommended for diagnosis)
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="reqLabReports" checked>
+                            <label class="form-check-label small fw-semibold" for="reqLabReports">
+                                ☑ Lab Reports & Chest X-Ray / CT Scans
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="reqMentalHealth">
+                            <label class="form-check-label small text-muted" for="reqMentalHealth">
+                                ☐ Mental-Health & Psychotherapy Notes (Protected Category)
+                            </label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="reqGenetic">
+                            <label class="form-check-label small text-muted" for="reqGenetic">
+                                ☐ Genetic & Genomic Sequence Data (Protected Category)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-bold">Select Sharing Duration Window:</label>
+                        <select id="reqConsentDuration" class="form-select">
+                            <option value="1">1 Hour (Single Consultation)</option>
+                            <option value="24" selected>24 Hours (Day of Appointment)</option>
+                            <option value="168">7 Days (Care Review & Follow-up)</option>
+                            <option value="8760">365 Days (Annual Primary Care Access)</option>
+                        </select>
+                        <small class="text-secondary d-block mt-1">You can revoke this permission at any time from the "Who accessed my data" tab.</small>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn btn-outline-danger w-100 fw-semibold" onclick="handleDoctorConsentResponse(false)">
+                                <i class="bi bi-x-circle me-1"></i> Decline Request
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn-success w-100 fw-semibold" onclick="handleDoctorConsentResponse(true)">
+                                <i class="bi bi-check-circle me-1"></i> Grant Access
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Bootstrap Bundle & Scripts -->
 

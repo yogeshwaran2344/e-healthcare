@@ -95,3 +95,11 @@ def serve_doctor():
     if os.path.exists(doctor_path):
         return FileResponse(doctor_path)
     return {"message": "Doctor Clinical Handover Portal"}
+
+@app.get("/hospital")
+def serve_hospital():
+    hospital_path = os.path.join(PROJECT_ROOT, "frontend", "hospital.html")
+    if os.path.exists(hospital_path):
+        return FileResponse(hospital_path)
+    return {"message": "Hospital & Institution Portal"}
+

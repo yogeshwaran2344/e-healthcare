@@ -667,3 +667,57 @@ body {
     background: #f0fdf4;
 }
 
+/* 8. High Contrast Accessibility Mode */
+body.high-contrast-mode {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+body.high-contrast-mode .card,
+body.high-contrast-mode .modal-content,
+body.high-contrast-mode .navbar-custom {
+    background-color: #121212 !important;
+    color: #ffffff !important;
+    border-color: #facc15 !important;
+}
+
+body.high-contrast-mode .bg-light,
+body.high-contrast-mode .table-light {
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+}
+
+body.high-contrast-mode .text-dark,
+body.high-contrast-mode .text-secondary,
+body.high-contrast-mode .text-muted {
+    color: #f8fafc !important;
+}
+
+body.high-contrast-mode .border {
+    border-color: #facc15 !important;
+}
+
+body.high-contrast-mode a,
+body.high-contrast-mode .text-primary {
+    color: #38bdf8 !important;
+}
+
+/* Custom Grid & Utilities */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.hover-shadow:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+    border-color: #0d6efd !important;
+    transition: all 0.2s ease-in-out;
+}
+
+@media (min-width: 992px) {
+    .col-lg-custom {
+        flex: 0 0 11.1111%;
+        max-width: 11.1111%;
+    }
+}
+
+

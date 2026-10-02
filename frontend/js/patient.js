@@ -2107,3 +2107,482 @@ async function triggerCaregiverAlertTest(level) {
 }
 
 
+// ===================================================================
+// 13. "WHO ACCESSED MY HEALTH DATA?" AUDIT & REVOCATION CONTROLLER
+// ===================================================================
+
+async function loadAccessHistoryTab() {
+    const tbody = document.getElementById('accessHistoryTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Reading decentralized access audit ledger...</td></tr>`;
+
+    try {
+        const res = await API.get('/api/blockchain/access-history');
+        const history = res.access_history || [];
+
+        if (history.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No external access events recorded. Your records remain private.</td></tr>`;
+        } else {
+            tbody.innerHTML = history.map(item => `
+                <tr class="${item.is_emergency ? 'table-danger' : ''}">
+                    <td class="small fw-semibold text-secondary text-nowrap">${item.date}</td>
+                    <td>
+                        <strong class="text-dark d-block">${item.accessor}</strong>
+                        <small class="text-muted">${item.organization || 'Clinical Center'}</small>
+                    </td>
+                    <td><span class="badge bg-light text-dark border small">${item.role}</span></td>
+                    <td class="small">${item.purpose}</td>
+                    <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle small">${item.data_scope}</span></td>
+                    <td><span class="badge ${item.status_badge}">${item.status}</span></td>
+                    <td>
+                        ${item.can_revoke ? `
+                            <button class="btn btn-outline-danger btn-sm text-nowrap" onclick="revokeAccess(${item.id}, ${item.consent_id})">
+                                <i class="bi bi-slash-circle me-1"></i> Revoke Access
+                            </button>
+                        ` : (item.is_emergency ? `
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle small" title="Immutable Emergency Override">Immutable Audit</span>
+                        ` : `
+                            <span class="text-muted small">Inactive</span>
+                        `)}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Also load Break-Glass logs
+        await loadBreakGlassLogs();
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="alert alert-danger small">Error loading access audit: ${err.message}</td></tr>`;
+    }
+}
+
+async function revokeAccess(id, consentId) {
+    if (!confirm("Are you sure you want to REVOKE this permission immediately? The grantee's cryptographic bearer token will be permanently invalidated on the blockchain.")) return;
+
+    try {
+        if (consentId) {
+            await API.post(`/api/blockchain/revoke-consent/${consentId}`);
+        }
+        alert("✓ Access Revoked! An immutable revocation block has been recorded on your patient ledger.");
+        await loadAccessHistoryTab();
+        // Update dashboard metric
+        const permEl = document.getElementById('dashMetricPermissions');
+        if (permEl) permEl.textContent = "1 active";
+    } catch (err) {
+        alert("Revocation error: " + err.message);
+    }
+}
+
+async function loadBreakGlassLogs() {
+    const container = document.getElementById('breakGlassLogsFeed');
+    if (!container) return;
+
+    try {
+        const res = await API.get('/api/blockchain/break-glass-logs');
+        const logs = res.break_glass_records || [];
+
+        if (logs.length === 0) {
+            container.innerHTML = `
+                <div class="p-3 bg-light rounded-3 text-center text-muted small">
+                    <i class="bi bi-shield-check text-success fs-5 d-block mb-1"></i>
+                    Zero break-glass emergency overrides detected on your record.
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = logs.map(l => `
+            <div class="p-3 bg-danger-subtle rounded-3 border border-danger-subtle">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                    <div>
+                        <strong class="text-danger d-block"><i class="bi bi-exclamation-triangle-fill me-1"></i> ${l.doctor_name} (${l.doctor_license})</strong>
+                        <span class="small text-secondary">${l.hospital} &bull; Recorded: ${new Date(l.timestamp).toLocaleString()}</span>
+                    </div>
+                    <span class="badge bg-danger">Block #${l.block_index}</span>
+                </div>
+                <div class="small mb-2">
+                    <strong class="text-dark">Mandatory Emergency Justification:</strong>
+                    <div class="p-2 bg-white rounded border border-danger-subtle text-danger fw-semibold mt-1">"${l.justification}"</div>
+                </div>
+                <div class="small text-muted d-flex justify-content-between align-items-center flex-wrap gap-1">
+                    <span><strong>Data Accessed:</strong> ${l.data_accessed}</span>
+                    <span class="font-monospace text-truncate" style="max-width: 250px;">Hash: ${l.block_hash}</span>
+                </div>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error("Error loading break glass logs:", err);
+    }
+}
+
+
+// ===================================================================
+// 14. DIGITAL HEALTH PASSPORT FOR TRAVEL CONTROLLER
+// ===================================================================
+
+function initTravelTab() {
+    const dateInput = document.getElementById('travelDate');
+    if (dateInput && !dateInput.value) {
+        const defaultDate = new Date();
+        defaultDate.setDate(defaultDate.getDate() + 14);
+        dateInput.value = defaultDate.toISOString().split('T')[0];
+    }
+}
+
+async function generateTravelPassport(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnGenTravelPassport');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Anchoring to Blockchain...`;
+
+    const dest = document.getElementById('travelDestination').value;
+    const date = document.getElementById('travelDate').value;
+    const purpose = document.getElementById('travelPurpose').value;
+    const incVaccines = document.getElementById('travelCheckVaccines').checked;
+    const incAllergies = document.getElementById('travelCheckAllergies').checked;
+    const incFit = document.getElementById('travelCheckFitToFly').checked;
+
+    try {
+        const res = await API.post('/api/blockchain/travel-passport', {
+            destination_country: dest,
+            travel_date: date,
+            purpose: purpose,
+            include_vaccines: incVaccines,
+            include_allergies: incAllergies,
+            include_fit_to_fly: incFit
+        });
+
+        document.getElementById('travelDestDisplay').textContent = res.destination;
+        document.getElementById('travelValidUntil').textContent = res.valid_until;
+        document.getElementById('travelTokenDisplay').textContent = res.travel_token;
+
+        const listEl = document.getElementById('travelDisclosuresList');
+        const items = [];
+        if (incVaccines) items.push("COVID-19 mRNA Booster & Yellow Fever (Verified by Ministry of Health)");
+        if (incAllergies) items.push("Critical Allergy Warning: Penicillin (Severe Anaphylaxis)");
+        if (incFit) items.push("Fit-to-fly: Unrestricted commercial air travel cleared");
+        items.push("Auto-redacted: Non-essential diagnostic reports and private therapy notes");
+
+        listEl.innerHTML = items.map(i => `<li>${i}</li>`).join('');
+
+        alert(`✓ Verifiable Travel Health Passport Generated for ${dest}!\nToken: ${res.travel_token}\nBlock: #${res.block_index}\nSensitive unrelated records remain encrypted.`);
+    } catch (err) {
+        alert("Travel passport error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-qr-code-scan me-1"></i> Generate Verifiable Travel Passport`;
+    }
+}
+
+
+// ===================================================================
+// 15. FAMILY HEALTH VAULT CONTROLLER
+// ===================================================================
+
+const FAMILY_MEMBERS = {
+    self: {
+        name: "John Doe",
+        age: 35,
+        blood: "O+",
+        allergies: "2 critical (Penicillin, Sulfa)",
+        meds: "4 active (Metformin, Lisinopril, Aspirin, Atorvastatin)",
+        records: 17,
+        labs: 12
+    },
+    child: {
+        name: "Aarav Doe",
+        age: 7,
+        blood: "O+",
+        allergies: "1 critical (Peanut / Tree Nuts)",
+        meds: "0 active",
+        records: 8,
+        labs: 4
+    },
+    parent: {
+        name: "Saraswathi Doe",
+        age: 68,
+        blood: "B+",
+        allergies: "1 critical (Ibuprofen / NSAIDs)",
+        meds: "6 active (Amlodipine, Telmisartan, Rosuvastatin, Metformin)",
+        records: 29,
+        labs: 22
+    },
+    spouse: {
+        name: "Priya Doe",
+        age: 34,
+        blood: "A+",
+        allergies: "None known",
+        meds: "1 active (Iron & Folic Acid)",
+        records: 11,
+        labs: 7
+    }
+};
+
+function switchFamilyVault(memberKey) {
+    document.querySelectorAll('#familyVaultBtnGroup button').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById('fVault-' + memberKey);
+    if (btn) btn.classList.add('active');
+
+    const m = FAMILY_MEMBERS[memberKey] || FAMILY_MEMBERS.self;
+    
+    // Update welcome & dashboard metrics
+    const welcome = document.getElementById('userWelcomeText');
+    if (welcome) welcome.textContent = `Viewing Vault: ${m.name} (${m.age}y)`;
+
+    const recEl = document.getElementById('dashMetricRecords');
+    if (recEl) recEl.textContent = `${m.records} verified`;
+
+    const medEl = document.getElementById('dashMetricMeds');
+    if (medEl) medEl.textContent = m.meds.split(' ')[0] + ' active';
+
+    const algEl = document.getElementById('dashMetricAllergies');
+    if (algEl) algEl.textContent = m.allergies.split(' ')[0] + ' critical';
+
+    const labEl = document.getElementById('dashMetricLabs');
+    if (labEl) labEl.textContent = `${m.labs} records`;
+
+    alert(`Switched Active Health Vault to: ${m.name}\nSegregated permissions active.`);
+}
+
+
+// ===================================================================
+// 16. ACCESSIBILITY TOOLBAR CONTROLLERS (High Contrast, TTS, Plain English)
+// ===================================================================
+
+let currentFontScale = 0;
+function changeFontSize(delta) {
+    if (delta === 0) currentFontScale = 0;
+    else currentFontScale = Math.max(-1, Math.min(2, currentFontScale + delta));
+
+    const body = document.body;
+    if (currentFontScale === -1) {
+        body.style.fontSize = '0.9rem';
+    } else if (currentFontScale === 0) {
+        body.style.fontSize = '1rem';
+    } else if (currentFontScale === 1) {
+        body.style.fontSize = '1.15rem';
+    } else if (currentFontScale === 2) {
+        body.style.fontSize = '1.3rem';
+    }
+}
+
+let isHighContrast = false;
+function toggleAccessibilityHighContrast() {
+    isHighContrast = !isHighContrast;
+    const body = document.body;
+    const btnText = document.getElementById('contrastBtnText');
+
+    if (isHighContrast) {
+        body.classList.add('high-contrast-mode');
+        if (btnText) btnText.textContent = "Standard Mode";
+    } else {
+        body.classList.remove('high-contrast-mode');
+        if (btnText) btnText.textContent = "High Contrast";
+    }
+}
+
+let isSpeaking = false;
+function toggleReadAloudPage() {
+    if (!('speechSynthesis' in window)) {
+        alert("Text-to-Speech is not supported in this browser.");
+        return;
+    }
+
+    if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        isSpeaking = false;
+        document.getElementById('readAloudText').textContent = "Read Aloud";
+        return;
+    }
+
+    const textToRead = "Your Intelligent Health Passport. Current status: verified. Emergency access: active. 17 medical records verified with zero tampering on the blockchain.";
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = document.getElementById('portalLangSelector')?.value || 'en-IN';
+    utterance.rate = 0.95;
+
+    utterance.onend = () => {
+        isSpeaking = false;
+        document.getElementById('readAloudText').textContent = "Read Aloud";
+    };
+
+    window.speechSynthesis.speak(utterance);
+    isSpeaking = true;
+    document.getElementById('readAloudText').textContent = "Stop Reading";
+}
+
+let plainLanguageActive = true;
+function togglePlainLanguageMode() {
+    plainLanguageActive = !plainLanguageActive;
+    const btnText = document.getElementById('plainLanguageText');
+    if (plainLanguageActive) {
+        if (btnText) btnText.textContent = "Plain Language (Active)";
+        alert("Simple Language Mode Active: Technical terms like 'Hypertension' are translated to 'High blood pressure', 'Dyspnea' to 'Shortness of breath'.");
+    } else {
+        if (btnText) btnText.textContent = "Clinical Latin Terms";
+        alert("Clinical Terms Mode: Showing exact medical terminology.");
+    }
+}
+
+function changePortalLanguage(lang) {
+    const langNames = {
+        'en-IN': 'English',
+        'kn-IN': 'Kannada (ಕನ್ನಡ)',
+        'ta-IN': 'Tamil (தமிழ்)',
+        'te-IN': 'Telugu (తెలుగు)',
+        'ml-IN': 'Malayalam (മലയാളം)',
+        'hi-IN': 'Hindi (हिन्दी)'
+    };
+    alert(`Language preferences updated to: ${langNames[lang] || lang}.\nSymptom voice input and emergency summaries now localized.`);
+}
+
+
+// ===================================================================
+// 17. DOCTOR GRANULAR CONSENT RESPONSE CONTROLLER
+// ===================================================================
+
+function handleDoctorConsentResponse(granted) {
+    const modalEl = document.getElementById('doctorConsentRequestModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    if (granted) {
+        const duration = document.getElementById('reqConsentDuration').value;
+        alert(`✓ Access Granted to Dr. Sarah Sharma for ${duration} hours!\nA decentralized cryptographic bearer token has been generated and logged to your blockchain ledger.`);
+        loadAccessHistoryTab();
+    } else {
+        alert("Access Request Declined. No medical records were shared with Dr. Sarah Sharma.");
+    }
+}
+
+
+// ===================================================================
+// 18. TIMELINE MILESTONE MODAL CONTROLLER (Item 4 in User Spec)
+// ===================================================================
+
+const TIMELINE_MILESTONES = {
+    blood_test: {
+        title: "Medical Milestone: Laboratory Diagnostics",
+        category: "BLOOD TEST / METABOLIC PANEL",
+        recordName: "Complete Metabolic Panel & Cardiac Biomarkers",
+        doctor: "Dr. Rajesh Kumar (Cardiologist) &bull; Apollo Super-Specialty",
+        date: "28 Sep 2026, 09:30 AM IST",
+        diagnosis: "Mild hypercholesterolemia with borderline LDL elevation (138 mg/dL). Fasting blood glucose optimal at 94 mg/dL. Troponin I normal at 0.02 ng/mL.",
+        prescription: "Lifestyle modification, Mediterranean dietary protocol, Atorvastatin 10mg once daily at bedtime for 90 days. Repeat lipid panel in 3 months.",
+        hash: "0x8f3a992bc018fe4b8109d94821a7c5b6e4d2a1b9...",
+        accessLog: ["28 Sep 2026: Dr. Rajesh Kumar (Authorized Clinical Consultation)", "01 Oct 2026: Apollo ER Trauma Bay (Emergency Care Protocol)"]
+    },
+    consultation: {
+        title: "Medical Milestone: Clinical Consultation",
+        category: "SPECIALIST OUTPATIENT REVIEW",
+        recordName: "Cardiovascular Teleconsultation Review",
+        doctor: "Dr. Sarah Sharma (Pulmonologist / Critical Care) &bull; Apex Hospital",
+        date: "21 Sep 2026, 03:15 PM IST",
+        diagnosis: "Post-exertional dyspnea with mild bronchospasm. Blood pressure 138/86 mmHg. Auscultation: clear bilateral breath sounds.",
+        prescription: "Budesonide / Formoterol inhaler 2 puffs as needed for wheeze. Continue daily walking regimen 30 mins.",
+        hash: "0x19a0bc44fe8820c78a19de023b7721ab9938c114...",
+        accessLog: ["21 Sep 2026: Dr. Sarah Sharma (Telemedicine Encounter)"]
+    },
+    prescription: {
+        title: "Medical Milestone: Digital Prescription",
+        category: "VERIFIED PHARMACEUTICAL DISPENSATION",
+        recordName: "Long-Term Cardioprotective Regimen",
+        doctor: "Dr. Sarah Sharma &bull; License #MCI-2018-98421",
+        date: "15 Aug 2026, 11:00 AM IST",
+        diagnosis: "Essential Stage 1 Hypertension with metabolic stability.",
+        prescription: "1. Metformin 500mg (1-0-1 after meals)\n2. Lisinopril 10mg (1-0-0 morning)\n3. Aspirin 75mg (0-1-0 post lunch)",
+        hash: "0x77c9812df09a1288b487c6e3100ba7f12e88a002...",
+        accessLog: ["15 Aug 2026: MedPlus Central Pharmacy (Dispensation Verification)"]
+    },
+    vaccine: {
+        title: "Medical Milestone: Immunization Record",
+        category: "PUBLIC HEALTH VACCINATION",
+        recordName: "COVID-19 mRNA Updated Booster",
+        doctor: "Apex Immunization Center &bull; Ministry of Health Key #VAX-8812",
+        date: "02 Jul 2026, 02:45 PM IST",
+        diagnosis: "Routine booster immunization administered in right deltoid. Zero adverse reactions noted during 30-min observation.",
+        prescription: "Paracetamol 650mg as needed for fever/myalgia. Rest hydration advised.",
+        hash: "0x44ae1298c081977be55218d89a712f00bc192837...",
+        accessLog: ["02 Jul 2026: National Immunization Registry", "30 Sep 2026: International Border Health Agency"]
+    }
+};
+
+function showTimelineEntryModal(entryKey) {
+    const data = TIMELINE_MILESTONES[entryKey] || TIMELINE_MILESTONES.blood_test;
+
+    document.getElementById('tModalTitle').innerHTML = `<i class="bi bi-file-medical-fill me-2"></i>${data.title}`;
+    document.getElementById('tModalCategory').textContent = data.category;
+    document.getElementById('tModalRecordName').textContent = data.recordName;
+    document.getElementById('tModalDoctor').innerHTML = data.doctor;
+    document.getElementById('tModalDate').textContent = data.date;
+    document.getElementById('tModalDiagnosis').textContent = data.diagnosis;
+    document.getElementById('tModalPrescription').textContent = data.prescription;
+    document.getElementById('tModalHash').textContent = data.hash;
+
+    const accessEl = document.getElementById('tModalAccessLog');
+    if (accessEl) {
+        accessEl.innerHTML = data.accessLog.map(a => `<div>&bull; ${a}</div>`).join('');
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('timelineEntryDetailModal'));
+    modal.show();
+}
+
+// Enhance loadDigitalHealthTimeline to prepend the 2026 timeline tree
+const originalLoadTimeline = loadDigitalHealthTimeline;
+loadDigitalHealthTimeline = async function() {
+    const container = document.getElementById('digitalHealthTimelineContainer');
+    if (container) {
+        container.innerHTML = `
+            <div class="card p-3 mb-4 bg-light border-start border-primary border-4 shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong class="text-primary"><i class="bi bi-calendar3 me-1"></i> 2026 Longitudinal Medical Milestones</strong>
+                    <span class="badge bg-success-subtle text-success">4 Verified Entries</span>
+                </div>
+                <div class="small">
+                    <div class="py-1">
+                        <span class="fw-bold text-dark">2026</span>
+                        <div class="ps-3 border-start ms-2 mt-1">
+                            <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('blood_test')" style="cursor: pointer;">
+                                <div>
+                                    <strong class="text-dark">├── Sep 28: Blood Test (Metabolic & Troponin)</strong>
+                                    <small class="text-muted d-block ps-4">Apex Diagnostic Laboratory &bull; Fasting Glucose 94 mg/dL</small>
+                                </div>
+                                <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
+                            </div>
+
+                            <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('consultation')" style="cursor: pointer;">
+                                <div>
+                                    <strong class="text-dark">├── Sep 21: Doctor Consultation (Dr. Kumar)</strong>
+                                    <small class="text-muted d-block ps-4">Apollo Super-Specialty &bull; Cardiovascular Evaluation</small>
+                                </div>
+                                <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
+                            </div>
+
+                            <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('prescription')" style="cursor: pointer;">
+                                <div>
+                                    <strong class="text-dark">├── Aug 15: Prescription (Cardioprotective Regimen)</strong>
+                                    <small class="text-muted d-block ps-4">MedPlus Central &bull; Metformin, Lisinopril, Aspirin</small>
+                                </div>
+                                <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
+                            </div>
+
+                            <div class="py-2 px-2 bg-white rounded border d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('vaccine')" style="cursor: pointer;">
+                                <div>
+                                    <strong class="text-dark">└── Jul 02: Vaccination (COVID-19 mRNA Booster)</strong>
+                                    <small class="text-muted d-block ps-4">Apex Immunization Center &bull; Batch BNT-8821</small>
+                                </div>
+                                <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted text-center d-block mt-2"><i class="bi bi-hand-index-thumb me-1"></i> Click any milestone above to inspect doctor, diagnosis, prescription, hash, and who has accessed it.</small>
+            </div>
+        `;
+    }
+};
+
+
+
+

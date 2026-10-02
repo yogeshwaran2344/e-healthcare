@@ -3,12 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Healthcare | Online Consultation & Disease Prediction</title>
+    <title>E-Healthcare | Your Intelligent, Verifiable & Emergency-Ready Health Passport</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .hero-banner {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0d47a1 100%);
+            color: #ffffff;
+        }
+        .hero-badge {
+            background: rgba(13, 110, 253, 0.25);
+            border: 1px solid rgba(147, 197, 253, 0.4);
+            color: #93c5fd;
+        }
+        .emergency-card-glow {
+            border: 2px solid #ef4444;
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.25);
+        }
+        .passport-chip {
+            border-left: 4px solid #0d6efd;
+            background: #f8fafc;
+        }
+        .comparison-table th {
+            background-color: #0f172a;
+            color: #ffffff;
+        }
+        .arch-step-box {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+        }
+        .arch-step-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+            border-color: #3b82f6;
+        }
+        .role-pill-btn.active {
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+            border-color: #dc2626 !important;
+            box-shadow: 0 4px 10px rgba(220, 38, 38, 0.35);
+        }
+    </style>
 </head>
 <body>
 
@@ -16,8 +56,9 @@
     <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary" href="/">
-                <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+                <span class="brand-icon"><i class="bi bi-shield-shaded"></i></span>
                 <span>E-Healthcare</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 fs-7">Health Passport</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
                 <span class="navbar-toggler-icon"></span>
@@ -25,195 +66,128 @@
             <div class="collapse navbar-collapse" id="navMenu">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-4">
                     <li class="nav-item"><a class="nav-link active" href="/">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#doctors">Specialists</a></li>
-                    <li class="nav-item"><a class="nav-link text-primary fw-semibold" href="/docs" target="_blank"><i class="bi bi-code-slash"></i> API Docs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#emergency-star">Emergency Passport</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#decision-loop">AI Decision Loop</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#architecture">Architecture</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#comparison">Why Us</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#security">Security & Privacy</a></li>
+                    <li class="nav-item"><a class="nav-link text-primary fw-semibold" href="/docs" target="_blank"><i class="bi bi-code-slash"></i> API</a></li>
                 </ul>
                 <div class="d-flex align-items-center gap-2" id="navAuthArea">
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
+                    <div class="dropdown me-1">
+                        <button class="btn btn-outline-secondary dropdown-toggle btn-sm" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-door-open me-1"></i> Specialized Portals
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="/doctor"><i class="bi bi-hospital text-primary me-2"></i> Doctor Clinical Portal</a></li>
+                            <li><a class="dropdown-item" href="/hospital"><i class="bi bi-building text-info me-2"></i> Hospital & Lab Portal</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/patient"><i class="bi bi-person-circle text-success me-2"></i> Patient Portal</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
                         <i class="bi bi-box-arrow-in-right"></i> Sign In
                     </button>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('register')">
-                        <i class="bi bi-person-plus"></i> Get Started
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('register')">
+                        <i class="bi bi-person-plus"></i> Register
                     </button>
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="py-5 bg-white border-bottom">
+    <!-- HERO SECTION (Item 1: Restructured Hierarchy) -->
+    <section class="hero-banner py-5">
         <div class="container py-4">
             <div class="row align-items-center g-5">
                 <div class="col-lg-7">
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill mb-3">
-                        <i class="bi bi-cpu-fill me-1"></i> Intelligent Health Prediction & Teleconsultation
+                    <span class="badge hero-badge px-3 py-2 rounded-pill mb-3 fs-6">
+                        <i class="bi bi-shield-check me-1"></i> Next-Generation Patient-Owned Medical Infrastructure
                     </span>
-                    <h1 class="display-4 fw-bold text-dark lh-sm mb-3">
-                        Instant Health Guidance & <span class="text-primary">Online Doctor Consultation</span>
+                    <h1 class="display-4 fw-bold lh-sm mb-3">
+                        Your Intelligent, Verifiable & <span class="text-info">Emergency-Ready Health Passport</span>
                     </h1>
-                    <p class="lead text-muted mb-4">
-                        Fed with intelligent disease-symptom data mining, our system evaluates your symptoms to predict probable illnesses. If inconclusive, it guides you to specific lab tests (Blood Test, X-Ray, CT Scan) and connects you directly with verified doctors.
+                    <p class="lead text-light opacity-90 mb-4 fs-5">
+                        AI-assisted health assessment • Verified medical records • Dynamic emergency access • Blockchain-backed integrity
                     </p>
-                    <div class="d-flex flex-wrap gap-3">
-                        <button class="btn btn-primary btn-lg px-4" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
-                            <i class="bi bi-activity"></i> Start Symptom Check
+
+                    <!-- 3 Primary Action Buttons -->
+                    <div class="d-flex flex-wrap gap-3 mb-4">
+                        <button class="btn btn-primary btn-lg px-4 shadow" onclick="navigateToPortal('patient')">
+                            <i class="bi bi-person-vcard-fill me-2"></i> Patient Health Passport
                         </button>
-                        <button class="btn btn-outline-secondary btn-lg px-4" onclick="loginDemo('doctor')">
-                            <i class="bi bi-hospital"></i> Doctor Portal Demo
+                        <button class="btn btn-info text-white btn-lg px-4 shadow" onclick="scrollToId('decision-loop')">
+                            <i class="bi bi-cpu-fill me-2"></i> AI Health Assessment
+                        </button>
+                        <button class="btn btn-danger btn-lg px-4 shadow" onclick="scrollToId('emergency-star')">
+                            <i class="bi bi-qr-code-scan me-2"></i> Emergency Passport
                         </button>
                     </div>
 
-                    <!-- Quick Role Demo Access Banner -->
-                    <div class="alert alert-light border mt-4 p-3 rounded-3 shadow-sm">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <!-- Separate Doctor & Hospital Portals Row -->
+                    <div class="p-3 rounded-4 bg-dark bg-opacity-50 border border-secondary border-opacity-25 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-hospital fs-4 text-info"></i>
                             <div>
-                                <small class="fw-bold text-secondary text-uppercase d-block"><i class="bi bi-person-badge me-1"></i> Interactive Role Simulation:</small>
-                                <span class="badge bg-success text-white me-2"><i class="bi bi-person"></i> Patient Account</span>
-                                <span class="badge bg-info text-white"><i class="bi bi-hospital"></i> Doctor Portal</span>
+                                <small class="text-uppercase text-secondary fw-bold d-block" style="font-size: 0.72rem;">Institutional Access:</small>
+                                <span class="small text-white">Attending Physicians & Diagnostic Laboratories</span>
                             </div>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-success" onclick="loginDemo('patient')"><i class="bi bi-box-arrow-in-right"></i> Launch Patient Portal</button>
-                                <button class="btn btn-outline-primary" onclick="loginDemo('doctor')"><i class="bi bi-hospital"></i> Launch Doctor Portal</button>
-                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a href="/doctor" class="btn btn-sm btn-outline-info text-nowrap"><i class="bi bi-person-badge"></i> Doctor Portal</a>
+                            <a href="/hospital" class="btn btn-sm btn-outline-light text-nowrap"><i class="bi bi-building"></i> Hospital Portal</a>
                         </div>
                     </div>
                 </div>
 
+                <!-- Right Column: Interactive Quick Card Preview -->
                 <div class="col-lg-5">
-                    <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-                        <div class="card-header bg-primary text-white p-3 d-flex align-items-center justify-content-between">
-                            <span class="fw-semibold"><i class="bi bi-arrow-repeat me-2"></i> Closed-Loop Workflow</span>
-                            <span class="badge bg-white text-primary">Continuous Loop</span>
+                    <div class="card border-0 shadow-lg rounded-4 overflow-hidden bg-white text-dark">
+                        <div class="card-header bg-dark text-white p-3 d-flex align-items-center justify-content-between">
+                            <span class="fw-bold"><i class="bi bi-shield-shaded text-info me-2"></i> Digital Health Passport Card</span>
+                            <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> SHA-256 Anchored</span>
                         </div>
                         <div class="card-body p-4">
-                            <div class="d-flex gap-3 mb-3">
-                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">1</div>
+                            <div class="d-flex align-items-center gap-3 mb-3 pb-3 border-bottom">
+                                <div class="rounded-circle bg-primary-subtle text-primary p-3 fs-3">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
                                 <div>
-                                    <h6 class="fw-bold mb-1">Adaptive Intake & Entropy</h6>
-                                    <p class="small text-muted mb-0">Quantifies diagnostic uncertainty & identifies critical missing data.</p>
+                                    <h5 class="fw-bold mb-0">John Doe</h5>
+                                    <small class="text-muted">Universal Health ID: <code class="text-primary">HID-2026-98104</code></small>
+                                    <div class="mt-1">
+                                        <span class="badge bg-danger-subtle text-danger me-1">Blood: O+</span>
+                                        <span class="badge bg-success-subtle text-success">Passport: Active</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="d-flex gap-3 mb-3">
-                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">2</div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Targeted Questioning</h6>
-                                    <p class="small text-muted mb-0">Calculates Information Gain to ask the single question that cuts uncertainty.</p>
+                            
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="p-2 border rounded-3 bg-light">
+                                        <small class="text-muted d-block" style="font-size: 0.75rem;">ALLERGIES</small>
+                                        <strong class="text-danger small">Penicillin, Sulfa</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 border rounded-3 bg-light">
+                                        <small class="text-muted d-block" style="font-size: 0.75rem;">MEDICATIONS</small>
+                                        <strong class="text-dark small">Metformin, Lisinopril</strong>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="d-flex gap-3 mb-3">
-                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">3</div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Minimum-Test Optimization</h6>
-                                    <p class="small text-muted mb-0">Pareto optimizer selects lowest-cost, zero-redundancy test combination.</p>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-3 mb-3">
-                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">4</div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Doctor Review & Disagreement</h6>
-                                    <p class="small text-muted mb-0">Doctor inspects Explainable Map; divergence logged in Disagreement Record.</p>
-                                </div>
-                            </div>
-                            <div class="d-flex gap-3">
-                                <div class="badge bg-primary rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">5</div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Outcome Learning Loop</h6>
-                                    <p class="small text-muted mb-0">Verified outcome feeds 3-way reconciliation to continuously calibrate models.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
 
-    <!-- Signature Architecture Section -->
-    <section id="features" class="py-5 bg-light">
-        <div class="container py-3">
-            <div class="text-center mb-5">
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
-                    <i class="bi bi-cpu-fill me-1"></i> Technical Architecture
-                </span>
-                <h2 class="fw-bold">Adaptive Closed-Loop Clinical Decision System</h2>
-                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
-                    Moving beyond superficial AI chatbots to a rigorous, closed-loop diagnostic framework that evaluates uncertainty, asks targeted discriminative questions, optimizes diagnostic test sets, logs clinical divergence, and learns from verified patient outcomes.
-                </p>
-            </div>
-            <div class="row g-4">
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
-                        <div class="card-body">
-                            <div class="text-primary mb-3" style="font-size: 2.2rem;"><i class="bi bi-speedometer2"></i></div>
-                            <h5 class="fw-bold">1. Dynamic Shannon Entropy Engine</h5>
-                            <p class="text-muted small">Calculates posterior probabilities across candidate conditions and computes normalized Shannon entropy (0-100% uncertainty). Prevents premature diagnostic lock-in and flags missing critical clinical dimensions.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
-                        <div class="card-body">
-                            <div class="text-info mb-3" style="font-size: 2.2rem;"><i class="bi bi-question-diamond-fill"></i></div>
-                            <h5 class="fw-bold">2. Next-Best-Question Optimizer</h5>
-                            <p class="text-muted small">Evaluates Information Gain \(IG(Q) = H(D) - E[H(D|Q)]\) across candidate inquiry paths. Dynamically selects the single optimal question capable of maximally splitting competing disease hypotheses.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
-                        <div class="card-body">
-                            <div class="text-success mb-3" style="font-size: 2.2rem;"><i class="bi bi-funnel-fill"></i></div>
-                            <h5 class="fw-bold">3. Minimum Diagnostic Test Set</h5>
-                            <p class="text-muted small">Multi-objective Pareto knapsack optimizer selects the minimal, safest, and most cost-effective diagnostic test combination. Enforces hard safety overrides for acute cardiac, stroke, and thrombotic emergencies.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
-                        <div class="card-body">
-                            <div class="text-warning mb-3" style="font-size: 2.2rem;"><i class="bi bi-diagram-3-fill"></i></div>
-                            <h5 class="fw-bold">4. Explainable Decision Map</h5>
-                            <p class="text-muted small">Replaces opaque confidence scores with granular positive (+18, +24) and negative (-10) numerical feature attributions. Gives reviewing physicians clear insight into every symptom, comorbidity, and biomarker weight.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
-                        <div class="card-body">
-                            <div class="text-danger mb-3" style="font-size: 2.2rem;"><i class="bi bi-arrows-angle-expand"></i></div>
-                            <h5 class="fw-bold">5. Clinician-AI Disagreement Engine</h5>
-                            <p class="text-muted small">Detects diagnostic or triage divergence between AI and attending physicians. Stores standardized Clinical Disagreement Records categorized under atypical presentation, bedside exam override, or pre-test bias.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-white">
-                        <div class="card-body">
-                            <div class="text-secondary mb-3" style="font-size: 2.2rem;"><i class="bi bi-arrow-clockwise"></i></div>
-                            <h5 class="fw-bold">6. Outcome Verification & Learning Loop</h5>
-                            <p class="text-muted small">Executes 3-way reconciliation (AI Prediction \(\leftrightarrow\) Doctor Decision \(\leftrightarrow\) Confirmed Outcome). Automatically categorizes failure modes and feeds continuous recalibration into prior probabilities.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dynamic Emergency Passport & Data-Bound Smart Consent Highlight -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white border-start border-primary border-4">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge bg-primary text-white"><i class="bi bi-qr-code-scan"></i> Context-Aware Emergency Passport</span>
-                                    <span class="badge bg-success text-white"><i class="bi bi-clock-history"></i> Auto-Expiring Consent</span>
+                            <div class="p-3 bg-light rounded-3 border mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted fw-semibold">Blockchain Merkle Root:</small>
+                                    <span class="badge bg-light text-secondary border">Block #18</span>
                                 </div>
-                                <h5 class="fw-bold mb-1">Dynamic Context-Bound Health Passport & Consent That Follows the Data</h5>
-                                <p class="text-muted small mb-0">Emergency QR code dynamically morphs its payload based on accessor role: Public First Responder gets minimal life-saving allergies/blood group; ALS Ambulance Paramedics receive real-time vitals and medications; ER Trauma Surgeons access full radiology and lab biomarkers. All permissions strictly auto-expire and log immutable audit entries.</p>
+                                <code class="small text-truncate d-block text-dark">0x8f3a992bc018fe4b8109d...</code>
                             </div>
-                            <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                                <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#authModal" onclick="openAuthTab('login')">
-                                    <i class="bi bi-shield-check"></i> Experience Dynamic Passport
+
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-danger btn-sm" onclick="scrollToId('emergency-star')">
+                                    <i class="bi bi-lightning-charge-fill me-1"></i> Test Dynamic Emergency Role Disclosure
                                 </button>
                             </div>
                         </div>
@@ -223,14 +197,479 @@
         </div>
     </section>
 
-
-
-    <!-- Doctors Showcase Section -->
-    <section id="doctors" class="py-5 bg-white border-top border-bottom">
+    <!-- STAR FEATURE: Dynamic Emergency Passport (Item 2) -->
+    <section id="emergency-star" class="py-5 bg-white border-bottom">
         <div class="container py-3">
             <div class="text-center mb-5">
-                <h2 class="fw-bold">Our Consulting Specialists</h2>
-                <p class="text-muted">Certified medical doctors ready for online review and consultation.</p>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-star-fill me-1"></i> Star Differentiator
+                </span>
+                <h2 class="fw-bold">Dynamic Context-Bound Emergency Passport</h2>
+                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
+                    Not a static PDF or medical card. A context-aware selective disclosure engine that dynamically adapts its payload based on accessor role, strictly expiring and revoking access after the emergency care window.
+                </p>
+            </div>
+
+            <div class="row g-4 align-items-center">
+                <!-- Left: Interactive Simulator Control -->
+                <div class="col-lg-5">
+                    <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-sliders text-danger me-2"></i>Simulate Accessor Role</h5>
+                        <p class="small text-muted mb-3">Choose who is scanning the emergency QR code to see how the system minimizes data exposure:</p>
+
+                        <div class="btn-group-vertical w-100 gap-2" role="group">
+                            <button type="button" class="btn btn-outline-danger text-start p-3 rounded-3 role-pill-btn active" id="roleBtn-first" onclick="setEmergencyRole('first')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong><i class="bi bi-shield-fill-exclamation me-2"></i> First Responder</strong>
+                                    <span class="badge bg-danger text-white">Public / Bystander</span>
+                                </div>
+                                <small class="d-block text-muted mt-1">Discloses only life-critical blood group and fatal anaphylactic drug allergies.</small>
+                            </button>
+
+                            <button type="button" class="btn btn-outline-danger text-start p-3 rounded-3 role-pill-btn" id="roleBtn-paramedic" onclick="setEmergencyRole('paramedic')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong><i class="bi bi-truck me-2"></i> Paramedic / EMT</strong>
+                                    <span class="badge bg-warning text-dark">ALS Ambulance</span>
+                                </div>
+                                <small class="d-block text-muted mt-1">Discloses vitals, active medications, chronic conditions & next-of-kin contact.</small>
+                            </button>
+
+                            <button type="button" class="btn btn-outline-danger text-start p-3 rounded-3 role-pill-btn" id="roleBtn-er" onclick="setEmergencyRole('er')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong><i class="bi bi-hospital-fill me-2"></i> Emergency Doctor</strong>
+                                    <span class="badge bg-primary text-white">Trauma Bay / Resus</span>
+                                </div>
+                                <small class="d-block text-muted mt-1">Discloses full emergency medical summary, recent labs, ECG & surgical implants.</small>
+                            </button>
+
+                            <button type="button" class="btn btn-outline-danger text-start p-3 rounded-3 role-pill-btn" id="roleBtn-specialist" onclick="setEmergencyRole('specialist')">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong><i class="bi bi-heart-pulse me-2"></i> Consulting Specialist</strong>
+                                    <span class="badge bg-success text-white">Cardiologist / Neuro</span>
+                                </div>
+                                <small class="d-block text-muted mt-1">Discloses domain-targeted longitudinal records without exposing unrelated history.</small>
+                            </button>
+                        </div>
+
+                        <!-- Live Countdown Timer -->
+                        <div class="mt-4 p-3 bg-white rounded-3 border text-center">
+                            <small class="text-uppercase fw-bold text-muted d-block mb-1">Temporary Emergency Window</small>
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-stopwatch-fill text-danger fs-4"></i>
+                                <span class="display-6 fw-bold text-danger font-monospace" id="emergencyLiveCountdown">14:59</span>
+                            </div>
+                            <small class="text-secondary d-block mt-1">Access automatically revoked upon timer expiration</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Simulated Emergency Passport Output Card -->
+                <div class="col-lg-7">
+                    <div class="card emergency-card-glow rounded-4 overflow-hidden bg-white shadow">
+                        <div class="card-header bg-danger text-white p-3 d-flex justify-content-between align-items-center">
+                            <span class="fw-bold"><i class="bi bi-qr-code-scan me-2"></i> Dynamic Emergency QR Payload</span>
+                            <span class="badge bg-white text-danger fw-bold" id="activeRoleBadge">ROLE: FIRST RESPONDER</span>
+                        </div>
+                        <div class="card-body p-4">
+                            <!-- Patient Baseline Header -->
+                            <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
+                                <div>
+                                    <h4 class="fw-bold mb-0">John Doe</h4>
+                                    <span class="text-muted small">Age: 35 | Gender: Male | DOB: 14 May 1991</span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-danger fs-6 px-3 py-2">Blood Group: O+</span>
+                                    <small class="d-block text-success mt-1"><i class="bi bi-check-circle-fill"></i> Verified by Apex Hospital</small>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Selective Disclosure Table -->
+                            <div class="table-responsive mb-3">
+                                <table class="table table-bordered table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 35%;">Clinical Dimension</th>
+                                            <th>Revealed Information</th>
+                                            <th style="width: 25%;">Privacy Rule</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="disclosureTableBody">
+                                        <!-- Injected dynamically via JS based on selected role -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Security Token & Revocation Warning -->
+                            <div class="alert alert-warning border-warning p-3 rounded-3 mb-0 small">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-lock-fill fs-4 text-warning"></i>
+                                    <div>
+                                        <strong>🔐 Zero Data Leakage Architecture:</strong>
+                                        <p class="mb-0">Access automatically revoked after emergency window. Sensitive health records are AES-256 encrypted off-chain; the blockchain ledger stores only cryptographic tamper-proof hashes and immutable access audit logs.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CLOSED-LOOP CLINICAL DECISION LOOP (Item 1 in User Plan) -->
+    <section id="decision-loop" class="py-5 bg-light">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-arrow-repeat me-1"></i> Adaptive Clinical Intelligence
+                </span>
+                <h2 class="fw-bold">The Adaptive Clinical Decision Loop</h2>
+                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
+                    Instead of a naive "symptoms in, disease out" chatbot, our patentable system continuously quantifies diagnostic entropy, asks the single question that cuts uncertainty most, selects the minimum necessary test, and learns from doctor-verified outcomes.
+                </p>
+            </div>
+
+            <!-- Interactive 3-Step Decision Simulator -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-5">
+                <h5 class="fw-bold mb-3"><i class="bi bi-play-circle-fill text-primary me-2"></i>Live Decision Loop Simulation</h5>
+                <div class="row g-4">
+                    <!-- Step 1: Input -->
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light h-100">
+                            <span class="badge bg-primary mb-2">Stage 1: Symptoms & Entropy</span>
+                            <h6 class="fw-bold">Patient Symptoms</h6>
+                            <div class="mb-2">
+                                <span class="badge bg-secondary me-1">Chest Discomfort</span>
+                                <span class="badge bg-secondary">Fatigue</span>
+                            </div>
+                            <div class="mt-3">
+                                <small class="text-muted d-block">Dynamic Shannon Entropy:</small>
+                                <div class="progress mt-1 mb-2" style="height: 10px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 74%;"></div>
+                                </div>
+                                <span class="small fw-bold text-dark">Diagnostic Uncertainty: 74% (High)</span>
+                                <p class="text-muted small mt-1 mb-0">System flags missing critical dimensions: pain radiation, exertion trigger.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Information Gain -->
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light h-100">
+                            <span class="badge bg-info text-white mb-2">Stage 2: Targeted Questioning</span>
+                            <h6 class="fw-bold">Next-Best Question Optimizer</h6>
+                            <p class="small text-muted mb-2">Calculates Information Gain across candidate questions to split competing hypotheses (Angina vs GERD vs Costochondritis):</p>
+                            <div class="p-2 bg-white rounded border border-primary small fw-semibold text-primary mb-2">
+                                "Does the discomfort radiate to your left arm, jaw, or shoulder?"
+                            </div>
+                            <span class="badge bg-success-subtle text-success small"><i class="bi bi-graph-down-arrow"></i> Expected Entropy Drop: -42%</span>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Minimum Test Optimization -->
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded-3 bg-light h-100">
+                            <span class="badge bg-success mb-2">Stage 3: Minimum Test Set</span>
+                            <h6 class="fw-bold">Pareto Test Optimization</h6>
+                            <p class="small text-muted mb-2">Selects smallest test combination capable of reaching diagnostic certainty safely:</p>
+                            <ul class="list-group list-group-sm small">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>12-Lead ECG</span>
+                                    <span class="badge bg-danger">Critical ($25)</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>Troponin I Lab</span>
+                                    <span class="badge bg-danger">Critical ($35)</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center text-muted text-decoration-line-through">
+                                    <span>Chest CT Angiography</span>
+                                    <span class="badge bg-secondary">Avoided ($650)</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6 Closed-Loop Cards with Learn More Modals -->
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="arch-step-box p-4 h-100">
+                        <div class="text-primary fs-3 mb-2"><i class="bi bi-speedometer2"></i></div>
+                        <h5 class="fw-bold">1. Shannon Entropy Engine</h5>
+                        <p class="text-muted small">Quantifies diagnostic uncertainty \(H(D) = -\sum P(d) \log_2 P(d)\) preventing premature lock-in and surfacing missing clinical context.</p>
+                        <button class="btn btn-link btn-sm text-primary p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalEntropy">Learn Technical Contribution &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="arch-step-box p-4 h-100">
+                        <div class="text-info fs-3 mb-2"><i class="bi bi-question-diamond-fill"></i></div>
+                        <h5 class="fw-bold">2. Information Gain Optimizer</h5>
+                        <p class="text-muted small">Selects the single optimal question that maximizes expected entropy reduction between competing disease hypotheses.</p>
+                        <button class="btn btn-link btn-sm text-info p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalInfoGain">Learn Technical Contribution &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="arch-step-box p-4 h-100">
+                        <div class="text-success fs-3 mb-2"><i class="bi bi-funnel-fill"></i></div>
+                        <h5 class="fw-bold">3. Minimum Test Optimization</h5>
+                        <p class="text-muted small">Multi-objective Pareto knapsack optimizer selects lowest-cost, zero-redundancy test combinations with strict emergency overrides.</p>
+                        <button class="btn btn-link btn-sm text-success p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalMinTest">Learn Technical Contribution &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="arch-step-box p-4 h-100">
+                        <div class="text-warning fs-3 mb-2"><i class="bi bi-diagram-3-fill"></i></div>
+                        <h5 class="fw-bold">4. Explainable Decision Map</h5>
+                        <p class="text-muted small">Replaces opaque confidence percentages with granular positive (+18, +24) and negative (-10) numerical feature attributions.</p>
+                        <button class="btn btn-link btn-sm text-warning p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalXAI">Learn Technical Contribution &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="arch-step-box p-4 h-100">
+                        <div class="text-danger fs-3 mb-2"><i class="bi bi-arrows-angle-expand"></i></div>
+                        <h5 class="fw-bold">5. Doctor-AI Disagreement Engine</h5>
+                        <p class="text-muted small">When physician and AI diverge, captures a standardized Clinical Disagreement Record categorizing clinical evidence and exam findings.</p>
+                        <button class="btn btn-link btn-sm text-danger p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalDisagreement">Learn Technical Contribution &rarr;</button>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="arch-step-box p-4 h-100">
+                        <div class="text-secondary fs-3 mb-2"><i class="bi bi-arrow-clockwise"></i></div>
+                        <h5 class="fw-bold">6. Closed-Loop Outcome Verification</h5>
+                        <p class="text-muted small">Executes 3-way reconciliation (AI \(\leftrightarrow\) Doctor \(\leftrightarrow\) Ground Truth Lab/Outcome) to continuously calibrate prior models.</p>
+                        <button class="btn btn-link btn-sm text-secondary p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#modalLoop">Learn Technical Contribution &rarr;</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SYSTEM ARCHITECTURE FLOWCHART DIAGRAM -->
+    <section id="architecture" class="py-5 bg-white border-bottom">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-diagram-2-fill me-1"></i> Technical Architecture
+                </span>
+                <h2 class="fw-bold">End-to-End System Architecture</h2>
+                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
+                    Closed-loop diagnostic computation integrated with off-chain encrypted medical vaults and an immutable SHA-256 blockchain verification anchor.
+                </p>
+            </div>
+
+            <!-- Architecture Diagram -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-light">
+                <div class="row g-3 text-center align-items-center">
+                    <div class="col-lg-2 col-md-4">
+                        <div class="p-3 bg-white border rounded-3 shadow-sm">
+                            <i class="bi bi-person-circle fs-3 text-primary mb-1"></i>
+                            <h6 class="fw-bold mb-1">1. Patient Intake</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Symptoms, Vitals, Voice (6 Languages)</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-1 col-md-2 text-muted fs-4 d-none d-md-block"><i class="bi bi-arrow-right"></i></div>
+
+                    <div class="col-lg-2 col-md-4">
+                        <div class="p-3 bg-white border rounded-3 shadow-sm border-primary">
+                            <i class="bi bi-cpu fs-3 text-info mb-1"></i>
+                            <h6 class="fw-bold mb-1">2. Decision Loop</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Entropy \(\rightarrow\) Info Gain \(\rightarrow\) Min Tests</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-1 col-md-2 text-muted fs-4 d-none d-md-block"><i class="bi bi-arrow-right"></i></div>
+
+                    <div class="col-lg-2 col-md-4">
+                        <div class="p-3 bg-white border rounded-3 shadow-sm">
+                            <i class="bi bi-hospital fs-3 text-success mb-1"></i>
+                            <h6 class="fw-bold mb-1">3. Doctor Review</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Explainable Map & Disagreement Log</small>
+                        </div>
+                    </div>
+                    <div class="col-lg-1 col-md-2 text-muted fs-4 d-none d-md-block"><i class="bi bi-arrow-right"></i></div>
+
+                    <div class="col-lg-3 col-md-6">
+                        <div class="p-3 bg-white border rounded-3 shadow-sm border-danger">
+                            <i class="bi bi-shield-lock-fill fs-3 text-danger mb-1"></i>
+                            <h6 class="fw-bold mb-1">4. Verifiable Passport</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">Off-Chain Encrypted + On-Chain SHA-256 Hash</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dual Storage Clarification Banner -->
+                <div class="row mt-4 g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-white rounded-3 border">
+                            <h6 class="fw-bold text-success mb-1"><i class="bi bi-cloud-arrow-up-fill me-1"></i> Off-Chain Storage (Encrypted)</h6>
+                            <p class="small text-muted mb-0">High-resolution CT/MRI scans, lab reports, doctor clinical notes, and full patient history remain securely encrypted via AES-256 GCM in patient-isolated vaults. Zero health data is ever exposed publicly.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-white rounded-3 border">
+                            <h6 class="fw-bold text-primary mb-1"><i class="bi bi-link-45deg me-1"></i> On-Chain Blockchain Anchor</h6>
+                            <p class="small text-muted mb-0">Only cryptographic SHA-256 state hashes, Merkle roots, access consent grants, revocation events, and break-glass emergency overrides are anchored immutably to guarantee non-repudiation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TRADITIONAL VS OUR SYSTEM COMPARISON GRID -->
+    <section id="comparison" class="py-5 bg-light border-bottom">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-check2-all me-1"></i> Clear Contrast
+                </span>
+                <h2 class="fw-bold">Traditional Healthcare vs Our Intelligent Health Passport</h2>
+                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
+                    How our invention transforms fragmented, opaque, and over-tested healthcare into a mathematically rigorous, patient-controlled paradigm.
+                </p>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 comparison-table">
+                        <thead>
+                            <tr>
+                                <th class="p-3" style="width: 22%;">Feature Dimension</th>
+                                <th class="p-3 text-danger-emphasis bg-danger-subtle" style="width: 39%;">Traditional AI / Telemedicine Systems</th>
+                                <th class="p-3 text-success-emphasis bg-success-subtle" style="width: 39%;">Our Intelligent Health Passport</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold p-3">Symptom Assessment</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Static chatbot keyword matching; premature disease guess with arbitrary % score.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Adaptive Shannon Entropy engine quantifies uncertainty (0-100%) and identifies missing dimensions.</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold p-3">Follow-up Questions</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Pre-fixed boilerplate questionnaire regardless of initial responses.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Calculates Information Gain \(IG(Q)\) to dynamically ask the single question that splits competing hypotheses.</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold p-3">Diagnostic Testing</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Broad, expensive test batteries causing financial toxicity and radiation over-exposure.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Pareto-optimized Minimum Diagnostic Test Set selects smallest, lowest-cost combination with safety overrides.</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold p-3">Decision Transparency</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Black-box opaque predictions ("Condition X: 78%"). Doctors don't know why.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Explainable Health Decision Map reveals positive (+18, +24) and negative (-10) numerical factor attributions.</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold p-3">Doctor Divergence</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Physician silently overrides or ignores AI; no record kept, zero system learning.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Standardized Clinical Disagreement Record captures divergence rationale and feeds 3-way reconciliation loop.</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold p-3">Emergency Access</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Paper cards or all-or-nothing logins exposing full history to bystanders.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Dynamic Emergency Passport enforces 4-tier selective disclosure with live 15-minute auto-expiring tokens.</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold p-3">Blockchain Integrity</td>
+                                <td class="text-muted p-3"><i class="bi bi-x-circle-fill text-danger me-2"></i>Marketing buzzword or illegal storage of unencrypted PII on public ledgers.</td>
+                                <td class="fw-semibold text-dark p-3"><i class="bi bi-check-circle-fill text-success me-2"></i>Zero health data on-chain; SHA-256 Merkle root verification, 365-day smart consent, and break-glass audit logs.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECURITY & PRIVACY CENTER (Item 19) -->
+    <section id="security" class="py-5 bg-white border-bottom">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-semibold mb-2">
+                    <i class="bi bi-shield-check me-1"></i> Patient Trust & Privacy
+                </span>
+                <h2 class="fw-bold">Security, Cryptography & Privacy Center</h2>
+                <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
+                    Engineered to comply with HIPAA, GDPR, and Indian DPDP guidelines with verifiable mathematical security at every tier.
+                </p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-light">
+                        <div class="card-body">
+                            <div class="text-primary fs-3 mb-2"><i class="bi bi-key-fill"></i></div>
+                            <h5 class="fw-bold">1. AES-256 Off-Chain Vault</h5>
+                            <p class="text-muted small">All sensitive medical reports, diagnostic imaging, and clinical histories are encrypted using AES-256 GCM in isolated patient vaults. Never visible without dynamic cryptographic consent.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-light">
+                        <div class="card-body">
+                            <div class="text-success fs-3 mb-2"><i class="bi bi-link-45deg"></i></div>
+                            <h5 class="fw-bold">2. SHA-256 Blockchain Anchors</h5>
+                            <p class="text-muted small">Every consultation, diagnostic test, and prescription is hashed into a SHA-256 block. Evaluators can verify tamper status in real-time without exposing confidential health records.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-light">
+                        <div class="card-body">
+                            <div class="text-warning fs-3 mb-2"><i class="bi bi-calendar3"></i></div>
+                            <h5 class="fw-bold">3. 365-Day Expiring Consent</h5>
+                            <p class="text-muted small">Patient grants explicit duration permissions (1h, 24h, 7d, 365d). The system proactively notifies patients 30 days before expiration, enabling 1-click renewal or automated purge.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-light">
+                        <div class="card-body">
+                            <div class="text-danger fs-3 mb-2"><i class="bi bi-exclamation-octagon-fill"></i></div>
+                            <h5 class="fw-bold">4. Break-Glass Emergency Audit</h5>
+                            <p class="text-muted small">In life-or-death emergencies, attending trauma surgeons can invoke break-glass access. Requires mandatory justification and writes an immutable audit block alerting the patient instantly.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-light">
+                        <div class="card-body">
+                            <div class="text-info fs-3 mb-2"><i class="bi bi-eye-slash-fill"></i></div>
+                            <h5 class="fw-bold">5. Data Minimization By Design</h5>
+                            <p class="text-muted small">Adheres strictly to the Principle of Least Privilege. First responders only see allergies and blood group; paramedics receive vitals; only trauma specialists access surgical history.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 p-3 bg-light">
+                        <div class="card-body">
+                            <div class="text-dark fs-3 mb-2"><i class="bi bi-person-x-fill"></i></div>
+                            <h5 class="fw-bold">6. Instant 1-Click Revocation</h5>
+                            <p class="text-muted small">Patients retain sovereign ownership of their data. The "Who accessed my data?" dashboard permits instant revocation of any active grant, immediately invalidating bearer tokens.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONSULTING SPECIALISTS SHOWCASE -->
+    <section id="doctors" class="py-5 bg-light border-bottom">
+        <div class="container py-3">
+            <div class="text-center mb-5">
+                <h2 class="fw-bold">Our Verified Consulting Specialists</h2>
+                <p class="text-muted">Physicians with NMC-verified medical licenses, institutional credentials, and explainable AI review clearance.</p>
             </div>
             <div class="row g-4" id="doctorsListContainer">
                 <div class="col-12 text-center py-4">
@@ -240,15 +679,15 @@
         </div>
     </section>
 
-    <!-- Footer -->
+    <!-- FOOTER -->
     <footer class="py-4 bg-dark text-white text-center">
         <div class="container">
             <p class="mb-1 fw-semibold">E-Healthcare System &copy; 2026</p>
-            <small class="text-secondary">Online Consultation, Symptom Analysis, and Medical Prescription Platform.</small>
+            <small class="text-secondary">Intelligent Closed-Loop Health Passport, Verified Medical Records, and Emergency Access Infrastructure.</small>
         </div>
     </footer>
 
-    <!-- Auth Modal (Sign In / Register) -->
+    <!-- AUTH MODAL (Sign In / Register) -->
     <div class="modal fade" id="authModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
@@ -279,6 +718,14 @@
                                 </div>
                                 <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Sign In</button>
                             </form>
+
+                            <div class="mt-3 text-center">
+                                <small class="text-muted d-block mb-2">Quick 1-Click Role Simulation:</small>
+                                <div class="btn-group btn-group-sm w-100">
+                                    <button class="btn btn-outline-success" onclick="loginDemo('patient')"><i class="bi bi-person"></i> Patient Account</button>
+                                    <button class="btn btn-outline-info" onclick="loginDemo('doctor')"><i class="bi bi-hospital"></i> Doctor Portal</button>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Register Tab -->
@@ -340,6 +787,113 @@
         </div>
     </div>
 
+    <!-- TECHNICAL CONTRIBUTION MODALS (Items 1-6) -->
+    <div class="modal fade" id="modalEntropy" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-speedometer2 me-2"></i>Shannon Entropy Engine</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold">Technical Contribution & Novelty:</h6>
+                    <p class="small text-muted">Traditional symptom checkers compute static disease rankings that mislead patients with premature confidence scores. Our engine computes normalized Shannon Entropy across competing diagnoses:</p>
+                    <code class="d-block p-2 bg-light border rounded mb-2">H(D) = - &Sigma; P(d_i) &times; log2(P(d_i))</code>
+                    <p class="small text-muted">When entropy is high (&gt;0.5), it automatically inhibits premature diagnostic declaration, flags critical missing clinical dimensions, and activates targeted discriminative questioning.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalInfoGain" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-question-diamond-fill me-2"></i>Information Gain Optimizer</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold">Technical Contribution & Novelty:</h6>
+                    <p class="small text-muted">Rather than asking a static, bloated 20-question questionnaire, the system simulates all candidate inquiries and selects the question with maximum expected Information Gain:</p>
+                    <code class="d-block p-2 bg-light border rounded mb-2">IG(Q) = H(D) - &Sigma; P(a) &times; H(D | Q=a)</code>
+                    <p class="small text-muted">This guarantees minimal cognitive fatigue for patients in distress while maximally splitting competing differential hypotheses.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalMinTest" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-funnel-fill me-2"></i>Minimum Diagnostic Test Set</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold">Technical Contribution & Novelty:</h6>
+                    <p class="small text-muted">Formulates diagnostic testing as a multi-objective Pareto optimization problem: maximizing diagnostic information gain while minimizing patient out-of-pocket costs and physical invasiveness:</p>
+                    <code class="d-block p-2 bg-light border rounded mb-2">min &Sigma; Cost(t) &times; x_i  s.t.  &Sigma; InfoGain(t) &ge; &Theta;_threshold</code>
+                    <p class="small text-muted">Enforces deterministic safety overrides: any suspected cardiac, stroke, or pulmonary embolism condition triggers mandatory priority lab/ECG recommendations regardless of cost.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalXAI" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-diagram-3-fill me-2"></i>Explainable Decision Map</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold">Technical Contribution & Novelty:</h6>
+                    <p class="small text-muted">Opaque AI percentages are dangerous in clinical medicine. Our Explainable Health Decision Map provides bidirectional numerical factor attributions for every symptom, comorbidity, and lab parameter:</p>
+                    <div class="p-2 bg-light border rounded small mb-2">
+                        <span class="text-success fw-bold">+24</span> (Troponin elevation) &bull; <span class="text-success fw-bold">+18</span> (Left arm pain) &bull; <span class="text-danger fw-bold">-10</span> (Normal resting ECG)
+                    </div>
+                    <p class="small text-muted">Gives reviewing physicians clear visibility into exactly which clinical evidence drove the AI's risk assessment.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDisagreement" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-arrows-angle-expand me-2"></i>Doctor-AI Disagreement Engine</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold">Technical Contribution & Novelty:</h6>
+                    <p class="small text-muted">When a doctor diagnoses Condition B while the AI predicted Condition A, the system does not simply erase the AI prediction. It logs an immutable Clinical Disagreement Record capturing:</p>
+                    <ul class="small text-muted mb-2">
+                        <li>AI probability distribution and reasoning</li>
+                        <li>Doctor clinical exam override rationale</li>
+                        <li>Tests and biomarkers reviewed</li>
+                    </ul>
+                    <p class="small text-muted">This creates the necessary supervisory dataset for closed-loop machine learning calibration.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalLoop" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-arrow-clockwise me-2"></i>Closed-Loop Learning Loop</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <h6 class="fw-bold">Technical Contribution & Novelty:</h6>
+                    <p class="small text-muted">Closes the diagnostic loop through 3-way reconciliation: AI Prediction \(\leftrightarrow\) Doctor Decision \(\leftrightarrow\) Confirmed Ground Truth Outcome (from follow-up pathology, biopsy, or imaging). Automatically attributes model errors (Missing Symptom, Weighting Error, or Atypical Presentation) to continually calibrate Bayesian priors.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/api.js"></script>
@@ -349,12 +903,26 @@
             if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
         }
 
+        function scrollToId(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }
+
         function toggleDoctorFields(isDoctor) {
             const el = document.getElementById('doctorFields');
             if (isDoctor) {
                 el.classList.remove('d-none');
             } else {
                 el.classList.add('d-none');
+            }
+        }
+
+        function navigateToPortal(role) {
+            const user = API.getUser();
+            if (user) {
+                window.location.href = user.role === 'doctor' ? '/doctor' : '/patient';
+            } else {
+                window.location.href = '/patient';
             }
         }
 
@@ -425,6 +993,91 @@
             }
         }
 
+        // ========================================================
+        // DYNAMIC EMERGENCY PASSPORT SELECTIVE DISCLOSURE SIMULATOR
+        // ========================================================
+        const ROLE_DISCLOSURES = {
+            first: {
+                title: "ROLE: FIRST RESPONDER (PUBLIC / BYSTANDER)",
+                badgeClass: "badge bg-danger text-white",
+                rows: [
+                    { dim: "Blood Group", val: "<span class='badge bg-danger fs-6'>O+ (Universal Donor)</span>", rule: "Public Emergency Clearance" },
+                    { dim: "Critical Drug Allergies", val: "<strong class='text-danger'>⚠ Penicillin (Fatal Anaphylaxis Warning), Sulfa</strong>", rule: "Life-Saving Minimization" },
+                    { dim: "Active Medications", val: "<span class='text-muted'><i class='bi bi-lock-fill'></i> Redacted (Requires ALS Paramedic Clearance)</span>", rule: "Privacy Redacted" },
+                    { dim: "Full Medical History", val: "<span class='text-muted'><i class='bi bi-lock-fill'></i> Redacted (Requires Emergency Physician Clearance)</span>", rule: "Privacy Redacted" },
+                    { dim: "Emergency Contact", val: "Sarah Doe (+91 98765 43210 - Spouse)", rule: "Next-of-Kin Alert" }
+                ]
+            },
+            paramedic: {
+                title: "ROLE: ALS PARAMEDIC / AMBULANCE CREW",
+                badgeClass: "badge bg-warning text-dark",
+                rows: [
+                    { dim: "Blood Group", val: "<span class='badge bg-danger fs-6'>O+</span>", rule: "Disclosed" },
+                    { dim: "Critical Drug Allergies", val: "<strong class='text-danger'>Penicillin, Sulfa</strong>", rule: "Disclosed" },
+                    { dim: "Active Medications", val: "<strong>Metformin 500mg, Lisinopril 10mg, Aspirin 75mg</strong>", rule: "ALS Medication Safety" },
+                    { dim: "Emergency Vitals", val: "<span class='badge bg-primary me-1'>HR 104 bpm</span> <span class='badge bg-info me-1'>BP 142/88</span> <span class='badge bg-success'>SpO2 96%</span>", rule: "Live IoT Stream" },
+                    { dim: "Major Conditions", val: "Type 2 Diabetes, Mild Hypertension", rule: "Field Diagnostic Support" },
+                    { dim: "Psych / Genetic Records", val: "<span class='text-muted'><i class='bi bi-lock-fill'></i> Strictly Redacted</span>", rule: "Off-Limits" }
+                ]
+            },
+            er: {
+                title: "ROLE: EMERGENCY TRAUMA PHYSICIAN",
+                badgeClass: "badge bg-primary text-white",
+                rows: [
+                    { dim: "Full Emergency Summary", val: "<strong>Complete Cardiovascular & Metabolic Trauma Baseline</strong>", rule: "ER Full Access" },
+                    { dim: "Blood & Cross-Match", val: "O+ (2 Units Packed RBC Cross-Match Pre-Alerted)", rule: "Blood Bank Sync" },
+                    { dim: "Critical Allergies & Meds", val: "Penicillin (Anaphylaxis), Metformin, Lisinopril", rule: "Active Contraindications" },
+                    { dim: "Recent Labs & Imaging", val: "Troponin I: 0.08 ng/mL, 12-Lead ECG: Normal Sinus (15 Sep 2026)", rule: "Hospital EHR Link" },
+                    { dim: "Surgical / Implants", val: "None recorded", rule: "Surgical History" }
+                ]
+            },
+            specialist: {
+                title: "ROLE: CONSULTING SPECIALIST (CARDIOLOGIST)",
+                badgeClass: "badge bg-success text-white",
+                rows: [
+                    { dim: "Domain Scope", val: "<strong>Targeted Cardiovascular & Pulmonary Diagnostics Only</strong>", rule: "Domain Minimization" },
+                    { dim: "Cardiology Timeline", val: "Sep 2026: Exertional Dyspnea evaluation; Aug 2026: Holter monitor normal", rule: "Longitudinal Timeline" },
+                    { dim: "Echocardiogram", val: "LVEF 58%, Mild Diastolic Dysfunction", rule: "Verified Radiology" },
+                    { dim: "Unrelated History", val: "<span class='text-muted'><i class='bi bi-lock-fill'></i> Redacted (Dermatology, Psych, GI records hidden)</span>", rule: "Need-to-Know Rule" }
+                ]
+            }
+        };
+
+        function setEmergencyRole(roleKey) {
+            // Update active buttons
+            document.querySelectorAll('.role-pill-btn').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById('roleBtn-' + roleKey);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const roleData = ROLE_DISCLOSURES[roleKey] || ROLE_DISCLOSURES.first;
+            const badge = document.getElementById('activeRoleBadge');
+            badge.className = roleData.badgeClass;
+            badge.textContent = roleData.title;
+
+            const tbody = document.getElementById('disclosureTableBody');
+            tbody.innerHTML = roleData.rows.map(r => `
+                <tr>
+                    <td class="fw-semibold text-secondary small">${r.dim}</td>
+                    <td>${r.val}</td>
+                    <td><span class="badge bg-light text-dark border small">${r.rule}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Live Emergency Countdown Timer (14:59 ticking down)
+        let totalSeconds = 14 * 60 + 59;
+        function updateEmergencyTimer() {
+            if (totalSeconds <= 0) {
+                totalSeconds = 15 * 60; // reset
+            }
+            totalSeconds--;
+            const mins = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+            const secs = (totalSeconds % 60).toString().padStart(2, '0');
+            const el = document.getElementById('emergencyLiveCountdown');
+            if (el) el.textContent = `${mins}:${secs}`;
+        }
+        setInterval(updateEmergencyTimer, 1000);
+
         async function loadDoctors() {
             try {
                 const doctors = await API.get('/api/doctors');
@@ -444,6 +1097,9 @@
                             <span class="badge bg-primary-subtle text-primary mb-2">${d.specialization}</span>
                             <p class="small text-muted mb-2">${d.qualification} • ${d.experience_years} yrs exp</p>
                             <small class="text-secondary d-block mb-3"><i class="bi bi-geo-alt"></i> ${d.hospital_affiliation}</small>
+                            <div class="mb-3">
+                                <span class="badge bg-success-subtle text-success small"><i class="bi bi-patch-check-fill"></i> NMC Verified</span>
+                            </div>
                             <button class="btn btn-outline-primary btn-sm rounded-pill mt-auto" onclick="openAuthTab('login'); bootstrap.Modal.getOrCreateInstance(document.getElementById('authModal')).show();">
                                 Book Consultation
                             </button>
@@ -455,17 +1111,18 @@
             }
         }
 
-        // On page load check session
+        // Initialize page
         window.addEventListener('DOMContentLoaded', () => {
             const user = API.getUser();
             if (user) {
                 const navAuthArea = document.getElementById('navAuthArea');
                 const dest = user.role === 'doctor' ? '/doctor' : '/patient';
                 navAuthArea.innerHTML = `
-                    <a href="${dest}" class="btn btn-primary"><i class="bi bi-speedometer2"></i> My Dashboard (${user.role})</a>
-                    <button onclick="API.logout()" class="btn btn-outline-secondary"><i class="bi bi-box-arrow-right"></i> Logout</button>
+                    <a href="${dest}" class="btn btn-primary btn-sm"><i class="bi bi-speedometer2"></i> My Dashboard (${user.role})</a>
+                    <button onclick="API.logout()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-box-arrow-right"></i> Logout</button>
                 `;
             }
+            setEmergencyRole('first');
             loadDoctors();
         });
     </script>

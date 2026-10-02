@@ -19,12 +19,23 @@
                 <span>AI Health Navigator</span>
                 <span class="badge bg-info-subtle text-info border border-info-subtle ms-2 fs-6">Clinician Portal</span>
             </a>
-            <div class="ms-auto d-flex align-items-center gap-3">
-                <div class="text-end d-none d-sm-block">
-                    <span class="fw-bold text-dark d-block" id="docNameDisplay">Dr. Sarah Sharma</span>
-                    <small class="text-muted" id="docSpecDisplay">Pulmonology Specialist</small>
+            <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+                <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#docBreakGlassModal">
+                    <i class="bi bi-shield-slash-fill me-1"></i> 🚨 Break-Glass Override
+                </button>
+                <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#docRequestConsentModal">
+                    <i class="bi bi-key-fill me-1"></i> Request Patient Consent
+                </button>
+                <div class="text-end d-none d-md-block ms-2">
+                    <div class="d-flex align-items-center gap-1 justify-content-end">
+                        <span class="fw-bold text-dark" id="docNameDisplay">Dr. Sarah Sharma</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle small cursor-pointer" onclick="showDoctorLicenseModal()" style="cursor: pointer;" title="Verified by State Medical Council">
+                            <i class="bi bi-patch-check-fill text-success"></i> NMC #MCI-2018-98421
+                        </span>
+                    </div>
+                    <small class="text-muted d-block" id="docSpecDisplay">Pulmonology Specialist &bull; Apex Hospital</small>
                 </div>
-                <button class="btn btn-outline-danger btn-sm" onclick="API.logout()">
+                <button class="btn btn-outline-danger btn-sm ms-1" onclick="API.logout()">
                     <i class="bi bi-box-arrow-right"></i> Sign Out
                 </button>
             </div>
@@ -556,8 +567,157 @@
                     <img id="docPreviewImg" src="" alt="Medical Scan" class="img-fluid rounded" style="max-height: 80vh;">
                 </div>
             </div>
+    <!-- Emergency Break-Glass Unconsented Override Modal (Item 8 in Spec) -->
+    <div class="modal fade" id="docBreakGlassModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-slash-fill me-2"></i>Emergency Break-Glass Clinical Override</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>CRITICAL LEGAL & AUDIT PROTOCOL:</strong> Break-glass access grants immediate unconsented decryption of emergency medical records. This event will be permanently written to the patient's blockchain ledger with your physician ID and hospital bay.
+                    </div>
+
+                    <form id="docBreakGlassForm" onsubmit="executeDoctorBreakGlass(event)">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Select / Enter Patient ID</label>
+                                <input type="number" id="bgPatientId" class="form-control" value="4" required>
+                                <small class="text-muted">Default patient (John Doe ID: 4)</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Emergency Location / Department</label>
+                                <input type="text" id="bgHospital" class="form-control" value="Apex Super-Specialty ER Trauma Bay 1" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Mandatory Clinical Justification Reason (Required):</label>
+                            <textarea id="bgJustification" class="form-control" rows="2" placeholder="e.g. Unconscious polytrauma victim, GCS 7, acute hypotension, unable to obtain verbal consent. Immediate allergy and cross-match verification required." required></textarea>
+                            <small class="text-secondary">Minimum 10 characters describing life-threatening emergency.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold d-block">Emergency Data Scope Requested:</label>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="bgScopeAllergies" checked disabled>
+                                <label class="form-check-label small" for="bgScopeAllergies">Blood Group & Anaphylactic Allergies</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="bgScopeMeds" checked>
+                                <label class="form-check-label small" for="bgScopeMeds">Active Medications & Vitals</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="bgScopeCardio" checked>
+                                <label class="form-check-label small" for="bgScopeCardio">Cardiovascular / Trauma Baseline</label>
+                            </div>
+                        </div>
+
+                        <div id="bgOutputResult" class="d-none p-3 bg-light rounded-3 border mb-3">
+                            <!-- Injected after override execution -->
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-danger fw-semibold px-4" id="btnSubmitBreakGlass">
+                                <i class="bi bi-shield-slash-fill me-1"></i> Authorize & Decrypt Records
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Doctor License Verification Modal (Item 12 in Spec) -->
+    <div class="modal fade" id="docLicenseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-patch-check-fill me-2"></i>Medical License & Credential Verification</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="rounded-circle bg-success-subtle text-success mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2.2rem;">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">Dr. Sarah Sharma, MD, DM</h5>
+                    <span class="badge bg-success-subtle text-success fs-6 mb-3">ACTIVE & VERIFIED REGISTRATION</span>
+
+                    <div class="p-3 bg-light rounded-3 border text-start small mb-3">
+                        <div class="mb-1"><strong>Registration License:</strong> <code class="text-dark">MCI-2018-98421</code></div>
+                        <div class="mb-1"><strong>Regulatory Authority:</strong> National Medical Commission (NMC) / Karnataka Medical Council</div>
+                        <div class="mb-1"><strong>Primary Specialty:</strong> Pulmonology & Critical Care Medicine</div>
+                        <div class="mb-1"><strong>Hospital Clearance:</strong> Chief of Respiratory ICU, Apex Super-Specialty Hospital</div>
+                        <div class="mb-1"><strong>Verification Status:</strong> <span class="text-success fw-bold">✓ Valid through 2029</span></div>
+                        <div><strong>Cryptographic Seal:</strong> <code class="text-primary small">NMC-SIG-849201-RSA2048-VALID</code></div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-success btn-sm w-100" data-bs-dismiss="modal">
+                        Close Verification View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor Granular Consent Request Modal (Doctor Side) -->
+    <div class="modal fade" id="docRequestConsentModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-key-fill me-2"></i>Request Patient Health Consent</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="docRequestConsentForm" onsubmit="submitDoctorConsentRequest(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Target Patient ID / Universal Health ID:</label>
+                            <input type="number" id="docReqPatientId" class="form-control" value="4" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Clinical Purpose:</label>
+                            <input type="text" id="docReqPurpose" class="form-control" value="Comprehensive Clinical Consultation & Diagnostic Workup" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold d-block">Requested Record Scopes:</label>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="dreqHistory" checked>
+                                <label class="form-check-label small" for="dreqHistory">Medical History & Prior Consultations</label>
+                            </div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="dreqLabs" checked>
+                                <label class="form-check-label small" for="dreqLabs">Laboratory Reports & Radiology Scans</label>
+                            </div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="dreqMental">
+                                <label class="form-check-label small text-muted" for="dreqMental">Mental Health Notes (Requires elevated consent)</label>
+                            </div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input" type="checkbox" id="dreqGenetic">
+                                <label class="form-check-label small text-muted" for="dreqGenetic">Genomic / Genetic Sequencing</label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label small fw-bold">Requested Duration:</label>
+                            <select id="docReqHours" class="form-select">
+                                <option value="24" selected>24 Hours (Appointment Window)</option>
+                                <option value="168">7 Days (Care Plan & Follow-Up)</option>
+                                <option value="8760">365 Days (Longitudinal Monitoring)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-semibold" id="btnSubmitDocReq">
+                            <i class="bi bi-send-fill me-1"></i> Send Granular Consent Request to Patient
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Bootstrap Bundle & Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

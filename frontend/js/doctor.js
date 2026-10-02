@@ -797,3 +797,94 @@ async function submitOutcomeVerification(e) {
 }
 
 
+// ===================================================================
+// 7. BREAK-GLASS EMERGENCY OVERRIDE & LICENSE VERIFICATION CONTROLLER
+// ===================================================================
+
+async function executeDoctorBreakGlass(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitBreakGlass');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Recording Emergency Override Block...`;
+
+    const patientId = parseInt(document.getElementById('bgPatientId').value);
+    const hospital = document.getElementById('bgHospital').value;
+    const justification = document.getElementById('bgJustification').value.trim();
+
+    try {
+        const res = await API.post('/api/blockchain/break-glass', {
+            patient_id: patientId,
+            hospital: hospital,
+            justification: justification,
+            data_requested: "Critical Allergies, Blood Group, Active Medications, Trauma Baseline"
+        });
+
+        const outBox = document.getElementById('bgOutputResult');
+        outBox.classList.remove('d-none');
+        outBox.innerHTML = `
+            <div class="alert alert-success py-2 mb-2 small">
+                <i class="bi bi-shield-check me-1"></i>
+                <strong>BREAK-GLASS OVERRIDE AUTHORIZED:</strong> Recorded immutably at Block #${res.block_index} (2-Hour Window).
+            </div>
+            <div class="p-3 bg-white rounded border">
+                <h6 class="fw-bold text-danger mb-2"><i class="bi bi-heart-pulse-fill me-1"></i> Decrypted Emergency Baseline: ${res.emergency_data.patient_name}</h6>
+                <div class="row g-2 small">
+                    <div class="col-6"><strong>Blood Group:</strong> <span class="badge bg-danger fs-6">${res.emergency_data.blood_group}</span></div>
+                    <div class="col-6"><strong>Critical Allergies:</strong> <span class="text-danger fw-bold">${res.emergency_data.drug_allergies}</span></div>
+                    <div class="col-6"><strong>Active Medications:</strong> ${res.emergency_data.current_medications}</div>
+                    <div class="col-6"><strong>Chronic Conditions:</strong> ${res.emergency_data.pre_existing_conditions}</div>
+                    <div class="col-12 text-muted"><strong>Emergency Next-of-Kin:</strong> ${res.emergency_data.emergency_contact}</div>
+                </div>
+            </div>
+        `;
+        alert(`🚨 Break-Glass Override Granted!\nPatient: ${res.emergency_data.patient_name}\nBlock Index: #${res.block_index}\nImmutable audit notification dispatched to patient.`);
+    } catch (err) {
+        alert("Break-Glass Error: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-shield-slash-fill me-1"></i> Authorize & Decrypt Records`;
+    }
+}
+
+function showDoctorLicenseModal() {
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('docLicenseModal'));
+    modal.show();
+}
+
+async function submitDoctorConsentRequest(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitDocReq');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Transmitting Request...`;
+
+    const patientId = parseInt(document.getElementById('docReqPatientId').value);
+    const purpose = document.getElementById('docReqPurpose').value;
+    const hours = parseInt(document.getElementById('docReqHours').value);
+
+    const categories = [];
+    if (document.getElementById('dreqHistory').checked) categories.push('medical_history');
+    if (document.getElementById('dreqLabs').checked) categories.push('lab_reports');
+    if (document.getElementById('dreqMental').checked) categories.push('mental_health');
+    if (document.getElementById('dreqGenetic').checked) categories.push('genetic_data');
+
+    try {
+        const res = await API.post('/api/blockchain/doctor-request-consent', {
+            patient_id: patientId,
+            purpose: purpose,
+            requested_categories: categories,
+            duration_hours: hours
+        });
+
+        alert(`✓ Consent Request Transmitted to Patient #${patientId}!\nCategories: ${categories.join(', ')}\nDuration: ${hours} hours.\nAwaiting patient approval in their sovereign vault.`);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('docRequestConsentModal'));
+        if (modal) modal.hide();
+    } catch (err) {
+        alert("Error sending consent request: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-send-fill me-1"></i> Send Granular Consent Request to Patient`;
+    }
+}
+
+
+
