@@ -31,7 +31,10 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="AI Personal Health Navigator & Multimodal Triage System",
     description="Adaptive AI health triage, IoT vitals telemetry, blockchain health ledger, predictive care, indoor hospital navigation, emergency response, and community preventive health system.",
-    version="3.0.0"
+    version="3.0.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
 )
 
 # CORS configuration
