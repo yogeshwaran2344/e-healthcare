@@ -88,19 +88,8 @@
                         <small class="text-muted">Manage segregated medical records and permissions across household members</small>
                     </div>
                 </div>
-                <div class="btn-group btn-group-sm flex-wrap" role="group" id="familyVaultBtnGroup">
-                    <button type="button" class="btn btn-outline-primary active" id="fVault-self" onclick="switchFamilyVault('self')">
-                        <i class="bi bi-person-check-fill me-1"></i> Self (John Doe - 35y)
-                    </button>
-                    <button type="button" class="btn btn-outline-primary" id="fVault-child" onclick="switchFamilyVault('child')">
-                        <i class="bi bi-balloon-fill me-1"></i> Child (Aarav - 7y)
-                    </button>
-                    <button type="button" class="btn btn-outline-primary" id="fVault-parent" onclick="switchFamilyVault('parent')">
-                        <i class="bi bi-heart-pulse me-1"></i> Parent (Saraswathi - 68y)
-                    </button>
-                    <button type="button" class="btn btn-outline-primary" id="fVault-spouse" onclick="switchFamilyVault('spouse')">
-                        <i class="bi bi-person-heart me-1"></i> Spouse (Priya - 34y)
-                    </button>
+                <div class="d-flex align-items-center flex-wrap gap-2" id="familyVaultBtnGroup">
+                    <!-- Dynamically rendered by renderFamilyVaultButtons() -->
                 </div>
             </div>
         </div>
@@ -1966,9 +1955,14 @@
                         <h4 class="fw-bold mb-1 text-purple"><i class="bi bi-alarm-fill me-2"></i>Smart Adaptive Reminders & Caregiver Alerts</h4>
                         <p class="text-muted small mb-0">AI adjusts reminder timing based on patient behavioral habits, and prioritizes tiered caregiver alerts based on predictive health risk.</p>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm" onclick="loadAdaptiveRemindersTab()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Behavioral AI
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadAdaptiveRemindersTab()">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Behavioral AI
+                        </button>
+                        <button class="btn btn-sm text-white fw-semibold" style="background-color: #6f42c1;" onclick="openAddReminderModal()">
+                            <i class="bi bi-plus-lg me-1"></i> + Add Reminder
+                        </button>
+                    </div>
                 </div>
 
                 <div class="row g-4 mb-4">
@@ -2367,6 +2361,109 @@
                             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                             <button type="submit" class="btn btn-success btn-sm fw-semibold px-3">
                                 <i class="bi bi-check2-circle me-1"></i> Save &amp; Dispatch Test SMS
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    <!-- Add Family Member Modal -->
+    <div class="modal fade" id="addFamilyMemberModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-primary text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-person-plus-fill me-2"></i>Add Family Member to Health Vault
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="addFamilyMemberForm" onsubmit="saveNewFamilyMember(event)">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-7">
+                                <label class="form-label small fw-semibold">Full Name</label>
+                                <input type="text" id="fMemName" class="form-control" placeholder="e.g. Ramesh Sharma" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label small fw-semibold">Relationship</label>
+                                <select id="fMemRelation" class="form-select" required>
+                                    <option value="Spouse">Spouse</option>
+                                    <option value="Child">Child</option>
+                                    <option value="Parent">Parent</option>
+                                    <option value="Sibling">Sibling</option>
+                                    <option value="Dependent">Dependent</option>
+                                    <option value="Other">Other Family Member</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Age</label>
+                                <input type="number" id="fMemAge" class="form-control" placeholder="e.g. 32" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Blood Group</label>
+                                <input type="text" id="fMemBlood" class="form-control" placeholder="e.g. O+, A-, B+">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Records Count</label>
+                                <input type="number" id="fMemRecords" class="form-control" value="0" min="0">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Known Drug Allergies</label>
+                            <input type="text" id="fMemAllergies" class="form-control" placeholder="e.g. None known, Penicillin, etc.">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Active Medications</label>
+                            <input type="text" id="fMemMeds" class="form-control" placeholder="e.g. Metformin 500mg, Vitamins, None">
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary btn-sm fw-semibold px-3">
+                                <i class="bi bi-check2-circle me-1"></i> Save to Sovereign Vault
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Medication Reminder Modal -->
+    <div class="modal fade" id="addReminderModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom text-white" style="background-color: #6f42c1;">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-alarm-fill me-2"></i>Add Smart Medication Reminder
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="addReminderForm" onsubmit="saveNewReminder(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Medicine Name</label>
+                            <input type="text" id="remMedName" class="form-control" placeholder="e.g. Amoxicillin, Metformin" required>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Dosage</label>
+                                <input type="text" id="remDosage" class="form-control" placeholder="e.g. 500mg, 1 tablet" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Medical Condition / Purpose</label>
+                                <input type="text" id="remCondition" class="form-control" placeholder="e.g. Infection, Diabetes">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Prescribed Time</label>
+                            <input type="time" id="remTime" class="form-control" value="08:00" required>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary btn-sm fw-semibold px-3" style="background-color: #6f42c1; border-color: #6f42c1;">
+                                <i class="bi bi-check2-circle me-1"></i> Add Smart Reminder
                             </button>
                         </div>
                     </form>

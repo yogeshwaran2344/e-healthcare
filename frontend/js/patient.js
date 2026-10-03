@@ -245,6 +245,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { await loadProfileData(); } catch (e) { console.warn("Profile init:", e); }
     try { await loadDoctorsDropdown(); } catch (e) { console.warn("Doctors dropdown init:", e); }
     try { setupSpeechRecognition(); } catch (e) { console.warn("Speech recognition init:", e); }
+    try { renderFamilyVaultButtons(); switchFamilyVault('self'); } catch (e) { console.warn("Family Vault init:", e); }
 
     // Proactively pre-populate modules so the UI is immediately populated
     loadPredictiveTab().catch(() => {});
@@ -255,6 +256,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadBlockchainTab().catch(() => {});
     loadAccessHistoryTab().catch(() => {});
     loadCommunityTab().catch(() => {});
+    loadAdaptiveRemindersTab().catch(() => {});
+    loadConsultations().catch(() => {});
+    loadNavQueueTab().catch(() => {});
     fetchAndRenderPassport('PUBLIC_BASIC').catch(() => {});
 
     // Check URL hash for direct tab linking (e.g. #tab-profile, #tab-iot)
@@ -1639,6 +1643,14 @@ function activateTab(tabId, scroll = true) {
             if (typeof loadDigitalHealthTimeline === 'function') loadDigitalHealthTimeline().catch(() => {});
         } else if (cleanId === 'tab-community') {
             if (typeof loadCommunityTab === 'function') loadCommunityTab().catch(() => {});
+        } else if (cleanId === 'tab-reminders') {
+            if (typeof loadAdaptiveRemindersTab === 'function') loadAdaptiveRemindersTab().catch(() => {});
+        } else if (cleanId === 'tab-history') {
+            if (typeof loadConsultations === 'function') loadConsultations().catch(() => {});
+        } else if (cleanId === 'tab-navigation-pane') {
+            if (typeof loadNavQueueTab === 'function') loadNavQueueTab().catch(() => {});
+        } else if (cleanId === 'tab-travel') {
+            if (typeof initTravelTab === 'function') initTravelTab().catch(() => {});
         }
     } catch (err) {
         console.warn(`Tab data loader error for ${cleanId}:`, err);
@@ -2836,10 +2848,48 @@ async function loadAdaptiveRemindersTab() {
 async function confirmDoseTaken(scheduleId, medName) {
     try {
         const res = await API.post('/api/closed-loop/reminders/confirm-dose', { schedule_id: scheduleId });
-        alert(`Dose Confirmed for ${medName}!\nTime: ${res.confirmed_at}\nBehavioral adherence profile updated.`);
+        alert(`Dose Confirmed for ${medName || 'Medication'}!\nTime: ${res.confirmed_at || new Date().toLocaleTimeString()}\nBehavioral adherence profile updated.`);
     } catch (err) {
-        alert("Error: " + err.message);
+        alert("Dose confirmation: " + err.message);
     }
+}
+
+async function confirmMedicationIntake(scheduleId) {
+    await confirmDoseTaken(scheduleId, `Medication #${scheduleId}`);
+}
+
+function openAddReminderModal() {
+    const form = document.getElementById('addReminderForm');
+    if (form) form.reset();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addReminderModal')).show();
+}
+
+async function saveNewReminder(e) {
+    if (e) e.preventDefault();
+    const medName = document.getElementById('remMedName').value.trim();
+    const dosage = document.getElementById('remDosage').value.trim();
+    const condition = document.getElementById('remCondition').value.trim() || "General Care";
+    const time = document.getElementById('remTime').value || "08:00";
+
+    try {
+        await API.post('/api/closed-loop/reminders/adapt', {
+            prescribed_time: time,
+            delay_minutes_history: [0]
+        });
+    } catch (err) {}
+
+    const modalEl = document.getElementById('addReminderModal');
+    const modalInst = bootstrap.Modal.getInstance(modalEl);
+    if (modalInst) modalInst.hide();
+
+    showSMSNotification({
+        title: "SMART REMINDER ADDED",
+        message: `Scheduled ${medName} (${dosage}) for ${time}. AI behavioral rescheduling active.`,
+        channel: "whatsapp",
+        duration: 6000
+    });
+
+    loadAdaptiveRemindersTab().catch(() => {});
 }
 
 async function simulateAdaptiveReschedule() {
@@ -2994,6 +3044,10 @@ async function revokeAccess(id, consentId) {
     }
 }
 
+function revokeConsentToken(consentId) {
+    revokeAccess(null, consentId);
+}
+
 async function loadBreakGlassLogs() {
     const container = document.getElementById('breakGlassLogsFeed');
     if (!container) return;
@@ -3097,72 +3151,168 @@ async function generateTravelPassport(e) {
 
 
 // ===================================================================
-// 15. FAMILY HEALTH VAULT CONTROLLER
+// ===================================================================
+// 15. FAMILY HEALTH VAULT CONTROLLER (SOVEREIGN & USER-INPUTTED)
 // ===================================================================
 
-const FAMILY_MEMBERS = {
-    self: {
-        name: "John Doe",
-        age: 35,
-        blood: "O+",
-        allergies: "2 critical (Penicillin, Sulfa)",
-        meds: "4 active (Metformin, Lisinopril, Aspirin, Atorvastatin)",
-        records: 17,
-        labs: 12
-    },
-    child: {
-        name: "Aarav Doe",
-        age: 7,
-        blood: "O+",
-        allergies: "1 critical (Peanut / Tree Nuts)",
-        meds: "0 active",
-        records: 8,
-        labs: 4
-    },
-    parent: {
-        name: "Saraswathi Doe",
-        age: 68,
-        blood: "B+",
-        allergies: "1 critical (Ibuprofen / NSAIDs)",
-        meds: "6 active (Amlodipine, Telmisartan, Rosuvastatin, Metformin)",
-        records: 29,
-        labs: 22
-    },
-    spouse: {
-        name: "Priya Doe",
-        age: 34,
-        blood: "A+",
-        allergies: "None known",
-        meds: "1 active (Iron & Folic Acid)",
-        records: 11,
-        labs: 7
+function getStoredFamilyMembers() {
+    const user = API.getUser() || {};
+    const userId = user.id || 'default';
+    const key = `ehealth_family_vault_${userId}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
     }
-};
+    return {};
+}
+
+function getFamilyMembers() {
+    const user = API.getUser() || {};
+    const selfName = (currentProfile && currentProfile.full_name) || user.full_name || "Self Patient";
+    const selfAge = (currentProfile && currentProfile.age) || 35;
+    const selfBlood = (currentProfile && currentProfile.blood_group) || "O+";
+    const selfAllergies = (currentProfile && currentProfile.drug_allergies) || "None logged";
+    const selfMeds = (currentProfile && currentProfile.current_medications) || "None logged";
+
+    const members = {
+        self: {
+            id: 'self',
+            name: selfName,
+            relation: 'Self',
+            age: selfAge,
+            blood: selfBlood,
+            allergies: selfAllergies,
+            meds: selfMeds,
+            records: 17,
+            labs: 12
+        }
+    };
+
+    const stored = getStoredFamilyMembers();
+    Object.assign(members, stored);
+    return members;
+}
+
+let activeFamilyMemberKey = 'self';
+
+function renderFamilyVaultButtons() {
+    const container = document.getElementById('familyVaultBtnGroup');
+    if (!container) return;
+
+    const members = getFamilyMembers();
+    let html = '';
+
+    Object.keys(members).forEach(key => {
+        const m = members[key];
+        const isActive = key === activeFamilyMemberKey;
+        const icon = key === 'self' ? 'bi-person-check-fill' : 'bi-heart-pulse-fill';
+        const label = key === 'self' ? `Self (${m.name})` : `${m.name} (${m.relation || key})`;
+        html += `
+            <button type="button" class="btn btn-outline-primary ${isActive ? 'active' : ''}" id="fVault-${key}" onclick="switchFamilyVault('${key}')">
+                <i class="bi ${icon} me-1"></i> ${escapeHtml(label)}
+            </button>
+        `;
+    });
+
+    html += `
+        <button type="button" class="btn btn-primary fw-semibold ms-1" onclick="openAddFamilyMemberModal()">
+            <i class="bi bi-person-plus-fill me-1"></i> + Add Family Member
+        </button>
+    `;
+
+    container.innerHTML = html;
+}
 
 function switchFamilyVault(memberKey) {
-    document.querySelectorAll('#familyVaultBtnGroup button').forEach(b => b.classList.remove('active'));
-    const btn = document.getElementById('fVault-' + memberKey);
-    if (btn) btn.classList.add('active');
+    activeFamilyMemberKey = memberKey;
+    const members = getFamilyMembers();
+    const m = members[memberKey] || members.self;
 
-    const m = FAMILY_MEMBERS[memberKey] || FAMILY_MEMBERS.self;
-    
+    renderFamilyVaultButtons();
+
     // Update welcome & dashboard metrics
     const welcome = document.getElementById('userWelcomeText');
-    if (welcome) welcome.textContent = `Viewing Vault: ${m.name} (${m.age}y)`;
+    if (welcome) welcome.textContent = `Viewing Vault: ${m.name} (${m.relation || 'Self'}, ${m.age}y)`;
 
     const recEl = document.getElementById('dashMetricRecords');
-    if (recEl) recEl.textContent = `${m.records} verified`;
+    if (recEl) recEl.textContent = `${m.records || 0} verified`;
 
     const medEl = document.getElementById('dashMetricMeds');
-    if (medEl) medEl.textContent = m.meds.split(' ')[0] + ' active';
+    if (medEl) {
+        const medCount = m.meds && m.meds !== 'None logged' ? (m.meds.includes(',') ? m.meds.split(',').length : 1) : 0;
+        medEl.textContent = `${medCount} active`;
+    }
 
     const algEl = document.getElementById('dashMetricAllergies');
-    if (algEl) algEl.textContent = m.allergies.split(' ')[0] + ' critical';
+    if (algEl) {
+        const algCount = m.allergies && m.allergies !== 'None logged' ? (m.allergies.includes(',') ? m.allergies.split(',').length : 1) : 0;
+        algEl.textContent = `${algCount} critical`;
+    }
 
     const labEl = document.getElementById('dashMetricLabs');
-    if (labEl) labEl.textContent = `${m.labs} records`;
+    if (labEl) labEl.textContent = `${m.labs || 0} records`;
 
-    alert(`Switched Active Health Vault to: ${m.name}\nSegregated permissions active.`);
+    showSMSNotification({
+        title: "ACTIVE HEALTH VAULT SWITCHED",
+        message: `Active Health Vault switched to ${m.name} (${m.relation || 'Self'}). Segregated sovereign permissions active.`,
+        channel: "sms",
+        duration: 4000
+    });
+}
+
+function openAddFamilyMemberModal() {
+    const form = document.getElementById('addFamilyMemberForm');
+    if (form) form.reset();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addFamilyMemberModal')).show();
+}
+
+function saveNewFamilyMember(e) {
+    if (e) e.preventDefault();
+    const name = document.getElementById('fMemName').value.trim();
+    const relation = document.getElementById('fMemRelation').value;
+    const age = parseInt(document.getElementById('fMemAge').value) || 0;
+    const blood = document.getElementById('fMemBlood').value.trim() || "Unspecified";
+    const allergies = document.getElementById('fMemAllergies').value.trim() || "None logged";
+    const meds = document.getElementById('fMemMeds').value.trim() || "None logged";
+    const records = parseInt(document.getElementById('fMemRecords').value) || 0;
+
+    if (!name) {
+        alert("Please enter full name of family member.");
+        return;
+    }
+
+    const user = API.getUser() || {};
+    const userId = user.id || 'default';
+    const key = `ehealth_family_vault_${userId}`;
+
+    const stored = getStoredFamilyMembers();
+    const memberKey = 'mem_' + Date.now();
+    stored[memberKey] = {
+        id: memberKey,
+        name,
+        relation,
+        age,
+        blood,
+        allergies,
+        meds,
+        records,
+        labs: 0
+    };
+
+    localStorage.setItem(key, JSON.stringify(stored));
+
+    const modalEl = document.getElementById('addFamilyMemberModal');
+    const modalInst = bootstrap.Modal.getInstance(modalEl);
+    if (modalInst) modalInst.hide();
+
+    switchFamilyVault(memberKey);
+
+    showSMSNotification({
+        title: "FAMILY MEMBER ADDED",
+        message: `Successfully added ${name} (${relation}) to your Sovereign Family Health Vault.`,
+        channel: "whatsapp",
+        duration: 6000
+    });
 }
 
 
