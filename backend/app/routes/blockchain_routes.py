@@ -266,6 +266,11 @@ async def verify_uploaded_document_file(
     Returns MATCH -> VERIFIED_AUTHENTIC or MISMATCH -> TAMPERING_DETECTED.
     """
     content = await file.read()
+    if not content or len(content) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded document is empty (0 bytes). Cryptographic SHA-256 calculation requires valid file content."
+        )
     computed_file_sha256 = hashlib.sha256(content).hexdigest()
 
     # Locate blockchain block
@@ -300,15 +305,22 @@ async def verify_uploaded_document_file(
             detail="No recorded blockchain integrity anchor found for this report. Ensure the report has been uploaded."
         )
 
-    # Compare computed hash with file bytes stored on disk
-    rep = db.query(MedicalReport).filter(MedicalReport.id == int(block.record_id)).first() if block.record_id.isdigit() else None
-    
+    # Compare computed hash with on-chain immutable hash anchor
     actual_file_hash = None
-    if rep and rep.file_path and os.path.exists(rep.file_path):
-        with open(rep.file_path, "rb") as f:
-            actual_file_hash = hashlib.sha256(f.read()).hexdigest()
-    else:
-        actual_file_hash = block.data_hash
+    try:
+        payload = json.loads(block.data_payload)
+        if isinstance(payload, dict) and "file_sha256" in payload:
+            actual_file_hash = payload["file_sha256"]
+    except Exception:
+        pass
+
+    if not actual_file_hash:
+        rep = db.query(MedicalReport).filter(MedicalReport.id == int(block.record_id)).first() if (block.record_id and block.record_id.isdigit()) else None
+        if rep and rep.file_path and os.path.exists(rep.file_path):
+            with open(rep.file_path, "rb") as f:
+                actual_file_hash = hashlib.sha256(f.read()).hexdigest()
+        else:
+            actual_file_hash = block.data_hash
 
     is_match = (computed_file_sha256 == actual_file_hash)
     sig_valid = (sign_block(block.block_hash) == block.validator_signature)

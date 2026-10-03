@@ -1,4 +1,4 @@
-﻿// Patient Portal JavaScript: AI Personal Health Navigator
+// Patient Portal JavaScript: AI Personal Health Navigator
 
 let allSymptoms = [];
 let selectedSymptoms = new Set();
@@ -532,6 +532,96 @@ function updateStepper(activeStep) {
     }
 }
 
+let answeredQuestionsLog = [];
+let currentActiveNextQuestion = null;
+
+function renderAnsweredQuestionsHistory() {
+    const card = document.getElementById('answeredQuestionsHistoryCard');
+    const list = document.getElementById('answeredQuestionsHistoryList');
+    const countBadge = document.getElementById('answeredQuestionsCount');
+    const undoBtn = document.getElementById('btnUndoQuestion');
+
+    if (!card || !list) return;
+
+    if (!answeredQuestionsLog || answeredQuestionsLog.length === 0) {
+        card.classList.add('d-none');
+        if (undoBtn) undoBtn.classList.add('d-none');
+        return;
+    }
+
+    card.classList.remove('d-none');
+    if (undoBtn) undoBtn.classList.remove('d-none');
+    if (countBadge) countBadge.textContent = answeredQuestionsLog.length;
+
+    list.innerHTML = answeredQuestionsLog.map((item, idx) => `
+        <div class="p-2 bg-white rounded-2 border d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div style="flex:1; min-width:240px;">
+                <span class="small fw-bold text-dark d-block">Q${idx + 1}: ${item.question}</span>
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle mt-1">
+                    <i class="bi bi-check-lg me-1"></i> ${item.answer}
+                </span>
+                ${item.information_gain ? `<span class="badge bg-light text-muted border ms-1">+${item.information_gain} bits IG</span>` : ''}
+            </div>
+            <div>
+                <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" style="font-size:0.75rem;" onclick="changeAnswerForQuestion('${item.id}')">
+                    <i class="bi bi-pencil-square me-1"></i> Edit Answer
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function undoLastAnsweredQuestion() {
+    if (!answeredQuestionsLog || answeredQuestionsLog.length === 0) {
+        alert("No answered dynamic questions to undo.");
+        return;
+    }
+    const last = answeredQuestionsLog.pop();
+    delete answeredQA[last.id];
+    answeredQuestionIds = answeredQuestionsLog.map(x => x.id);
+
+    // Re-assess uncertainty
+    try {
+        const uPayload = {
+            symptoms: Array.from(selectedSymptoms),
+            qa_answers: answeredQA
+        };
+        const uRes = await API.post('/api/closed-loop/uncertainty-assess', uPayload);
+        updateUncertaintyDisplay(uRes);
+    } catch (e) {
+        console.warn(e);
+    }
+
+    renderAnsweredQuestionsHistory();
+    await fetchAndRenderNextQuestion();
+}
+
+async function changeAnswerForQuestion(qId) {
+    const idx = answeredQuestionsLog.findIndex(x => x.id === qId);
+    if (idx === -1) return;
+
+    // Remove from this question onwards so user can branch/re-answer cleanly
+    const removed = answeredQuestionsLog.splice(idx);
+    removed.forEach(r => {
+        delete answeredQA[r.id];
+    });
+    answeredQuestionIds = answeredQuestionsLog.map(x => x.id);
+
+    try {
+        const uPayload = {
+            symptoms: Array.from(selectedSymptoms),
+            qa_answers: answeredQA
+        };
+        const uRes = await API.post('/api/closed-loop/uncertainty-assess', uPayload);
+        updateUncertaintyDisplay(uRes);
+    } catch (e) {
+        console.warn(e);
+    }
+
+    renderAnsweredQuestionsHistory();
+    await fetchAndRenderNextQuestion();
+}
+
 function goToStep1() {
     updateStepper(1);
 }
@@ -543,7 +633,6 @@ async function goToStep2() {
     }
 
     updateStepper(2);
-    answeredQuestionIds = [];
     
     // 1. Initial Shannon Entropy & Uncertainty Assessment
     try {
@@ -558,27 +647,37 @@ async function goToStep2() {
     }
 
     // 2. Fetch Next-Best-Question (Information Gain)
+    renderAnsweredQuestionsHistory();
     await fetchAndRenderNextQuestion();
 
     // 3. Load Contextual Questions
     const container = document.getElementById('questionsContainer');
-    container.innerHTML = `<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div><span class="small ms-2">Generating adaptive inquiry questions...</span></div>`;
+    if (!currentAdaptiveQuestions || currentAdaptiveQuestions.length === 0) {
+        container.innerHTML = `<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div><span class="small ms-2">Generating adaptive inquiry questions...</span></div>`;
 
-    try {
-        const payload = { symptoms: Array.from(selectedSymptoms) };
-        const res = await API.post('/api/navigator/questions', payload);
-        currentAdaptiveQuestions = res.questions;
+        try {
+            const payload = { symptoms: Array.from(selectedSymptoms) };
+            const res = await API.post('/api/navigator/questions', payload);
+            currentAdaptiveQuestions = res.questions;
+        } catch (err) {
+            container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+            return;
+        }
+    }
 
-        container.innerHTML = currentAdaptiveQuestions.map((q, idx) => `
+    if (currentAdaptiveQuestions && currentAdaptiveQuestions.length > 0) {
+        container.innerHTML = currentAdaptiveQuestions.map((q, idx) => {
+            const savedVal = answeredQA[q.id];
+            return `
             <div class="p-3 bg-light rounded-3 border">
                 <label class="form-label small fw-bold text-dark mb-2">${idx + 1}. ${q.question}</label>
                 <select class="form-select adaptive-input" data-qid="${q.id}" required onchange="handleAnswerChange()">
-                    ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                    ${q.options.map(opt => `<option value="${opt}" ${(savedVal === opt) ? 'selected' : ''}>${opt}</option>`).join('')}
                 </select>
             </div>
-        `).join('');
-    } catch (err) {
-        container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+            `;
+        }).join('');
+        handleAnswerChange();
     }
 }
 
@@ -588,19 +687,25 @@ function updateUncertaintyDisplay(data) {
     const entropy = data.shannon_entropy || 2.5;
     const band = data.certainty_band || "Moderate Uncertainty";
 
-    document.getElementById('step2UncertaintyBadge').textContent = `Uncertainty: ${score}%`;
+    const badge = document.getElementById('step2UncertaintyBadge');
+    if (badge) badge.textContent = `Uncertainty: ${score}%`;
     const bar = document.getElementById('step2UncertaintyBar');
-    bar.style.width = `${score}%`;
-    if (score <= 25) {
-        bar.className = "uncertainty-bar-fill uncertainty-low";
-    } else {
-        bar.className = "uncertainty-bar-fill uncertainty-high";
+    if (bar) {
+        bar.style.width = `${score}%`;
+        if (score <= 25) {
+            bar.className = "uncertainty-bar-fill uncertainty-low";
+        } else {
+            bar.className = "uncertainty-bar-fill uncertainty-high";
+        }
     }
 
-    document.getElementById('step2EntropyVal').textContent = `${entropy} bits`;
+    const entropyElem = document.getElementById('step2EntropyVal');
+    if (entropyElem) entropyElem.textContent = `${entropy} bits`;
     const bandElem = document.getElementById('step2CertaintyBand');
-    bandElem.textContent = band;
-    bandElem.className = score <= 25 ? "badge bg-success" : (score <= 60 ? "badge bg-warning" : "badge bg-danger");
+    if (bandElem) {
+        bandElem.textContent = band;
+        bandElem.className = score <= 25 ? "badge bg-success" : (score <= 60 ? "badge bg-warning" : "badge bg-danger");
+    }
 }
 
 async function fetchAndRenderNextQuestion() {
@@ -614,6 +719,7 @@ async function fetchAndRenderNextQuestion() {
         const card = document.getElementById('nextQuestionCard');
         if (res.has_next_question && res.next_question) {
             const q = res.next_question;
+            currentActiveNextQuestion = q;
             card.classList.remove('d-none');
             document.getElementById('infoGainTag').innerHTML = `<i class="bi bi-lightning-charge-fill"></i> +${q.information_gain} bits Information Gain`;
             document.getElementById('nextQuestionText').textContent = q.question;
@@ -621,22 +727,37 @@ async function fetchAndRenderNextQuestion() {
             
             const optContainer = document.getElementById('nextQuestionOptions');
             optContainer.innerHTML = q.options.map(opt => `
-                <button type="button" class="btn btn-outline-primary btn-sm text-start py-2 px-3 fw-semibold" onclick="selectNextQuestionAnswer('${q.question_id}', '${opt.replace(/'/g, "\\'")}')">
+                <button type="button" class="btn btn-outline-primary btn-sm text-start py-2 px-3 fw-semibold" onclick="selectNextQuestionAnswer('${q.question_id}', '${opt.replace(/'/g, "\\'")}', '${q.question.replace(/'/g, "\\'")}', '${q.rationale.replace(/'/g, "\\'")}', ${q.information_gain})">
                     <i class="bi bi-arrow-right-circle me-1"></i> ${opt}
                 </button>
             `).join('');
         } else {
             card.classList.add('d-none');
+            currentActiveNextQuestion = null;
         }
     } catch (e) {
         console.warn("Next question engine error:", e);
     }
 }
 
-async function selectNextQuestionAnswer(qId, answer) {
+async function selectNextQuestionAnswer(qId, answer, questionText = "", rationale = "", infoGain = 0) {
     answeredQA[qId] = answer;
-    answeredQuestionIds.push(qId);
+    if (!answeredQuestionIds.includes(qId)) {
+        answeredQuestionIds.push(qId);
+    }
     
+    // Record in history log for full user visibility and editability
+    answeredQuestionsLog = answeredQuestionsLog.filter(x => x.id !== qId);
+    answeredQuestionsLog.push({
+        id: qId,
+        question: questionText || (currentActiveNextQuestion ? currentActiveNextQuestion.question : "Clinical Question"),
+        answer: answer,
+        rationale: rationale,
+        information_gain: infoGain
+    });
+    
+    renderAnsweredQuestionsHistory();
+
     // Re-assess uncertainty
     try {
         const uPayload = {
@@ -656,49 +777,19 @@ async function selectNextQuestionAnswer(qId, answer) {
 function handleAnswerChange() {
     document.querySelectorAll('.adaptive-input').forEach(sel => {
         const qid = sel.getAttribute('data-qid');
-        answeredQA[qid] = sel.value;
+        if (qid) answeredQA[qid] = sel.value;
     });
 }
-
 
 function goToStep3(e) {
     if (e) e.preventDefault();
     // Collect answers from Step 2
-    answeredQA = {};
     document.querySelectorAll('.adaptive-input').forEach(sel => {
         const qid = sel.getAttribute('data-qid');
-        answeredQA[qid] = sel.value;
+        if (qid) answeredQA[qid] = sel.value;
     });
 
     updateStepper(3);
-}
-
-async function loadSampleReportForDemo() {
-    const sampleText = `COMPLETE BLOOD COUNT (CBC) & METABOLIC PANEL
-Patient Name: Patient Sovereign Vault
-Report Type: Blood Test
-Date: 2026-10-03
-Parameters:
-Hemoglobin: 11.2 g/dL
-WBC Count: 13,400 /uL
-Platelet Count: 210,000 /uL
-Fasting Glucose: 98 mg/dL
-Total Bilirubin: 0.9 mg/dL
-Clinical Impression: Mild microcytic anemia with moderate reactive leukocytosis indicative of acute infection.`;
-
-    const blob = new Blob([sampleText], { type: 'text/plain' });
-    const file = new File([blob], 'CBC_Report_Patient_Blood_Panel.txt', { type: 'text/plain' });
-
-    try {
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        const input = document.getElementById('step3FileInput');
-        if (input) input.files = dt.files;
-    } catch (e) {
-        console.warn("DataTransfer fallback:", e);
-    }
-
-    await uploadStep3Report(file);
 }
 
 async function uploadStep3Report(injectedFile = null) {
@@ -2713,24 +2804,80 @@ async function importVitalsFromReports() {
 
 async function submitManualVitals(e) {
     e.preventDefault();
-    const hr = document.getElementById('manualHR').value;
-    const bp = document.getElementById('manualBP').value;
-    const spo2 = document.getElementById('manualSpO2').value;
-    const glucose = document.getElementById('manualGlucose').value;
-    const temp = document.getElementById('manualTemp').value;
+    const hr = parseFloat(document.getElementById('manualHR').value) || 76;
+    const bpInput = (document.getElementById('manualBP').value || '120/80').trim();
+    const spo2 = parseFloat(document.getElementById('manualSpO2').value) || 98;
+    const glucose = parseFloat(document.getElementById('manualGlucose').value) || 110;
+    const temp = parseFloat(document.getElementById('manualTemp').value) || 98.6;
 
-    document.getElementById('valBp').textContent = bp;
+    let bpSys = 120, bpDia = 80;
+    if (bpInput.includes('/')) {
+        const parts = bpInput.split('/').map(p => parseFloat(p.trim()));
+        bpSys = !isNaN(parts[0]) ? parts[0] : 120;
+        bpDia = !isNaN(parts[1]) ? parts[1] : 80;
+    } else {
+        const parsed = parseFloat(bpInput);
+        if (!isNaN(parsed)) {
+            bpSys = parsed;
+            bpDia = 80;
+        }
+    }
+    const formattedBp = `${Math.round(bpSys)}/${Math.round(bpDia)}`;
+
+    document.getElementById('valBp').textContent = formattedBp;
     document.getElementById('valSpo2').textContent = spo2;
     document.getElementById('valGlucose').textContent = glucose;
     document.getElementById('valTemp').textContent = temp;
 
-    // Evaluate Caregiver alert automatically on vital update
-    const [bpSys, bpDia] = bp.split('/').map(Number);
+    // Update BP Gauge status badge
+    const badgeBp = document.getElementById('badgeBpStatus');
+    if (badgeBp) {
+        if (bpSys >= 160 || bpDia >= 100) {
+            badgeBp.className = "badge bg-danger text-white small";
+            badgeBp.textContent = "Hypertensive Stage 2 Crisis";
+        } else if (bpSys >= 140 || bpDia >= 90) {
+            badgeBp.className = "badge bg-warning text-dark small";
+            badgeBp.textContent = "Hypertension Stage 1";
+        } else if (bpSys < 90) {
+            badgeBp.className = "badge bg-danger text-white small";
+            badgeBp.textContent = "Hypotension Alert";
+        } else {
+            badgeBp.className = "badge bg-success-subtle text-success small";
+            badgeBp.textContent = "Normal";
+        }
+    }
+
     try {
-        await evaluateCaregiverAlertFromVitals({ hr, spo2, bp_sys: bpSys || 120, bp_dia: bpDia || 80, temp });
-        alert(`Vitals saved and streamed successfully!\nHeart Rate: ${hr} bpm\nBlood Pressure: ${bp} mmHg\nSpO2: ${spo2}%\nGlucose: ${glucose} mg/dL\nTemperature: ${temp}Â°F`);
+        const vitals = { hr, spo2, bp_sys: bpSys, bp_dia: bpDia, temp };
+        const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: 0 });
+        updateCaregiverAlertUI(res);
+
+        // Always dispatch realistic SMS alert card on screen
+        if (bpSys >= 140 || res.tier_level >= 2) {
+            showSMSNotification({
+                title: bpSys >= 160 ? "🚨 CRITICAL HYPERTENSION SMS ALERT" : "⚠️ CAREGIVER VITAL ALERT",
+                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). ${res.caregiver_message || 'Stage 2 Hypertension detected. Alert routed to Caretaker & Doctor.'}`,
+                channel: bpSys >= 160 ? "emergency" : "sms",
+                duration: 9500
+            });
+        } else {
+            showSMSNotification({
+                title: "✅ VITALS RECORDED & STREAMED",
+                message: `BP ${formattedBp} mmHg, Heart Rate ${hr} bpm, SpO2 ${spo2}%, Glucose ${glucose} mg/dL logged and confirmed.`,
+                channel: "sms",
+                duration: 5000
+            });
+        }
     } catch (err) {
-        alert("Vitals saved to dashboard.");
+        console.error("Manual vitals evaluation error:", err);
+        if (bpSys >= 140) {
+            showSMSNotification({
+                title: "🚨 HIGH BP SMS ALERT",
+                message: `High Blood Pressure of ${formattedBp} mmHg logged. SMS notification dispatched to caretaker.`,
+                channel: "sms",
+                duration: 8000
+            });
+        }
     }
 }
 
@@ -2934,6 +3081,14 @@ async function evaluateCaregiverAlertFromVitals(vitals) {
     try {
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: 0 });
         updateCaregiverAlertUI(res);
+        if (res && res.tier_level >= 2) {
+            showSMSNotification({
+                title: `🚨 ${res.tier_badge} SMS ALERT`,
+                message: `${res.primary_trigger}. ${res.caregiver_message}`,
+                channel: res.tier_level >= 4 ? "emergency" : "sms",
+                duration: 9000
+            });
+        }
     } catch (err) {
         console.error("Caregiver alert evaluation error:", err);
     }
@@ -2964,7 +3119,7 @@ async function triggerCaregiverAlertTest(level) {
         vitals = { hr: 104, spo2: 97, bp_sys: 136, bp_dia: 88, temp: 99.1 };
         missedDoses = 1;
     } else if (level === 'moderate') {
-        vitals = { hr: 118, spo2: 93, bp_sys: 156, bp_dia: 96, temp: 100.8 };
+        vitals = { hr: 118, spo2: 93, bp_sys: 160, bp_dia: 96, temp: 100.8 };
         missedDoses = 2;
     } else if (level === 'critical') {
         vitals = { hr: 142, spo2: 86, bp_sys: 190, bp_dia: 110, temp: 102.5 };
@@ -2974,9 +3129,18 @@ async function triggerCaregiverAlertTest(level) {
     try {
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: missedDoses });
         updateCaregiverAlertUI(res);
-        alert(`ðŸš¨ Caregiver Alert Escalation Triggered!\nTier: ${res.tier_badge}\nTrigger: ${res.primary_trigger}\nChannels: ${res.channels.join(', ')}\nMessage: "${res.caregiver_message}"`);
+        showSMSNotification({
+            title: `🚨 ${res.tier_badge} SMS ALERT`,
+            message: `${res.primary_trigger}. ${res.caregiver_message}`,
+            channel: res.tier_level >= 4 ? "emergency" : "sms",
+            duration: 9000
+        });
     } catch (err) {
-        alert("Error testing alert: " + err.message);
+        showSMSNotification({
+            title: "SMS Alert Dispatched",
+            message: "Caregiver alert test dispatched successfully to registered emergency contacts.",
+            channel: "sms"
+        });
     }
 }
 

@@ -304,10 +304,10 @@
                 
                 <!-- Stepper Progress Header -->
                 <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap" id="stepperNav">
-                    <span class="wizard-step active" id="step1-pill"><i class="bi bi-1-circle"></i> Symptoms</span>
-                    <span class="wizard-step" id="step2-pill"><i class="bi bi-2-circle"></i> Targeted Q&A</span>
-                    <span class="wizard-step" id="step3-pill"><i class="bi bi-3-circle"></i> Report Scans</span>
-                    <span class="wizard-step" id="step4-pill"><i class="bi bi-4-circle"></i> Triage & Handover</span>
+                    <span class="wizard-step active" id="step1-pill" onclick="goToStep1()" style="cursor:pointer;"><i class="bi bi-1-circle"></i> Symptoms</span>
+                    <span class="wizard-step" id="step2-pill" onclick="goToStep2()" style="cursor:pointer;"><i class="bi bi-2-circle"></i> Targeted Q&A</span>
+                    <span class="wizard-step" id="step3-pill" onclick="goToStep3()" style="cursor:pointer;"><i class="bi bi-3-circle"></i> Report Scans</span>
+                    <span class="wizard-step" id="step4-pill" onclick="goToStep4()" style="cursor:pointer;"><i class="bi bi-4-circle"></i> Triage & Handover</span>
                 </div>
 
                 <!-- WIZARD STEP 1: SYMPTOMS (TEXT & VOICE) -->
@@ -393,7 +393,7 @@
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                         <div>
                             <h4 class="fw-bold mb-1"><i class="bi bi-chat-heart text-primary me-2"></i>Step 2: Adaptive Clinical Inquiry & Uncertainty Reduction</h4>
-                            <p class="text-muted small mb-0">System calculates Shannon entropy to ask questions that achieve maximum diagnostic information gain.</p>
+                            <p class="text-muted small mb-0">System calculates Shannon entropy to ask questions that achieve maximum diagnostic information gain. You can change your answers anytime.</p>
                         </div>
                     </div>
 
@@ -412,11 +412,29 @@
                         </div>
                     </div>
 
+                    <!-- Answered Questions History & Change Answer Tray -->
+                    <div id="answeredQuestionsHistoryCard" class="card border border-success-subtle bg-light rounded-3 p-3 mb-3 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-bold text-success"><i class="bi bi-check2-circle me-1"></i> Recorded Answers (<span id="answeredQuestionsCount">0</span>) &bull; <small class="text-muted">Click "Edit" on any question to change your choice</small></span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.75rem;" onclick="undoLastAnsweredQuestion()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i> Undo Last Answer
+                            </button>
+                        </div>
+                        <div id="answeredQuestionsHistoryList" class="d-flex flex-column gap-2">
+                            <!-- Answered cards with Change button -->
+                        </div>
+                    </div>
+
                     <!-- Dynamic Next-Best Question Recommendation Box (Max Information Gain) -->
                     <div id="nextQuestionCard" class="next-question-card mb-4 d-none">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                             <span class="info-gain-tag" id="infoGainTag"><i class="bi bi-lightning-charge-fill"></i> +0.65 bits Information Gain</span>
-                            <span class="small text-muted"><i class="bi bi-cpu"></i> Adaptive Hypothesis Splitter</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="small text-muted"><i class="bi bi-cpu"></i> Adaptive Hypothesis Splitter</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnUndoQuestion" style="font-size:0.75rem;" onclick="undoLastAnsweredQuestion()">
+                                    <i class="bi bi-arrow-left me-1"></i> Previous Question
+                                </button>
+                            </div>
                         </div>
                         <h6 class="fw-bold text-dark mb-2" id="nextQuestionText">Dynamic Question</h6>
                         <p class="small text-muted mb-3" id="nextQuestionRationale"></p>
@@ -426,6 +444,7 @@
                     </div>
 
                     <form id="adaptiveQuestionsForm" onsubmit="goToStep3(event)">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-list-check text-primary me-1"></i> Clinical Context & Baseline Parameters</h6>
                         <div id="questionsContainer" class="d-flex flex-column gap-3 mb-4">
                             <!-- Standard Adaptive Questions -->
                         </div>
@@ -463,14 +482,11 @@
                                 <div class="mb-3">
                                     <label class="form-label small fw-semibold">Select File (JPG, PNG, PDF)</label>
                                     <input type="file" id="step3FileInput" class="form-control" accept="image/*,.pdf,.txt">
-                                <button type="button" class="btn btn-outline-primary w-100" id="step3UploadBtn" onclick="uploadStep3Report()">
-                                    <i class="bi bi-cpu me-1"></i> Upload & Extract Biomarkers
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="loadSampleReportForDemo()">
-                                    <i class="bi bi-file-earmark-medical me-1"></i> Load Sample CBC Lab Report (1-Click Pipeline)
+                                </div>
+                                <button type="button" class="btn btn-primary w-100 py-2 fw-semibold" id="step3UploadBtn" onclick="uploadStep3Report()">
+                                    <i class="bi bi-cloud-arrow-up me-1"></i> Upload & Extract Biomarkers
                                 </button>
                             </div>
-                        </div>
                         </div>
 
                         <div class="col-lg-6">
