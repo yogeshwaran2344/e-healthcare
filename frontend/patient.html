@@ -211,6 +211,16 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold py-2 px-3 btn-highlight" id="tab-profile-btn" onclick="activateTab('tab-profile')" type="button" role="tab">
+                    <i class="bi bi-person-vcard text-primary me-1"></i> Personal Profile
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold py-2 px-3 btn-highlight" id="tab-iot-btn" onclick="activateTab('tab-iot')" type="button" role="tab">
+                    <i class="bi bi-smartwatch text-info me-1"></i> IoT Wearables &amp; Vitals
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-blockchain-btn" onclick="activateTab('tab-blockchain')" type="button" role="tab">
                     <i class="bi bi-shield-lock-fill text-success me-1"></i> Blockchain Records
                 </button>
@@ -604,14 +614,113 @@
                     </div>
                 </div>
 
+            </div>
 
-                <!-- ========== SECTION: IoT WEARABLES & LIVE VITALS (below symptoms) ========== -->
-                <div class="d-flex align-items-center gap-2 mt-2 mb-3">
-                    <hr class="flex-grow-1 m-0">
-                    <span class="badge bg-info-subtle text-info-emphasis px-3 py-2"><i class="bi bi-smartwatch me-1"></i> IoT Wearables &amp; Vitals</span>
-                    <hr class="flex-grow-1 m-0">
+            <!-- TAB 2: PERSONAL HEALTH PROFILE -->
+            <div class="tab-pane fade" id="tab-profile">
+                <div class="row justify-content-center">
+                    <div class="col-lg-8">
+                        <div class="card border-0 shadow-sm rounded-4 p-4">
+                            <h4 class="fw-bold mb-1"><i class="bi bi-person-lines-fill text-primary me-2"></i>Personal Health Profile & Longitudinal Context</h4>
+                            <p class="text-muted small mb-4">Your individual health baseline ensures AI assessments and doctor prescriptions check for drug allergies, pre-existing chronic conditions, and personal risks.</p>
+
+                            <form id="profileForm" onsubmit="saveProfile(event)">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Full Name</label>
+                                        <input type="text" id="profName" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-semibold">Age</label>
+                                        <input type="number" id="profAge" class="form-control" placeholder="e.g. 48">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small fw-semibold">Gender</label>
+                                        <select id="profGender" class="form-select">
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">Mobile Phone Number</label>
+                                        <input type="tel" id="profPhone" class="form-control" placeholder="+91 98765 43210">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-semibold">WhatsApp Number (For Direct Rx &amp; Alert Delivery)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-success-subtle text-success"><i class="bi bi-whatsapp"></i></span>
+                                            <input type="tel" id="profWhatsapp" class="form-control" placeholder="+91 98765 43210">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="card border border-warning-subtle bg-warning-subtle bg-opacity-10 p-3 rounded-3 mb-3">
+                                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-warning me-1"></i> Caretaker / Emergency Contact Routing</h6>
+                                    <p class="small text-muted mb-3">Critical medical updates, prescription copies, and triage risk escalations will automatically be routed via SMS OTP and WhatsApp to this trusted contact.</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-semibold">Caretaker Full Name</label>
+                                            <input type="text" id="profCaretakerName" class="form-control" placeholder="e.g. Sarah Doe">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-semibold">Caretaker Mobile / WhatsApp</label>
+                                            <input type="tel" id="profCaretakerPhone" class="form-control" placeholder="e.g. +91 98111 22233">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-semibold">Relationship</label>
+                                            <select id="profCaretakerRelation" class="form-select">
+                                                <option value="Daughter / Primary Guardian">Daughter / Primary Guardian</option>
+                                                <option value="Son / Primary Guardian">Son / Primary Guardian</option>
+                                                <option value="Spouse">Spouse</option>
+                                                <option value="Parent">Parent</option>
+                                                <option value="Sibling">Sibling</option>
+                                                <option value="Doctor / Nurse Aide">Doctor / Nurse Aide</option>
+                                                <option value="Other Guardian">Other Guardian</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label small fw-semibold">Blood Group</label>
+                                        <input type="text" id="profBlood" class="form-control" placeholder="e.g. B+, O+, A-">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Known Drug Allergies (Critical Safety Filter)</label>
+                                    <input type="text" id="profAllergies" class="form-control" placeholder="e.g. Penicillin, Sulfa, Aspirin">
+                                    <small class="text-danger"><i class="bi bi-shield-alert"></i> The Medication Safety Checker will automatically block or warn doctors if these are prescribed.</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Pre-Existing / Chronic Conditions</label>
+                                    <input type="text" id="profConditions" class="form-control" placeholder="e.g. Diabetes Type 2, Hypertension, Asthma">
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold">Current Medications</label>
+                                    <input type="text" id="profMeds" class="form-control" placeholder="e.g. Metformin 500mg, Telmisartan 40mg">
+                                </div>
+
+                                <div class="d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary px-4 fw-semibold" id="saveProfBtn">
+                                        <i class="bi bi-save me-1"></i> Save Health Profile
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-            <div class="portal-section mb-4" id="tab-iot">
+            </div>
+
+            <!-- TAB 3: IoT WEARABLES & VITALS -->
+            <div class="tab-pane fade" id="tab-iot">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                     <div>
                         <h4 class="fw-bold mb-1 text-info"><i class="bi bi-smartwatch me-2"></i>IoT Wearables & Real-Time Telemetry Stream <span class="badge bg-secondary-subtle text-secondary border fs-6 ms-2">Hardware Telemetry Protocol / Simulation Mode</span></h4>
@@ -788,115 +897,6 @@
                         <canvas id="ecgCanvas" width="900" height="150" style="width: 100%; height: 150px;"></canvas>
                     </div>
                 </div>
-            </div>
-
-                <!-- ========== SECTION: PERSONAL HEALTH PROFILE ========== -->
-                <div class="d-flex align-items-center gap-2 mt-2 mb-3">
-                    <hr class="flex-grow-1 m-0">
-                    <span class="badge bg-primary-subtle text-primary px-3 py-2"><i class="bi bi-person-vcard me-1"></i> Personal Profile</span>
-                    <hr class="flex-grow-1 m-0">
-                </div>
-            <div class="portal-section mb-4" id="tab-profile">
-                <div class="row justify-content-center">
-                    <div class="col-lg-8">
-                        <div class="card border-0 shadow-sm rounded-4 p-4">
-                            <h4 class="fw-bold mb-1"><i class="bi bi-person-lines-fill text-primary me-2"></i>Personal Health Profile & Longitudinal Context</h4>
-                            <p class="text-muted small mb-4">Your individual health baseline ensures AI assessments and doctor prescriptions check for drug allergies, pre-existing chronic conditions, and personal risks.</p>
-
-                            <form id="profileForm" onsubmit="saveProfile(event)">
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-semibold">Full Name</label>
-                                        <input type="text" id="profName" class="form-control" required>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-semibold">Age</label>
-                                        <input type="number" id="profAge" class="form-control" placeholder="e.g. 48">
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label class="form-label small fw-semibold">Gender</label>
-                                        <select id="profGender" class="form-select">
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-semibold">Mobile Phone Number</label>
-                                        <input type="tel" id="profPhone" class="form-control" placeholder="+91 98765 43210">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label small fw-semibold">WhatsApp Number (For Direct Rx &amp; Alert Delivery)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-success-subtle text-success"><i class="bi bi-whatsapp"></i></span>
-                                            <input type="tel" id="profWhatsapp" class="form-control" placeholder="+91 98765 43210">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="card border border-warning-subtle bg-warning-subtle bg-opacity-10 p-3 rounded-3 mb-3">
-                                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-people-fill text-warning me-1"></i> Caretaker / Emergency Contact Routing</h6>
-                                    <p class="small text-muted mb-3">Critical medical updates, prescription copies, and triage risk escalations will automatically be routed via SMS OTP and WhatsApp to this trusted contact.</p>
-                                    <div class="row g-3">
-                                        <div class="col-md-4">
-                                            <label class="form-label small fw-semibold">Caretaker Full Name</label>
-                                            <input type="text" id="profCaretakerName" class="form-control" placeholder="e.g. Sarah Doe">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small fw-semibold">Caretaker Mobile / WhatsApp</label>
-                                            <input type="tel" id="profCaretakerPhone" class="form-control" placeholder="e.g. +91 98111 22233">
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label small fw-semibold">Relationship</label>
-                                            <select id="profCaretakerRelation" class="form-select">
-                                                <option value="Daughter / Primary Guardian">Daughter / Primary Guardian</option>
-                                                <option value="Son / Primary Guardian">Son / Primary Guardian</option>
-                                                <option value="Spouse">Spouse</option>
-                                                <option value="Parent">Parent</option>
-                                                <option value="Sibling">Sibling</option>
-                                                <option value="Doctor / Nurse Aide">Doctor / Nurse Aide</option>
-                                                <option value="Other Guardian">Other Guardian</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row g-3 mb-3">
-                                    <div class="col-md-12">
-                                        <label class="form-label small fw-semibold">Blood Group</label>
-                                        <input type="text" id="profBlood" class="form-control" placeholder="e.g. B+, O+, A-">
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Known Drug Allergies (Critical Safety Filter)</label>
-                                    <input type="text" id="profAllergies" class="form-control" placeholder="e.g. Penicillin, Sulfa, Aspirin">
-                                    <small class="text-danger"><i class="bi bi-shield-alert"></i> The Medication Safety Checker will automatically block or warn doctors if these are prescribed.</small>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Pre-Existing / Chronic Conditions</label>
-                                    <input type="text" id="profConditions" class="form-control" placeholder="e.g. Diabetes Type 2, Hypertension, Asthma">
-                                </div>
-
-                                <div class="mb-4">
-                                    <label class="form-label small fw-semibold">Current Medications</label>
-                                    <input type="text" id="profMeds" class="form-control" placeholder="e.g. Metformin 500mg, Telmisartan 40mg">
-                                </div>
-
-                                <div class="d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-primary px-4 fw-semibold" id="saveProfBtn">
-                                        <i class="bi bi-save me-1"></i> Save Health Profile
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
             </div>
 
 

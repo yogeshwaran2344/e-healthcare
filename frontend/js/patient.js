@@ -1569,10 +1569,8 @@ function activateTab(tabId, scroll = true) {
     }
     if (cleanId === 'tab-navigation') cleanId = 'tab-navigation-pane';
 
-    // Profile & IoT are page sections inside the navigator tab (IoT sits below symptoms),
-    // so show the navigator pane and scroll to the requested section.
-    const EMBEDDED_SECTIONS = ['tab-profile', 'tab-iot'];
-    const paneId = EMBEDDED_SECTIONS.includes(cleanId) ? 'tab-navigator' : cleanId;
+    // Every tab (including Profile and IoT) maps to its own pane
+    const paneId = cleanId;
 
     // 1. Hide all top-level tab panes in #patientTabContent
     const allPanes = document.querySelectorAll('#patientTabContent > .tab-pane');
