@@ -15,18 +15,25 @@
     <div id="smsNotificationContainer" class="sms-notification-wrapper" aria-live="polite"></div>
 
     <!-- Top Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary" href="/">
-                <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
-                <span>AI Health Navigator</span>
-                <span class="badge bg-primary-subtle text-primary ms-2 fs-6">Patient Portal</span>
-            </a>
+    <!-- Top Navigation -->
+    <nav class="navbar navbar-expand navbar-custom sticky-top">
+        <div class="container-fluid px-3 px-md-4">
+            <div class="d-flex align-items-center">
+                <!-- 3-Lines Hamburger Menu Button -->
+                <button class="btn btn-outline-primary btn-sm me-3 sidebar-toggle-btn shadow-sm" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Toggle Features Menu (3 lines)">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary mb-0" href="/">
+                    <span class="brand-icon"><i class="bi bi-heart-pulse-fill"></i></span>
+                    <span class="d-none d-sm-inline">AI Health Navigator</span>
+                    <span class="badge bg-primary-subtle text-primary ms-1 fs-6">Patient Portal</span>
+                </a>
+            </div>
             <div class="ms-auto d-flex align-items-center gap-2">
-                <button class="btn btn-danger btn-sm sos-btn-pulse px-3 me-2" onclick="activateTab('tab-emergency'); triggerOneTapSOS();">
+                <button class="btn btn-danger btn-sm sos-btn-pulse px-3 me-1" onclick="activateTab('tab-emergency'); triggerOneTapSOS();">
                     <i class="bi bi-broadcast me-1"></i> 1-Tap SOS Emergency
                 </button>
-                <span class="text-secondary small d-none d-sm-inline" id="userWelcomeText">Welcome</span>
+                <span class="text-secondary small d-none d-md-inline" id="userWelcomeText">Welcome</span>
                 <button class="btn btn-outline-danger btn-sm" onclick="API.logout()">
                     <i class="bi bi-box-arrow-right"></i> Sign Out
                 </button>
@@ -34,266 +41,111 @@
         </div>
     </nav>
 
-    <!-- Main Container with Accessibility Bar, Family Vault, Dashboard, and Tabs -->
-    <div class="container py-4">
-
-        <!-- 1. ACCESSIBILITY & MULTILINGUAL TOOLBAR -->
-        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3 bg-white border-start border-primary border-4" id="accessibilityToolbar">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <!-- Main Left-Sidebar + Content Layout -->
+    <div class="portal-layout-wrapper" id="portalLayoutWrapper">
+        
+        <!-- LEFT-HAND SIDEBAR (All 13 Features) -->
+        <aside class="patient-sidebar bg-white border-end shadow-sm" id="patientSidebar">
+            <div class="p-3 border-bottom d-flex align-items-center justify-content-between bg-light">
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary-subtle text-primary"><i class="bi bi-universal-access"></i> Accessibility</span>
-                    <!-- Font Resizer -->
-                    <div class="btn-group btn-group-sm" role="group">
-                        <button type="button" class="btn btn-outline-secondary" onclick="changeFontSize(-1)" title="Smaller Text">A-</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="changeFontSize(0)" title="Default Text Size">A</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="changeFontSize(1)" title="Larger Text">A+</button>
-                    </div>
-                    <!-- High Contrast Toggle -->
-                    <button type="button" class="btn btn-sm btn-outline-dark" id="highContrastToggleBtn" onclick="toggleAccessibilityHighContrast()">
-                        <i class="bi bi-circle-half me-1"></i> <span id="contrastBtnText">High Contrast</span>
-                    </button>
-                    <!-- Read Aloud (Web Speech Synthesis) -->
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="readAloudBtn" onclick="toggleReadAloudPage()">
-                        <i class="bi bi-volume-up-fill me-1"></i> <span id="readAloudText">Read Aloud</span>
-                    </button>
-                    <!-- Simple Language Medical Translator -->
-                    <button type="button" class="btn btn-sm btn-outline-info" id="plainLanguageBtn" onclick="togglePlainLanguageMode()">
-                        <i class="bi bi-translate me-1"></i> <span id="plainLanguageText">Plain Language (Active)</span>
-                    </button>
+                    <i class="bi bi-grid-3x3-gap-fill text-primary"></i>
+                    <strong class="text-dark small text-uppercase tracking-wider">Portal Features</strong>
                 </div>
-                <!-- Multilingual South Indian & Pan-Indian Selector -->
-                <div class="d-flex align-items-center gap-2">
-                    <small class="text-muted fw-semibold d-none d-md-inline"><i class="bi bi-globe me-1"></i>Language:</small>
-                    <select id="portalLangSelector" class="form-select form-select-sm" style="width: auto;" onchange="changePortalLanguage(this.value)">
-                        <option value="en-IN" selected>English (India)</option>
-                        <option value="kn-IN">Kannada (ಕನ್ನಡ)</option>
-                        <option value="ta-IN">Tamil (தமிழ்)</option>
-                        <option value="te-IN">Telugu (తెలుగు)</option>
-                        <option value="ml-IN">Malayalam (മലയാളം)</option>
-                        <option value="hi-IN">Hindi (हिन्दी)</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. FAMILY HEALTH VAULT SWITCHER -->
-        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="badge bg-success-subtle text-success p-2 rounded-circle fs-5">
-                        <i class="bi bi-people-fill"></i>
-                    </div>
-                    <div>
-                        <strong class="d-block text-dark">Family Health Vault</strong>
-                        <small class="text-muted">Manage segregated medical records and permissions across household members</small>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center flex-wrap gap-2" id="familyVaultBtnGroup">
-                    <!-- Dynamically rendered by renderFamilyVaultButtons() -->
-                </div>
-            </div>
-            <div id="familyVaultDetails" class="d-none mt-3 p-3 bg-light rounded-3 border"></div>
-        </div>
-
-        <!-- 3. MY HEALTH DASHBOARD METRICS SUMMARY GRID (Item 3 in User Spec) -->
-        <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0 text-dark">
-                    <i class="bi bi-speedometer2 text-primary me-2"></i>My Health Dashboard
-                </h5>
-                <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill">
-                    <i class="bi bi-shield-check me-1"></i> Patient-Owned Sovereign Data
-                </span>
+                <button class="btn btn-sm btn-light border d-lg-none py-0 px-2" onclick="toggleSidebar()" title="Close Sidebar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             
-            <div class="row g-2 text-center">
-                <!-- Health Passport / Profile -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-profile')" title="Click to view Personal Health Profile">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">HEALTH PASSPORT</small>
-                        <strong class="text-success small d-block mt-1"><i class="bi bi-person-check-fill me-1"></i>View Profile</strong>
-                    </div>
-                </div>
-                <!-- IoT Wearables -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-iot')" title="Click to view IoT Wearables & Live Telemetry">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">IOT WEARABLES</small>
-                        <strong class="text-info small d-block mt-1"><i class="bi bi-smartwatch me-1"></i>4 Connected</strong>
-                    </div>
-                </div>
-                <!-- Emergency Passport -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-emergency')" title="Click to view Emergency Passport">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">EMERGENCY SOS</small>
-                        <strong class="text-danger small d-block mt-1"><i class="bi bi-broadcast-pin me-1"></i>Active Token</strong>
-                    </div>
-                </div>
-                <!-- Medical Records -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-recovery')" title="Click to view Medical Records & Timeline">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">MEDICAL RECORDS</small>
-                        <strong class="text-dark small d-block mt-1" id="dashMetricRecords"><i class="bi bi-folder2-open me-1"></i>17 verified</strong>
-                    </div>
-                </div>
-                <!-- Medications -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-reminders')" title="Click to view Medications & Reminders">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">MEDICATIONS</small>
-                        <strong class="text-primary small d-block mt-1" id="dashMetricMeds"><i class="bi bi-capsule me-1"></i>4 active</strong>
-                    </div>
-                </div>
-                <!-- Allergies -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-profile')" title="Click to view Allergies in Profile">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">ALLERGIES</small>
-                        <strong class="text-danger small d-block mt-1" id="dashMetricAllergies"><i class="bi bi-exclamation-triangle-fill me-1"></i>2 critical</strong>
-                    </div>
-                </div>
-                <!-- Vaccinations -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-profile')" title="Click to view Vaccinations">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">VACCINATIONS</small>
-                        <strong class="text-info small d-block mt-1"><i class="bi bi-shield-check me-1"></i>8 verified</strong>
-                    </div>
-                </div>
-                <!-- Doctor Access -->
-                <div class="col-6 col-md-3 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-access-audit')" title="Click to view Data Access Audit Trail">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">DOCTOR ACCESS</small>
-                        <strong class="text-warning-emphasis small d-block mt-1" id="dashMetricPermissions"><i class="bi bi-key-fill me-1"></i>2 active</strong>
-                    </div>
-                </div>
-                <!-- Blockchain Integrity -->
-                <div class="col-12 col-md-4 col-lg-custom" style="flex: 1 0 10%; cursor: pointer;" onclick="activateTab('tab-blockchain')" title="Click to view Blockchain Health Records">
-                    <div class="p-2 border rounded-3 bg-light h-100 shadow-hover transition-all">
-                        <small class="text-muted d-block" style="font-size: 0.72rem;">BLOCKCHAIN INTEGRITY</small>
-                        <strong class="text-success small d-block mt-1"><i class="bi bi-shield-check me-1"></i>100% Intact</strong>
-                    </div>
-                </div>
+            <div class="sidebar-nav-list p-2">
+                <ul class="nav nav-pills flex-column gap-1" id="patientSidebarTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link active" id="tab-navigator-btn" onclick="activateTab('tab-navigator')" type="button">
+                            <i class="bi bi-compass text-primary"></i>
+                            <span class="tab-label">Health Navigator</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">AI</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-profile-btn" onclick="activateTab('tab-profile')" type="button">
+                            <i class="bi bi-person-vcard text-primary"></i>
+                            <span class="tab-label">Personal Profile</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-iot-btn" onclick="activateTab('tab-iot')" type="button">
+                            <i class="bi bi-smartwatch text-info"></i>
+                            <span class="tab-label">IoT Wearables &amp; Vitals</span>
+                            <span class="badge bg-info-subtle text-info ms-auto">Live</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-blockchain-btn" onclick="activateTab('tab-blockchain')" type="button">
+                            <i class="bi bi-shield-lock-fill text-success"></i>
+                            <span class="tab-label">Blockchain Records</span>
+                            <span class="badge bg-success-subtle text-success ms-auto">Secure</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-predictive-btn" onclick="activateTab('tab-predictive')" type="button">
+                            <i class="bi bi-graph-up-arrow text-primary"></i>
+                            <span class="tab-label">AI Predictive Care</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-emergency-btn" onclick="activateTab('tab-emergency')" type="button">
+                            <i class="bi bi-hospital text-danger"></i>
+                            <span class="tab-label">Emergency SOS</span>
+                            <span class="badge bg-danger-subtle text-danger ms-auto">SOS</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-access-audit-btn" onclick="activateTab('tab-access-audit')" type="button">
+                            <i class="bi bi-eye-fill text-danger"></i>
+                            <span class="tab-label">Data Access Audit</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-reminders-btn" onclick="activateTab('tab-reminders')" type="button">
+                            <i class="bi bi-alarm-fill text-purple"></i>
+                            <span class="tab-label">Smart Reminders</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-history-btn" onclick="activateTab('tab-history')" type="button">
+                            <i class="bi bi-clock-history text-secondary"></i>
+                            <span class="tab-label">Consultations</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-recovery-btn" onclick="activateTab('tab-recovery')" type="button">
+                            <i class="bi bi-activity text-success"></i>
+                            <span class="tab-label">Medical Timeline</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-navigation-btn" onclick="activateTab('tab-navigation-pane')" type="button">
+                            <i class="bi bi-geo-alt-fill text-warning"></i>
+                            <span class="tab-label">AR Hospital Nav</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-travel-btn" onclick="activateTab('tab-travel')" type="button">
+                            <i class="bi bi-airplane-fill text-info"></i>
+                            <span class="tab-label">Travel Passport</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="tab-community-btn" onclick="activateTab('tab-community')" type="button">
+                            <i class="bi bi-people-fill text-secondary"></i>
+                            <span class="tab-label">Community</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
-        </div>
+        </aside>
 
-        <!-- Mobile & WhatsApp Caregiver Alert Routing Card -->
-        <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white border-start border-4 border-success">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-success text-white p-3 d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px; min-width: 48px;">
-                        <i class="bi bi-chat-square-text-fill fs-5"></i>
-                    </div>
-                    <div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <h6 class="fw-bold mb-0 text-dark">Mobile &amp; WhatsApp Caregiver Alert Routing</h6>
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Active Delivery</span>
-                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"><i class="bi bi-whatsapp me-1"></i>Dual Channel</span>
-                        </div>
-                        <div class="small text-muted mt-1 d-flex flex-wrap gap-3">
-                            <span><i class="bi bi-person-fill text-primary me-1"></i><strong>Patient:</strong> <span id="displayPatientPhone" class="text-dark fw-semibold">+91 98765 43210</span></span>
-                            <span><i class="bi bi-people-fill text-danger me-1"></i><strong>Caretaker:</strong> <span id="displayCaretakerName" class="text-dark fw-semibold">Sarah Doe</span> (<span id="displayCaretakerPhone" class="text-dark fw-semibold">+91 98111 22233</span>)</span>
-                            <span class="text-secondary">(Relationship: <span id="displayCaretakerRelation">Daughter / Primary Guardian</span>)</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-success btn-sm fw-semibold" onclick="openContactSettingsModal()">
-                        <i class="bi bi-pencil-square me-1"></i> Update Contact Numbers
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm fw-semibold" onclick="triggerTestSmsNotification()">
-                        <i class="bi bi-send-check me-1"></i> Test SMS Alert
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab Navigation (Categorized Pills) -->
-        <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-3 border d-flex flex-wrap gap-1" id="patientTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-semibold py-2 px-3" id="tab-navigator-btn" onclick="activateTab('tab-navigator')" type="button" role="tab">
-                    <i class="bi bi-compass text-primary me-1"></i> Health Navigator &amp; Symptoms
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3 btn-highlight" id="tab-profile-btn" onclick="activateTab('tab-profile')" type="button" role="tab">
-                    <i class="bi bi-person-vcard text-primary me-1"></i> Personal Profile
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3 btn-highlight" id="tab-iot-btn" onclick="activateTab('tab-iot')" type="button" role="tab">
-                    <i class="bi bi-smartwatch text-info me-1"></i> IoT Wearables &amp; Vitals
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-blockchain-btn" onclick="activateTab('tab-blockchain')" type="button" role="tab">
-                    <i class="bi bi-shield-lock-fill text-success me-1"></i> Blockchain Records
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-predictive-btn" onclick="activateTab('tab-predictive')" type="button" role="tab">
-                    <i class="bi bi-graph-up-arrow text-primary me-1"></i> AI Predictive Care
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-emergency-btn" onclick="activateTab('tab-emergency')" type="button" role="tab">
-                    <i class="bi bi-hospital text-danger me-1"></i> Emergency SOS
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-access-audit-btn" onclick="activateTab('tab-access-audit')" type="button" role="tab">
-                    <i class="bi bi-eye-fill text-danger me-1"></i> Data Access Audit
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-reminders-btn" onclick="activateTab('tab-reminders')" type="button" role="tab">
-                    <i class="bi bi-alarm-fill text-purple me-1"></i> Smart Reminders
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-history-btn" onclick="activateTab('tab-history')" type="button" role="tab">
-                    <i class="bi bi-clock-history text-secondary me-1"></i> Consultations
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-recovery-btn" onclick="activateTab('tab-recovery')" type="button" role="tab">
-                    <i class="bi bi-activity text-success me-1"></i> Medical Timeline
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-navigation-btn" onclick="activateTab('tab-navigation-pane')" type="button" role="tab">
-                    <i class="bi bi-geo-alt-fill text-warning me-1"></i> AR Hospital Nav
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-travel-btn" onclick="activateTab('tab-travel')" type="button" role="tab">
-                    <i class="bi bi-airplane-fill text-info me-1"></i> Travel Passport
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3" id="tab-community-btn" onclick="activateTab('tab-community')" type="button" role="tab">
-                    <i class="bi bi-people-fill text-secondary me-1"></i> Community
-                </button>
-            </li>
-        </ul>
-
-        <!-- Quick Jump Toolbar -->
-        <div class="d-flex align-items-center justify-content-between p-2 px-3 bg-white rounded-4 shadow-sm mb-4 border flex-wrap gap-2">
-            <span class="small fw-bold text-dark"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Quick Jump to Portal Modules:</span>
-            <div class="d-flex gap-2 flex-wrap">
-                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="activateTab('tab-profile')">
-                    <i class="bi bi-person-circle me-1"></i> My Profile
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-info fw-semibold" onclick="activateTab('tab-iot')">
-                    <i class="bi bi-smartwatch me-1"></i> IoT Wearables
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-success fw-semibold" onclick="activateTab('tab-blockchain')">
-                    <i class="bi bi-shield-lock-fill me-1"></i> Blockchain Records
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger fw-semibold" onclick="activateTab('tab-emergency')">
-                    <i class="bi bi-hospital me-1"></i> Emergency SOS
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold" onclick="activateTab('tab-recovery')">
-                    <i class="bi bi-activity me-1"></i> Medical Timeline
-                </button>
-            </div>
-        </div>
+        <!-- MAIN DASHBOARD CONTENT AREA -->
+        <main class="patient-main-content p-3 p-md-4" id="patientMainContent">
 
 
 
@@ -2088,9 +1940,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
         </div>
+        </main>
     </div>
 
     <!-- View Prescription Modal -->

@@ -1651,6 +1651,16 @@ async function submitRecoveryCheckin(e) {
     }
 }
 
+function toggleSidebar() {
+    const sidebar = document.getElementById('patientSidebar');
+    if (!sidebar) return;
+    if (window.innerWidth < 992) {
+        sidebar.classList.toggle('mobile-open');
+    } else {
+        sidebar.classList.toggle('collapsed');
+    }
+}
+
 // Bulletproof Portal Module & Tab Switcher
 function activateTab(tabId, scroll = true) {
     if (!tabId) return;
@@ -1681,9 +1691,9 @@ function activateTab(tabId, scroll = true) {
         return;
     }
 
-    // 3. Update pill button states in #patientTabs
-    const navButtons = document.querySelectorAll('#patientTabs .nav-link');
-    navButtons.forEach(btn => {
+    // 3. Update active states in Left Sidebar and any navigation buttons
+    const sidebarButtons = document.querySelectorAll('#patientSidebarTabs .nav-link, .sidebar-tab-btn, #patientTabs .nav-link');
+    sidebarButtons.forEach(btn => {
         btn.classList.remove('active');
         const onclickAttr = btn.getAttribute('onclick') || '';
         const dataTarget = btn.getAttribute('data-bs-target') || '';
@@ -1692,11 +1702,19 @@ function activateTab(tabId, scroll = true) {
             btn.id === paneId ||
             onclickAttr.includes(`'${paneId}'`) ||
             onclickAttr.includes(`"${paneId}"`) ||
+            onclickAttr.includes(`'${cleanId}'`) ||
+            onclickAttr.includes(`"${cleanId}"`) ||
             dataTarget === `#${paneId}`
         ) {
             btn.classList.add('active');
         }
     });
+
+    // Auto-close sidebar drawer on mobile after selecting a feature
+    if (window.innerWidth < 992) {
+        const sidebar = document.getElementById('patientSidebar');
+        if (sidebar) sidebar.classList.remove('mobile-open');
+    }
 
     // 4. Also notify Bootstrap if instance exists
     try {
@@ -3557,6 +3575,71 @@ function toggleAccessibilityHighContrast() {
     }
 }
 
+function getContextualReadAloudText() {
+    // 1. If user highlighted / selected text on screen, prioritize reading that
+    const selection = window.getSelection()?.toString()?.trim();
+    if (selection && selection.length > 3) {
+        return selection;
+    }
+
+    // 2. Identify active tab pane
+    const activePane = document.querySelector('#patientTabContent > .tab-pane.active') || document.getElementById('tab-navigator');
+    const paneId = activePane ? activePane.id : 'tab-navigator';
+
+    if (paneId === 'tab-navigator') {
+        const step4 = document.getElementById('wizardStep4');
+        const step2 = document.getElementById('wizardStep2');
+        const step3 = document.getElementById('wizardStep3');
+
+        if (step4 && !step4.classList.contains('d-none')) {
+            const disease = document.getElementById('resDiseaseName')?.textContent || 'Medical Condition';
+            const conf = document.getElementById('resConfidenceBadge')?.textContent || '';
+            const triage = document.getElementById('resTriageBadge')?.textContent || '';
+            const advice = document.getElementById('resClinicalAdvice')?.textContent || '';
+            return `AI Clinical Assessment. Predicted condition is ${disease}, confidence ${conf}. Triage Level is ${triage}. Recommended Advice: ${advice}`;
+        } else if (step2 && !step2.classList.contains('d-none')) {
+            const unc = document.getElementById('step2UncertaintyBadge')?.textContent || '';
+            const nextQ = document.getElementById('nextQuestionText')?.textContent || '';
+            return `Step 2: Targeted Clinical Inquiry. ${unc}. Active clinical question: ${nextQ}`;
+        } else if (step3 && !step3.classList.contains('d-none')) {
+            return `Step 3: Medical report and scan upload. You can upload lab blood reports or radiology scans for automatic parameter extraction.`;
+        } else {
+            const count = (typeof selectedSymptoms !== 'undefined' && selectedSymptoms) ? selectedSymptoms.size : 0;
+            return `Health Navigator Step 1. Describe your symptoms. You currently have ${count} symptoms selected. Click Continue to Targeted Questions to proceed.`;
+        }
+    } else if (paneId === 'tab-iot') {
+        const bp = document.getElementById('valBp')?.textContent || '120/80';
+        const hr = document.getElementById('valHr')?.textContent || '76';
+        const spo2 = document.getElementById('valSpo2')?.textContent || '98';
+        const gluc = document.getElementById('valGlucose')?.textContent || '110';
+        return `Live Wearable Telemetry. Blood pressure is ${bp} mmHg. Heart rate is ${hr} beats per minute. SpO2 oxygen level is ${spo2} percent. Fasting glucose is ${gluc} milligrams per deciliter.`;
+    } else if (paneId === 'tab-blockchain') {
+        return `Blockchain Medical Ledger. All cryptographic health record blocks are verified with SHA-256 Merkle proofs and digital signatures. Zero protected health information stored on-chain.`;
+    } else if (paneId === 'tab-profile') {
+        const name = (typeof currentUser !== 'undefined' && currentUser?.full_name) ? currentUser.full_name : 'Patient';
+        const age = (typeof currentUser !== 'undefined' && currentUser?.age) ? currentUser.age : 35;
+        const blood = (typeof currentUser !== 'undefined' && currentUser?.blood_group) ? currentUser.blood_group : 'O Positive';
+        return `Personal Health Profile for ${name}. Age: ${age} years. Blood group: ${blood}. Emergency contact and medical conditions are up to date.`;
+    } else if (paneId === 'tab-emergency') {
+        return `Context-Aware Emergency Passport. Dynamic QR token is active. Responders can view verified allergies, blood group, and trauma data with zero login delay.`;
+    } else if (paneId === 'tab-reminders') {
+        return `Smart Medication Reminders. Adaptive behavioral timing is active to help you take medicines on schedule.`;
+    } else if (paneId === 'tab-access-audit') {
+        return `Data Access Audit Trail. Viewing all clinician and emergency access timestamps and cryptographic permission tokens.`;
+    } else if (paneId === 'tab-predictive') {
+        return `AI Chronic Deterioration Predictor. Analyzing vital trends and multi-week risk trajectories.`;
+    } else if (paneId === 'tab-navigation-pane') {
+        return `Augmented Reality Indoor Hospital Navigation. Turn-by-turn waypoints and OPD queue tokens.`;
+    } else if (paneId === 'tab-travel') {
+        return `Global Travel Health Passport. Multi-country vaccination and travel clearance passes verified.`;
+    } else if (paneId === 'tab-community') {
+        return `Community Health and Preventive Gamification. Connect with peer wellness groups and view healthy lifestyle tips.`;
+    }
+
+    const heading = activePane?.querySelector('h4, h5, h6')?.textContent?.trim();
+    return heading ? `Viewing ${heading}.` : "Welcome to your AI Health Navigator patient portal.";
+}
+
 let isSpeaking = false;
 function toggleReadAloudPage() {
     if (!('speechSynthesis' in window)) {
@@ -3567,23 +3650,32 @@ function toggleReadAloudPage() {
     if (isSpeaking) {
         window.speechSynthesis.cancel();
         isSpeaking = false;
-        document.getElementById('readAloudText').textContent = "Read Aloud";
+        const txtEl = document.getElementById('readAloudText');
+        if (txtEl) txtEl.textContent = "Read Aloud";
         return;
     }
 
-    const textToRead = "Your Intelligent Health Passport. Current status: verified. Emergency access: active. 17 medical records verified with zero tampering on the blockchain.";
+    const textToRead = getContextualReadAloudText();
     const utterance = new SpeechSynthesisUtterance(textToRead);
     utterance.lang = document.getElementById('portalLangSelector')?.value || 'en-IN';
     utterance.rate = 0.95;
 
     utterance.onend = () => {
         isSpeaking = false;
-        document.getElementById('readAloudText').textContent = "Read Aloud";
+        const txtEl = document.getElementById('readAloudText');
+        if (txtEl) txtEl.textContent = "Read Aloud";
+    };
+
+    utterance.onerror = () => {
+        isSpeaking = false;
+        const txtEl = document.getElementById('readAloudText');
+        if (txtEl) txtEl.textContent = "Read Aloud";
     };
 
     window.speechSynthesis.speak(utterance);
     isSpeaking = true;
-    document.getElementById('readAloudText').textContent = "Stop Reading";
+    const txtEl = document.getElementById('readAloudText');
+    if (txtEl) txtEl.textContent = "Stop Reading";
 }
 
 let plainLanguageActive = true;

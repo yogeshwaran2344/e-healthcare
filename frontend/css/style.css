@@ -40,6 +40,127 @@ body {
     font-size: 1.25rem;
 }
 
+/* Patient Left Sidebar Navigation Layout */
+.portal-layout-wrapper {
+    min-height: calc(100vh - 65px);
+    display: flex;
+    position: relative;
+    width: 100%;
+}
+
+.sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-toggle-btn:hover {
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.patient-sidebar {
+    width: 270px;
+    min-width: 270px;
+    max-width: 270px;
+    background: #ffffff;
+    border-right: 1px solid var(--border-color);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1020;
+    height: calc(100vh - 65px);
+    position: sticky;
+    top: 65px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.patient-sidebar.collapsed {
+    margin-left: -270px;
+}
+
+.sidebar-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: #334155;
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    text-align: left;
+    width: 100%;
+    background: transparent;
+    cursor: pointer;
+}
+
+.sidebar-tab-btn i {
+    font-size: 1.15rem;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar-tab-btn .tab-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-tab-btn:hover {
+    background-color: #f1f5f9;
+    color: var(--primary-color);
+    border-color: #e2e8f0;
+}
+
+.sidebar-tab-btn.active {
+    background: linear-gradient(135deg, #0d6efd, #0b5ed7) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.25);
+    border-color: #0d6efd !important;
+}
+
+.sidebar-tab-btn.active i,
+.sidebar-tab-btn.active span,
+.sidebar-tab-btn.active .tab-label {
+    color: #ffffff !important;
+}
+
+.sidebar-tab-btn.active .badge {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+}
+
+.patient-main-content {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .patient-sidebar {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        bottom: 0;
+        height: calc(100vh - 60px);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.18);
+        transform: translateX(-100%);
+        margin-left: 0 !important;
+    }
+    .patient-sidebar.mobile-open {
+        transform: translateX(0);
+    }
+}
+
 /* Badges & Chips */
 .symptom-chip {
     display: inline-flex;
