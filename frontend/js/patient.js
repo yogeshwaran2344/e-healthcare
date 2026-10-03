@@ -1,4 +1,4 @@
-// Patient Portal JavaScript: AI Personal Health Navigator
+﻿// Patient Portal JavaScript: AI Personal Health Navigator
 
 let allSymptoms = [];
 let selectedSymptoms = new Set();
@@ -171,7 +171,7 @@ function showSMSNotification(options) {
                 <small class="text-muted d-block" style="font-size:0.68rem; font-weight:700;">ONE-TIME SECURITY CODE / OTP</small>
                 <span class="sms-otp-code">${otp}</span>
             </div>
-            <button class="sms-btn btn-outline-primary bg-white text-primary border" onclick="navigator.clipboard.writeText('${otp}'); this.textContent='✓ Copied';">
+            <button class="sms-btn btn-outline-primary bg-white text-primary border" onclick="navigator.clipboard.writeText('${otp}'); this.textContent='âœ“ Copied';">
                 Copy
             </button>
         </div>
@@ -245,7 +245,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { await loadProfileData(); } catch (e) { console.warn("Profile init:", e); }
     try { await loadDoctorsDropdown(); } catch (e) { console.warn("Doctors dropdown init:", e); }
     try { setupSpeechRecognition(); } catch (e) { console.warn("Speech recognition init:", e); }
-    try { renderFamilyVaultButtons(); switchFamilyVault('self'); } catch (e) { console.warn("Family Vault init:", e); }
+    try { renderFamilyVaultButtons(); switchFamilyVault('self', true); } catch (e) { console.warn("Family Vault init:", e); }
 
     // Proactively pre-populate modules so the UI is immediately populated
     loadPredictiveTab().catch(() => {});
@@ -272,59 +272,59 @@ window.addEventListener('DOMContentLoaded', async () => {
 const MULTILINGUAL_SYMPTOM_DICTIONARY = {
     chest_pain_pressure: [
         "chest pain", "chest pressure", "angina", "heart pain", "tightness in chest",
-        "நெஞ்சு வலி", "மார்பு வலி", "இதய வலி", "nenju vali", "marbu vali", "idaya vali",
-        "ఛాతీ నొప్పి", "గుండె నొప్పి", "మంట", "chati noppi", "gunde noppi", "chathi noppi",
-        "ಎದೆ ನೋವು", "ಗುಂಡಿಗೆ ನೋವು", "ede novu", "ede bharavagide", "gundige novu",
-        "നെഞ്ചുവേദന", "നെഞ്ചിൽ ഭാരം", "nenju vedana", "nenjil bhaaram", "nenjil kuthal",
-        "सीने में दर्द", "छाती में दर्द", "seene me dard", "chaati me dard"
+        "à®¨à¯†à®žà¯à®šà¯ à®µà®²à®¿", "à®®à®¾à®°à¯à®ªà¯ à®µà®²à®¿", "à®‡à®¤à®¯ à®µà®²à®¿", "nenju vali", "marbu vali", "idaya vali",
+        "à°›à°¾à°¤à±€ à°¨à±Šà°ªà±à°ªà°¿", "à°—à±à°‚à°¡à±† à°¨à±Šà°ªà±à°ªà°¿", "à°®à°‚à°Ÿ", "chati noppi", "gunde noppi", "chathi noppi",
+        "à²Žà²¦à³† à²¨à³‹à²µà³", "à²—à³à²‚à²¡à²¿à²—à³† à²¨à³‹à²µà³", "ede novu", "ede bharavagide", "gundige novu",
+        "à´¨àµ†à´žàµà´šàµà´µàµ‡à´¦à´¨", "à´¨àµ†à´žàµà´šà´¿àµ½ à´­à´¾à´°à´‚", "nenju vedana", "nenjil bhaaram", "nenjil kuthal",
+        "à¤¸à¥€à¤¨à¥‡ à¤®à¥‡à¤‚ à¤¦à¤°à¥à¤¦", "à¤›à¤¾à¤¤à¥€ à¤®à¥‡à¤‚ à¤¦à¤°à¥à¤¦", "seene me dard", "chaati me dard"
     ],
     cough_dry_or_productive: [
         "cough", "dry cough", "phlegm", "productive cough",
-        "இருமல்", "வறட்டு இருமல்", "சளி", "irumal", "varattu irumal", "sali",
-        "దగ్గు", "పొడి దగ్గు", "కఫం", "daggu", "podi daggu", "kafam",
-        "ಕೆಮ್ಮು", "ಒಣ ಕೆಮ್ಮು", "kemmu", "ona kemmu", "khefa",
-        "ചുമ", "വരണ്ട ചുമ", "കഫക്കെട്ട്", "chuma", "varanda chuma", "kafakkettu",
-        "खांसी", "सूखी खांसी", "khansi", "balgam"
+        "à®‡à®°à¯à®®à®²à¯", "à®µà®±à®Ÿà¯à®Ÿà¯ à®‡à®°à¯à®®à®²à¯", "à®šà®³à®¿", "irumal", "varattu irumal", "sali",
+        "à°¦à°—à±à°—à±", "à°ªà±Šà°¡à°¿ à°¦à°—à±à°—à±", "à°•à°«à°‚", "daggu", "podi daggu", "kafam",
+        "à²•à³†à²®à³à²®à³", "à²’à²£ à²•à³†à²®à³à²®à³", "kemmu", "ona kemmu", "khefa",
+        "à´šàµà´®", "à´µà´°à´£àµà´Ÿ à´šàµà´®", "à´•à´«à´•àµà´•àµ†à´Ÿàµà´Ÿàµ", "chuma", "varanda chuma", "kafakkettu",
+        "à¤–à¤¾à¤‚à¤¸à¥€", "à¤¸à¥‚à¤–à¥€ à¤–à¤¾à¤‚à¤¸à¥€", "khansi", "balgam"
     ],
     fever_high_grade: [
         "fever", "high temperature", "chills", "feverish",
-        "காய்ச்சல்", "சுரம்", "உடல் சூடு", "kaichal", "suram", "jwaram",
-        "జ్వరం", "తీవ్ర జ్వరం", "jwaram", "tega jwaram",
-        "ಜ್ವರ", "ವಿಪರೀತ ಜ್ವರ", "jvara", "jwara",
-        "പനി", "കഠിനമായ പനി", "pani", "kadinamaaya pani",
-        "बुखार", "तेज बुखार", "bukhar", "taap"
+        "à®•à®¾à®¯à¯à®šà¯à®šà®²à¯", "à®šà¯à®°à®®à¯", "à®‰à®Ÿà®²à¯ à®šà¯‚à®Ÿà¯", "kaichal", "suram", "jwaram",
+        "à°œà±à°µà°°à°‚", "à°¤à±€à°µà±à°° à°œà±à°µà°°à°‚", "jwaram", "tega jwaram",
+        "à²œà³à²µà²°", "à²µà²¿à²ªà²°à³€à²¤ à²œà³à²µà²°", "jvara", "jwara",
+        "à´ªà´¨à´¿", "à´•à´ à´¿à´¨à´®à´¾à´¯ à´ªà´¨à´¿", "pani", "kadinamaaya pani",
+        "à¤¬à¥à¤–à¤¾à¤°", "à¤¤à¥‡à¤œ à¤¬à¥à¤–à¤¾à¤°", "bukhar", "taap"
     ],
     shortness_of_breath: [
         "shortness of breath", "breathing difficulty", "breathless", "dyspnea",
-        "மூச்சுத்திணறல்", "மூச்சு வாங்குதல்", "moochu thinaral", "moochu vanguthal",
-        "ఆయాసం", "శ్వాస తీసుకోవడంలో ఇబ్బంది", "aayasam", "shwasa ibbandi",
-        "ಉಸಿರಾಟದ ತೊಂದರೆ", "ಉಸಿರುಗಟ್ಟುವುದು", "usiraatada thondare", "usirugattuvudu",
-        "ശ്വാസതടസ്സം", "ശ്വാസം മുട്ടൽ", "shwaasathadassam", "shwaasam muttal",
-        "सांस फूलना", "सांस लेने में तकलीफ", "saans phoolna"
+        "à®®à¯‚à®šà¯à®šà¯à®¤à¯à®¤à®¿à®£à®±à®²à¯", "à®®à¯‚à®šà¯à®šà¯ à®µà®¾à®™à¯à®•à¯à®¤à®²à¯", "moochu thinaral", "moochu vanguthal",
+        "à°†à°¯à°¾à°¸à°‚", "à°¶à±à°µà°¾à°¸ à°¤à±€à°¸à±à°•à±‹à°µà°¡à°‚à°²à±‹ à°‡à°¬à±à°¬à°‚à°¦à°¿", "aayasam", "shwasa ibbandi",
+        "à²‰à²¸à²¿à²°à²¾à²Ÿà²¦ à²¤à³Šà²‚à²¦à²°à³†", "à²‰à²¸à²¿à²°à³à²—à²Ÿà³à²Ÿà³à²µà³à²¦à³", "usiraatada thondare", "usirugattuvudu",
+        "à´¶àµà´µà´¾à´¸à´¤à´Ÿà´¸àµà´¸à´‚", "à´¶àµà´µà´¾à´¸à´‚ à´®àµà´Ÿàµà´Ÿàµ½", "shwaasathadassam", "shwaasam muttal",
+        "à¤¸à¤¾à¤‚à¤¸ à¤«à¥‚à¤²à¤¨à¤¾", "à¤¸à¤¾à¤‚à¤¸ à¤²à¥‡à¤¨à¥‡ à¤®à¥‡à¤‚ à¤¤à¤•à¤²à¥€à¤«", "saans phoolna"
     ],
     headache_severe: [
         "headache", "migraine", "severe head pain",
-        "தலைவலி", "கடுமையான தலைவலி", "thalai vali", "kadumaiyana thalai vali",
-        "తలనొప్పి", "తీవ్ర తలనొప్పి", "tala noppi", "talanappi",
-        "ತಲೆನೋವು", "tale novu", "tale bhaara",
-        "തലവേദന", "കഠിനമായ തലവേദന", "thalavedana", "thalavedhana",
-        "सिरदर्द", "सर दर्द", "sirdard", "sar dard"
+        "à®¤à®²à¯ˆà®µà®²à®¿", "à®•à®Ÿà¯à®®à¯ˆà®¯à®¾à®© à®¤à®²à¯ˆà®µà®²à®¿", "thalai vali", "kadumaiyana thalai vali",
+        "à°¤à°²à°¨à±Šà°ªà±à°ªà°¿", "à°¤à±€à°µà±à°° à°¤à°²à°¨à±Šà°ªà±à°ªà°¿", "tala noppi", "talanappi",
+        "à²¤à²²à³†à²¨à³‹à²µà³", "tale novu", "tale bhaara",
+        "à´¤à´²à´µàµ‡à´¦à´¨", "à´•à´ à´¿à´¨à´®à´¾à´¯ à´¤à´²à´µàµ‡à´¦à´¨", "thalavedana", "thalavedhana",
+        "à¤¸à¤¿à¤°à¤¦à¤°à¥à¤¦", "à¤¸à¤° à¤¦à¤°à¥à¤¦", "sirdard", "sar dard"
     ],
     nausea_vomiting: [
         "nausea", "vomiting", "throwing up", "queasy",
-        "வாந்தி", "குமட்டல்", "vanthi", "kumattal",
-        "వాంతులు", "వికారం", "vaanthulu", "vikaaram",
-        "ವಾಂತಿ", "ವಾಕರಿಕೆ", "vaanti", "vaakarike",
-        "ഛർദ്ദി", "ഓക്കാനം", "chardi", "charthil", "okkanam",
-        "उल्टी", "जी मिचलाना", "ulti", "vomit"
+        "à®µà®¾à®¨à¯à®¤à®¿", "à®•à¯à®®à®Ÿà¯à®Ÿà®²à¯", "vanthi", "kumattal",
+        "à°µà°¾à°‚à°¤à±à°²à±", "à°µà°¿à°•à°¾à°°à°‚", "vaanthulu", "vikaaram",
+        "à²µà²¾à²‚à²¤à²¿", "à²µà²¾à²•à²°à²¿à²•à³†", "vaanti", "vaakarike",
+        "à´›àµ¼à´¦àµà´¦à´¿", "à´“à´•àµà´•à´¾à´¨à´‚", "chardi", "charthil", "okkanam",
+        "à¤‰à¤²à¥à¤Ÿà¥€", "à¤œà¥€ à¤®à¤¿à¤šà¤²à¤¾à¤¨à¤¾", "ulti", "vomit"
     ],
     fatigue_generalized: [
         "fatigue", "tiredness", "exhaustion", "weakness",
-        "சோர்வு", "அசதி", "உடல் பலவீனம்", "sorvu", "asathi", "balaheenam",
-        "அலసట", "నీరసం", "బలహీనత", "alasata", "neerasam", "balaheenata",
-        "ಆಯಾಸ", "ಸುಸ್ತು", "ನಿಶ್ಯಕ್ತಿ", "aayaasa", "susthu", "nishakthi",
-        "ക്ഷീണം", "തളർച്ച", "ksheenam", "thalarcha",
-        "थकान", "कमजोरी", "thakan", "kamzori"
+        "à®šà¯‹à®°à¯à®µà¯", "à®…à®šà®¤à®¿", "à®‰à®Ÿà®²à¯ à®ªà®²à®µà¯€à®©à®®à¯", "sorvu", "asathi", "balaheenam",
+        "à®…à®²à°¸à°Ÿ", "à°¨à±€à°°à°¸à°‚", "à°¬à°²à°¹à±€à°¨à°¤", "alasata", "neerasam", "balaheenata",
+        "à²†à²¯à²¾à²¸", "à²¸à³à²¸à³à²¤à³", "à²¨à²¿à²¶à³à²¯à²•à³à²¤à²¿", "aayaasa", "susthu", "nishakthi",
+        "à´•àµà´·àµ€à´£à´‚", "à´¤à´³àµ¼à´šàµà´š", "ksheenam", "thalarcha",
+        "à¤¥à¤•à¤¾à¤¨", "à¤•à¤®à¤œà¥‹à¤°à¥€", "thakan", "kamzori"
     ]
 };
 
@@ -821,7 +821,7 @@ function displayStep4Results(res) {
     const reasonsList = document.getElementById('triageReasonsList');
     if (res.triage.triage_reasons && res.triage.triage_reasons.length > 0) {
         reasonsList.innerHTML = `<strong class="d-block text-danger mb-1">Triage Trigger Factors:</strong>` + 
-            res.triage.triage_reasons.map(r => `<div>• ${r}</div>`).join('');
+            res.triage.triage_reasons.map(r => `<div>â€¢ ${r}</div>`).join('');
     } else {
         reasonsList.innerHTML = `<div class="text-muted">Standard clinical pathway. No acute emergency red-flags triggered.</div>`;
     }
@@ -840,7 +840,7 @@ function displayStep4Results(res) {
                 <div class="decision-map-bar d-flex justify-content-between align-items-center p-2 rounded bg-light border">
                     <div>
                         <strong class="text-dark d-block">${f.feature}</strong>
-                        <small class="text-muted">${f.category} • ${f.effect}</small>
+                        <small class="text-muted">${f.category} â€¢ ${f.effect}</small>
                     </div>
                     <span class="attribution-bar-pos">+${f.weight}</span>
                 </div>
@@ -852,7 +852,7 @@ function displayStep4Results(res) {
                 <div class="decision-map-bar d-flex justify-content-between align-items-center p-2 rounded bg-light border">
                     <div>
                         <strong class="text-dark d-block">${f.feature}</strong>
-                        <small class="text-muted">${f.category} • ${f.effect}</small>
+                        <small class="text-muted">${f.category} â€¢ ${f.effect}</small>
                     </div>
                     <span class="attribution-bar-neg">${f.weight}</span>
                 </div>
@@ -877,7 +877,7 @@ function displayStep4Results(res) {
     const tableBody = document.getElementById('minimumTestsTableBody');
     if (minTestSet && tableBody) {
         document.getElementById('residualUncertaintyBadge').textContent = `Residual Uncertainty: ~${minTestSet.expected_residual_uncertainty_pct}%`;
-        document.getElementById('minTestTotalCost').textContent = `₹${minTestSet.total_estimated_cost_inr}`;
+        document.getElementById('minTestTotalCost').textContent = `â‚¹${minTestSet.total_estimated_cost_inr}`;
         document.getElementById('radiationSafetyBadge').textContent = minTestSet.radiation_burden_profile.split('(')[0].trim();
 
         tableBody.innerHTML = (minTestSet.minimum_test_set || []).map(t => `
@@ -891,7 +891,7 @@ function displayStep4Results(res) {
                         ${t.priority_tier === 1 ? 'MANDATORY' : 'RECOMMENDED'}
                     </span>
                 </td>
-                <td class="fw-semibold">₹${t.cost_inr}</td>
+                <td class="fw-semibold">â‚¹${t.cost_inr}</td>
                 <td>
                     <span class="badge ${t.radiation_risk === 'None' ? 'bg-success text-white' : 'bg-warning text-dark'}">
                         ${t.radiation_risk}
@@ -971,7 +971,7 @@ async function loadDoctorsDropdown() {
         const select = document.getElementById('step4DoctorSelect');
         select.innerHTML = '<option value="">Choose a Doctor...</option>' + doctors.map(d => `
             <option value="${d.user_id}">
-                ${d.full_name} (${d.specialization}) — ${d.hospital_affiliation}
+                ${d.full_name} (${d.specialization}) â€” ${d.hospital_affiliation}
             </option>
         `).join('');
     } catch (err) {
@@ -1377,13 +1377,13 @@ function printPrescriptionDoc() {
                     <div>
                         <div class="hospital-title">APEX MULTISPECIALTY HOSPITAL</div>
                         <div class="hospital-sub">Department of Pulmonary Medicine &amp; Clinical Critical Care</div>
-                        <div class="hospital-sub">NABH Accredited • Reg No: APEX-HC/2026/IND-4921</div>
+                        <div class="hospital-sub">NABH Accredited â€¢ Reg No: APEX-HC/2026/IND-4921</div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 700; color: #1e3a8a; font-size: 14px;">${doctorName}</div>
                         <div style="font-size: 11px; color: #64748b;">${doctorSpec}</div>
                         <div style="font-size: 10px; color: #94a3b8;">Medical Council Reg: #KMC-74892</div>
-                        <span class="meta-badge">✓ Blockchain Integrity Verified</span>
+                        <span class="meta-badge">âœ“ Blockchain Integrity Verified</span>
                     </div>
                 </div>
 
@@ -1411,7 +1411,7 @@ function printPrescriptionDoc() {
                     <div class="diagnosis-val">${diagnosis}</div>
                 </div>
 
-                <div class="rx-symbol">℞ Prescribed Medicines</div>
+                <div class="rx-symbol">â„ž Prescribed Medicines</div>
 
                 <table>
                     <thead>
@@ -1441,7 +1441,7 @@ function printPrescriptionDoc() {
                         <div>
                             <div style="font-weight: 700; font-size: 11px; color: #1e293b;">Digital Rx Cryptographic Hash</div>
                             <div style="font-family: monospace; font-size: 9px; color: #64748b;">SHA256: 8f3a9d21c0...7b41e9</div>
-                            <div style="font-size: 9px; color: #10b981; font-weight: 600;">✓ Digitally Signed &amp; Safe for Pharmacy Dispensation</div>
+                            <div style="font-size: 9px; color: #10b981; font-weight: 600;">âœ“ Digitally Signed &amp; Safe for Pharmacy Dispensation</div>
                         </div>
                     </div>
                     <div class="sig-block">
@@ -1870,7 +1870,7 @@ async function simulateIoTReading(deviceType, triggerEmergency) {
     try {
         const res = await API.post(`/api/iot/simulate-stream?device_type=${deviceType}&trigger_emergency=${triggerEmergency}`);
         if (res.is_critical) {
-            alert(`⚠️ EMERGENCY ALERT: ${res.alert_message}`);
+            alert(`âš ï¸ EMERGENCY ALERT: ${res.alert_message}`);
         } else {
             alert(`Telemetry Synced: ${res.metric_type} = ${res.primary_value} ${res.unit} (${res.alert_severity})`);
         }
@@ -1932,7 +1932,7 @@ async function loadBlockchainTab() {
             container.innerHTML = ledgerRes.chain.map(b => `
                 <div class="block-card p-3 rounded-3 shadow-sm border ${b.record_type === 'GENESIS' ? 'genesis' : ''}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge ${b.record_type === 'GENESIS' ? 'bg-success' : 'bg-primary'} fs-6">Block #${b.block_index} • ${b.record_type}</span>
+                        <span class="badge ${b.record_type === 'GENESIS' ? 'bg-success' : 'bg-primary'} fs-6">Block #${b.block_index} â€¢ ${b.record_type}</span>
                         <small class="text-muted"><i class="bi bi-clock me-1"></i>${new Date(b.timestamp).toLocaleString()}</small>
                     </div>
                     <div class="small mb-1">
@@ -2211,7 +2211,7 @@ async function triggerOneTapSOS() {
         };
         const res = await API.post('/api/emergency/trigger-sos', payload);
         currentEmergencyAlertId = res.alert_id;
-        alert(`🚨 EMERGENCY ACTIVATED!\nUnit: ${res.ambulance_unit}\nETA: ${res.eta_minutes} Mins\nER Trauma Bay #3 Reserved.`);
+        alert(`ðŸš¨ EMERGENCY ACTIVATED!\nUnit: ${res.ambulance_unit}\nETA: ${res.eta_minutes} Mins\nER Trauma Bay #3 Reserved.`);
         
         switchToTab('tab-emergency');
         await loadEmergencyTab({ includePassport: true });
@@ -2404,7 +2404,7 @@ async function logProgress(challengeId, increment) {
     try {
         const res = await API.post(`/api/preventive/challenges/${challengeId}/log-progress`, { increment });
         if (res.points_awarded > 0) {
-            alert(`🎉 Goal Completed! +${res.points_awarded} Health Points Awarded! Streak: ${res.streak_days} days`);
+            alert(`ðŸŽ‰ Goal Completed! +${res.points_awarded} Health Points Awarded! Streak: ${res.streak_days} days`);
         }
         await loadCommunityTab();
     } catch (err) {
@@ -2459,7 +2459,7 @@ async function loadDigitalHealthTimeline() {
                         <h6 class="fw-bold text-dark mb-0">${e.title}</h6>
                         <small class="text-muted"><i class="bi bi-clock me-1"></i>${new Date(e.recorded_at).toLocaleDateString()} ${new Date(e.recorded_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
                     </div>
-                    <div class="badge bg-light text-dark border small my-1">${e.event_type.replace(/_/g, ' ')} • ${e.severity_level || 'Normal'}</div>
+                    <div class="badge bg-light text-dark border small my-1">${e.event_type.replace(/_/g, ' ')} â€¢ ${e.severity_level || 'Normal'}</div>
                     <p class="text-secondary small mb-1">${e.description}</p>
                     ${metricsHtml}
                 </div>
@@ -2485,20 +2485,20 @@ function renderLivePassportFields(p) {
         v.heart_rate || v.hr,
         v.spo2 ? ('SpO2 ' + v.spo2) : null,
         v.glucose
-    ].filter(Boolean).join(' · ') || 'Not recorded';
-    const physician = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' · ') || 'Not recorded';
+    ].filter(Boolean).join(' Â· ') || 'Not recorded';
+    const physician = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' Â· ') || 'Not recorded';
     return `
         <div class="row g-2">
-            <div class="col-md-4"><span class="text-muted d-block">Identity</span><strong>${p.patient_name || p.full_name || '—'}</strong><div class="text-muted">${p.age || '—'} · ${p.gender || '—'}</div></div>
-            <div class="col-md-2"><span class="text-muted d-block">Blood group</span><span class="badge bg-danger fs-6">${p.blood_group || '—'}</span></div>
-            <div class="col-md-6"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${p.severe_drug_allergies || p.drug_allergies || '—'}</strong></div>
-            <div class="col-md-6"><span class="text-muted d-block">Critical conditions</span>${p.pre_existing_conditions || '—'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Medications</span>${p.current_medications || '—'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Emergency contact</span>${p.emergency_contact || p.emergency_contact_phone || '—'}</div>
+            <div class="col-md-4"><span class="text-muted d-block">Identity</span><strong>${p.patient_name || p.full_name || 'â€”'}</strong><div class="text-muted">${p.age || 'â€”'} Â· ${p.gender || 'â€”'}</div></div>
+            <div class="col-md-2"><span class="text-muted d-block">Blood group</span><span class="badge bg-danger fs-6">${p.blood_group || 'â€”'}</span></div>
+            <div class="col-md-6"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${p.severe_drug_allergies || p.drug_allergies || 'â€”'}</strong></div>
+            <div class="col-md-6"><span class="text-muted d-block">Critical conditions</span>${p.pre_existing_conditions || 'â€”'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Medications</span>${p.current_medications || 'â€”'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Emergency contact</span>${p.emergency_contact || p.emergency_contact_phone || 'â€”'}</div>
             <div class="col-md-6"><span class="text-muted d-block">Physician</span>${physician}</div>
             <div class="col-12"><span class="text-muted d-block">Latest vitals</span>${vitals}</div>
         </div>
-        <div class="small text-muted mt-2"><i class="bi bi-lock me-1"></i>Read-only live view · generated ${p.timestamp || ''}</div>
+        <div class="small text-muted mt-2"><i class="bi bi-lock me-1"></i>Read-only live view Â· generated ${p.timestamp || ''}</div>
     `;
 }
 
@@ -2525,11 +2525,11 @@ async function loadPatientEmergencyAudit() {
         }
         tbody.innerHTML = events.map(ev => `
             <tr>
-                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '—'}</td>
-                <td class="small">${ev.accessor_name || '—'}</td>
-                <td class="small">${ev.accessor_role || '—'}</td>
-                <td class="small">${ev.purpose || '—'}</td>
-                <td class="small">${ev.information_type || '—'}</td>
+                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'â€”'}</td>
+                <td class="small">${ev.accessor_name || 'â€”'}</td>
+                <td class="small">${ev.accessor_role || 'â€”'}</td>
+                <td class="small">${ev.purpose || 'â€”'}</td>
+                <td class="small">${ev.information_type || 'â€”'}</td>
                 <td>${ev.is_emergency ? '<span class="badge bg-danger">Emergency</span>' : '<span class="badge bg-secondary">Routine</span>'}</td>
             </tr>
         `).join('');
@@ -2691,19 +2691,19 @@ async function importVitalsFromReports() {
             heart_rate: "74 bpm",
             spo2: "98%",
             glucose: "112 mg/dL",
-            temperature: "98.4°F"
+            temperature: "98.4Â°F"
         };
 
         // Update display gauges
         document.getElementById('valBp').textContent = extracted.blood_pressure.split(' ')[0] || "125/82";
         document.getElementById('valSpo2').textContent = extracted.spo2.replace('%', '') || "98";
         document.getElementById('valGlucose').textContent = extracted.glucose.split(' ')[0] || "112";
-        document.getElementById('valTemp').textContent = extracted.temperature.replace('°F', '') || "98.4";
+        document.getElementById('valTemp').textContent = extracted.temperature.replace('Â°F', '') || "98.4";
 
         preview.innerHTML = `
             <div class="alert alert-success py-2 px-3 rounded-3 mb-0 small">
                 <i class="bi bi-check-circle-fill me-1"></i> Successfully imported from <strong>${latest.file_name}</strong> (Turnaround: ${new Date(latest.uploaded_at).toLocaleDateString()}):
-                <div class="mt-1">BP: ${extracted.blood_pressure} • HR: ${extracted.heart_rate} • SpO2: ${extracted.spo2} • Glucose: ${extracted.glucose}</div>
+                <div class="mt-1">BP: ${extracted.blood_pressure} â€¢ HR: ${extracted.heart_rate} â€¢ SpO2: ${extracted.spo2} â€¢ Glucose: ${extracted.glucose}</div>
             </div>
         `;
     } catch (err) {
@@ -2728,7 +2728,7 @@ async function submitManualVitals(e) {
     const [bpSys, bpDia] = bp.split('/').map(Number);
     try {
         await evaluateCaregiverAlertFromVitals({ hr, spo2, bp_sys: bpSys || 120, bp_dia: bpDia || 80, temp });
-        alert(`Vitals saved and streamed successfully!\nHeart Rate: ${hr} bpm\nBlood Pressure: ${bp} mmHg\nSpO2: ${spo2}%\nGlucose: ${glucose} mg/dL\nTemperature: ${temp}°F`);
+        alert(`Vitals saved and streamed successfully!\nHeart Rate: ${hr} bpm\nBlood Pressure: ${bp} mmHg\nSpO2: ${spo2}%\nGlucose: ${glucose} mg/dL\nTemperature: ${temp}Â°F`);
     } catch (err) {
         alert("Vitals saved to dashboard.");
     }
@@ -2974,7 +2974,7 @@ async function triggerCaregiverAlertTest(level) {
     try {
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: missedDoses });
         updateCaregiverAlertUI(res);
-        alert(`🚨 Caregiver Alert Escalation Triggered!\nTier: ${res.tier_badge}\nTrigger: ${res.primary_trigger}\nChannels: ${res.channels.join(', ')}\nMessage: "${res.caregiver_message}"`);
+        alert(`ðŸš¨ Caregiver Alert Escalation Triggered!\nTier: ${res.tier_badge}\nTrigger: ${res.primary_trigger}\nChannels: ${res.channels.join(', ')}\nMessage: "${res.caregiver_message}"`);
     } catch (err) {
         alert("Error testing alert: " + err.message);
     }
@@ -3038,7 +3038,7 @@ async function revokeAccess(id, consentId) {
         if (consentId) {
             await API.post(`/api/blockchain/revoke-consent/${consentId}`);
         }
-        alert("✓ Access Revoked! An immutable revocation block has been recorded on your patient ledger.");
+        alert("âœ“ Access Revoked! An immutable revocation block has been recorded on your patient ledger.");
         await loadAccessHistoryTab();
         // Update dashboard metric
         const permEl = document.getElementById('dashMetricPermissions');
@@ -3144,7 +3144,7 @@ async function generateTravelPassport(e) {
 
         listEl.innerHTML = items.map(i => `<li>${i}</li>`).join('');
 
-        alert(`✓ Verifiable Travel Health Passport Generated for ${dest}!\nToken: ${res.travel_token}\nBlock: #${res.block_index}\nSensitive unrelated records remain encrypted.`);
+        alert(`âœ“ Verifiable Travel Health Passport Generated for ${dest}!\nToken: ${res.travel_token}\nBlock: #${res.block_index}\nSensitive unrelated records remain encrypted.`);
     } catch (err) {
         alert("Travel passport error: " + err.message);
     } finally {
@@ -3172,23 +3172,21 @@ function getStoredFamilyMembers() {
 
 function getFamilyMembers() {
     const user = API.getUser() || {};
-    const selfName = (currentProfile && currentProfile.full_name) || user.full_name || "Self Patient";
-    const selfAge = (currentProfile && currentProfile.age) || 35;
-    const selfBlood = (currentProfile && currentProfile.blood_group) || "O+";
-    const selfAllergies = (currentProfile && currentProfile.drug_allergies) || "None logged";
-    const selfMeds = (currentProfile && currentProfile.current_medications) || "None logged";
+    // "Self" is always the logged-in user: use the login name and real profile values only
+    const selfName = user.full_name || (currentProfile && currentProfile.full_name) || "Me";
+    const p = currentProfile || {};
 
     const members = {
         self: {
             id: 'self',
             name: selfName,
             relation: 'Self',
-            age: selfAge,
-            blood: selfBlood,
-            allergies: selfAllergies,
-            meds: selfMeds,
-            records: 17,
-            labs: 12
+            age: p.age || '',
+            blood: p.blood_group || 'Not set',
+            allergies: p.drug_allergies || 'None logged',
+            meds: p.current_medications || 'None logged',
+            records: null,   // null = keep dashboard defaults
+            labs: null
         }
     };
 
@@ -3212,56 +3210,95 @@ function renderFamilyVaultButtons() {
         const icon = key === 'self' ? 'bi-person-check-fill' : 'bi-heart-pulse-fill';
         const label = key === 'self' ? `Self (${m.name})` : `${m.name} (${m.relation || key})`;
         html += `
-            <button type="button" class="btn btn-outline-primary ${isActive ? 'active' : ''}" id="fVault-${key}" onclick="switchFamilyVault('${key}')">
+            <button type="button" class="btn btn-sm btn-outline-primary ${isActive ? 'active' : ''}" id="fVault-${key}" onclick="switchFamilyVault('${key}')">
                 <i class="bi ${icon} me-1"></i> ${escapeHtml(label)}
             </button>
         `;
     });
 
     html += `
-        <button type="button" class="btn btn-primary fw-semibold ms-1" onclick="openAddFamilyMemberModal()">
-            <i class="bi bi-person-plus-fill me-1"></i> + Add Family Member
+        <button type="button" class="btn btn-sm btn-primary fw-semibold" onclick="openAddFamilyMemberModal()">
+            <i class="bi bi-person-plus-fill me-1"></i> Add Family Member
         </button>
     `;
 
     container.innerHTML = html;
 }
 
-function switchFamilyVault(memberKey) {
+// Update only the text of a dashboard metric, keeping its icon
+function setDashMetric(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const last = el.lastChild;
+    if (last && last.nodeType === 3) last.textContent = text;
+    else el.appendChild(document.createTextNode(text));
+}
+
+const _dashDefaults = {};
+function _rememberDashDefault(id) {
+    const el = document.getElementById(id);
+    if (el && !(id in _dashDefaults)) _dashDefaults[id] = el.lastChild ? el.lastChild.textContent : el.textContent;
+}
+
+function countListItems(text) {
+    if (!text || text === 'None logged' || /^none/i.test(text.trim())) return 0;
+    return text.split(',').filter(s => s.trim()).length;
+}
+
+function switchFamilyVault(memberKey, silent = false) {
+    ['dashMetricRecords', 'dashMetricLabs'].forEach(_rememberDashDefault);
     activeFamilyMemberKey = memberKey;
     const members = getFamilyMembers();
     const m = members[memberKey] || members.self;
+    const isSelf = (memberKey === 'self' || !members[memberKey]);
 
     renderFamilyVaultButtons();
 
-    // Update welcome & dashboard metrics
+    // Welcome banner
     const welcome = document.getElementById('userWelcomeText');
-    if (welcome) welcome.textContent = `Viewing Vault: ${m.name} (${m.relation || 'Self'}, ${m.age}y)`;
-
-    const recEl = document.getElementById('dashMetricRecords');
-    if (recEl) recEl.textContent = `${m.records || 0} verified`;
-
-    const medEl = document.getElementById('dashMetricMeds');
-    if (medEl) {
-        const medCount = m.meds && m.meds !== 'None logged' ? (m.meds.includes(',') ? m.meds.split(',').length : 1) : 0;
-        medEl.textContent = `${medCount} active`;
+    if (welcome) {
+        welcome.textContent = isSelf
+            ? `Logged in as: ${m.name}`
+            : `Viewing Vault: ${m.name} (${m.relation}${m.age ? ', ' + m.age + 'y' : ''})`;
     }
 
-    const algEl = document.getElementById('dashMetricAllergies');
-    if (algEl) {
-        const algCount = m.allergies && m.allergies !== 'None logged' ? (m.allergies.includes(',') ? m.allergies.split(',').length : 1) : 0;
-        algEl.textContent = `${algCount} critical`;
+    // Dashboard metrics
+    setDashMetric('dashMetricRecords', m.records == null ? _dashDefaults['dashMetricRecords'] : `${m.records} verified`);
+    setDashMetric('dashMetricLabs', m.labs == null ? _dashDefaults['dashMetricLabs'] : `${m.labs} records`);
+    setDashMetric('dashMetricMeds', `${countListItems(m.meds)} active`);
+    setDashMetric('dashMetricAllergies', `${countListItems(m.allergies)} critical`);
+
+    renderFamilyVaultDetails(m, isSelf);
+
+    if (!silent) {
+        showSMSNotification({
+            title: "ACTIVE HEALTH VAULT SWITCHED",
+            message: `Active Health Vault switched to ${m.name} (${m.relation}). Segregated sovereign permissions active.`,
+            channel: "sms",
+            duration: 4000
+        });
     }
+}
 
-    const labEl = document.getElementById('dashMetricLabs');
-    if (labEl) labEl.textContent = `${m.labs || 0} records`;
-
-    showSMSNotification({
-        title: "ACTIVE HEALTH VAULT SWITCHED",
-        message: `Active Health Vault switched to ${m.name} (${m.relation || 'Self'}). Segregated sovereign permissions active.`,
-        channel: "sms",
-        duration: 4000
-    });
+// Shows the selected person's details right under the vault switcher
+function renderFamilyVaultDetails(m, isSelf) {
+    const box = document.getElementById('familyVaultDetails');
+    if (!box) return;
+    if (isSelf) {
+        box.classList.add('d-none');
+        box.innerHTML = '';
+        return;
+    }
+    box.classList.remove('d-none');
+    box.innerHTML = `
+        <div class="row g-2 small">
+            <div class="col-6 col-md-2"><span class="text-muted d-block">Name</span><strong>${escapeHtml(m.name)}</strong></div>
+            <div class="col-6 col-md-2"><span class="text-muted d-block">Relation</span><strong>${escapeHtml(m.relation)}</strong></div>
+            <div class="col-6 col-md-2"><span class="text-muted d-block">Age</span><strong>${escapeHtml(m.age || '-')}</strong></div>
+            <div class="col-6 col-md-2"><span class="text-muted d-block">Blood group</span><strong>${escapeHtml(m.blood)}</strong></div>
+            <div class="col-6 col-md-2"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${escapeHtml(m.allergies)}</strong></div>
+            <div class="col-6 col-md-2"><span class="text-muted d-block">Medications</span><strong>${escapeHtml(m.meds)}</strong></div>
+        </div>`;
 }
 
 function openAddFamilyMemberModal() {
@@ -3401,11 +3438,11 @@ function togglePlainLanguageMode() {
 function changePortalLanguage(lang) {
     const langNames = {
         'en-IN': 'English',
-        'kn-IN': 'Kannada (ಕನ್ನಡ)',
-        'ta-IN': 'Tamil (தமிழ்)',
-        'te-IN': 'Telugu (తెలుగు)',
-        'ml-IN': 'Malayalam (മലയാളം)',
-        'hi-IN': 'Hindi (हिन्दी)'
+        'kn-IN': 'Kannada (à²•à²¨à³à²¨à²¡)',
+        'ta-IN': 'Tamil (à®¤à®®à®¿à®´à¯)',
+        'te-IN': 'Telugu (à°¤à±†à°²à±à°—à±)',
+        'ml-IN': 'Malayalam (à´®à´²à´¯à´¾à´³à´‚)',
+        'hi-IN': 'Hindi (à¤¹à¤¿à¤¨à¥à¤¦à¥€)'
     };
     alert(`Language preferences updated to: ${langNames[lang] || lang}.\nSymptom voice input and emergency summaries now localized.`);
 }
@@ -3422,7 +3459,7 @@ function handleDoctorConsentResponse(granted) {
 
     if (granted) {
         const duration = document.getElementById('reqConsentDuration').value;
-        alert(`✓ Access Granted to Dr. Sarah Sharma for ${duration} hours!\nA decentralized cryptographic bearer token has been generated and logged to your blockchain ledger.`);
+        alert(`âœ“ Access Granted to Dr. Sarah Sharma for ${duration} hours!\nA decentralized cryptographic bearer token has been generated and logged to your blockchain ledger.`);
         loadAccessHistoryTab();
     } else {
         alert("Access Request Declined. No medical records were shared with Dr. Sarah Sharma.");
@@ -3519,7 +3556,7 @@ loadDigitalHealthTimeline = async function() {
                         <div class="ps-3 border-start ms-2 mt-1">
                             <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('blood_test')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">├── Sep 28: Blood Test (Metabolic & Troponin)</strong>
+                                    <strong class="text-dark">â”œâ”€â”€ Sep 28: Blood Test (Metabolic & Troponin)</strong>
                                     <small class="text-muted d-block ps-4">Apex Diagnostic Laboratory &bull; Fasting Glucose 94 mg/dL</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
@@ -3527,7 +3564,7 @@ loadDigitalHealthTimeline = async function() {
 
                             <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('consultation')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">├── Sep 21: Doctor Consultation (Dr. Kumar)</strong>
+                                    <strong class="text-dark">â”œâ”€â”€ Sep 21: Doctor Consultation (Dr. Kumar)</strong>
                                     <small class="text-muted d-block ps-4">Apollo Super-Specialty &bull; Cardiovascular Evaluation</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
@@ -3535,7 +3572,7 @@ loadDigitalHealthTimeline = async function() {
 
                             <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('prescription')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">├── Aug 15: Prescription (Cardioprotective Regimen)</strong>
+                                    <strong class="text-dark">â”œâ”€â”€ Aug 15: Prescription (Cardioprotective Regimen)</strong>
                                     <small class="text-muted d-block ps-4">MedPlus Central &bull; Metformin, Lisinopril, Aspirin</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
@@ -3543,7 +3580,7 @@ loadDigitalHealthTimeline = async function() {
 
                             <div class="py-2 px-2 bg-white rounded border d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('vaccine')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">└── Jul 02: Vaccination (COVID-19 mRNA Booster)</strong>
+                                    <strong class="text-dark">â””â”€â”€ Jul 02: Vaccination (COVID-19 mRNA Booster)</strong>
                                     <small class="text-muted d-block ps-4">Apex Immunization Center &bull; Batch BNT-8821</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
