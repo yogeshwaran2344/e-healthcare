@@ -27,6 +27,10 @@ Validates:
 5. Prevention of Unauthorized Modification (Read-Only enforcement)
 6. Dedicated Emergency Mode UI Route (/emergency/view)
 """
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.database import SessionLocal

@@ -8,6 +8,35 @@ import math
 from typing import List, Dict, Any, Optional
 from .dataset import DISEASES_DB, ALL_SYMPTOMS
 
+SYMPTOM_CLUSTERS = {
+    "chest_pain": ["chest", "pain", "angina", "discomfort", "tightness", "pressure", "retrosternal", "heart"],
+    "sweating": ["sweat", "sweating", "diaphoresis", "clammy", "cold"],
+    "arm_radiation": ["radiation", "radiating", "arm", "jaw", "neck", "shoulder"],
+    "fever": ["fever", "pyrexia", "temperature", "chills", "feverish", "shivering"],
+    "cough": ["cough", "coughing", "phlegm", "sputum", "bronchial", "hack"],
+    "sputum": ["sputum", "phlegm", "mucus", "productive", "yellow", "green"],
+    "breathlessness": ["breath", "breathlessness", "dyspnea", "shortness", "wheezing", "stridor"],
+    "headache": ["headache", "migraine", "throbbing", "head", "cranial"],
+    "abdominal": ["abdominal", "stomach", "belly", "tummy", "epigastric", "cramps"],
+    "jaundice": ["jaundice", "yellowing", "yellow", "sclera", "icterus"],
+    "vomiting": ["vomit", "vomiting", "emesis", "nausea", "queasy"]
+}
+
+def match_symptom_token(input_s: str, target_s: str) -> float:
+    """Computes semantic overlap score between user-entered symptom and target database symptom."""
+    i_norm = input_s.lower().replace('-', '_').replace(' ', '_').strip()
+    t_norm = target_s.lower().replace('-', '_').replace(' ', '_').strip()
+    if i_norm == t_norm or i_norm in t_norm or t_norm in i_norm:
+        return 1.0
+    i_tokens = set(i_norm.split('_')) - {'of', 'in', 'to', 'with', 'or', 'and', 'the'}
+    t_tokens = set(t_norm.split('_')) - {'of', 'in', 'to', 'with', 'or', 'and', 'the'}
+    if i_tokens & t_tokens:
+        return 0.85
+    for c_words in SYMPTOM_CLUSTERS.values():
+        if any(w in i_norm for w in c_words) and any(w in t_norm for w in c_words):
+            return 0.80
+    return 0.0
+
 def calculate_disease_posteriors(
     symptoms: List[str],
     qa_answers: Optional[Dict[str, Any]] = None,
@@ -17,58 +46,75 @@ def calculate_disease_posteriors(
     """
     Computes normalized posterior probabilities across all diseases
     given observed symptoms, patient risk factors, and lab biomarkers.
+    Dynamically separates hypotheses so different symptoms yield genuinely distinct distributions.
     """
     qa_answers = qa_answers or {}
     patient_context = patient_context or {}
     biomarkers = biomarkers or {}
     
-    input_syms = set(symptoms)
     raw_scores = {}
     
     pre_existing_str = str(patient_context.get("pre_existing_conditions", "")).lower()
     age = patient_context.get("age", 35) or 35
     abnormal_biomarkers = " ".join(biomarkers.get("abnormal_flags", [])).lower()
+    qa_str = " ".join([str(v) for v in qa_answers.values()]).lower()
 
     for d_name, d_info in DISEASES_DB.items():
-        d_syms = set(d_info["symptoms"])
-        matched = input_syms & d_syms
+        d_syms = d_info["symptoms"]
         
-        # Jaccard + Recall weighted match
-        precision = len(matched) / len(input_syms) if input_syms else 0.0
-        recall = len(matched) / len(d_syms) if d_syms else 0.0
+        # Calculate semantic match values across user symptoms
+        m_vals = []
+        for s in symptoms:
+            best_match = max([match_symptom_token(s, ds) for ds in d_syms] + [0.0])
+            m_vals.append(best_match)
+
+        matched_count = sum(1 for v in m_vals if v >= 0.7)
+        precision = sum(m_vals) / len(symptoms) if symptoms else 0.0
+        recall = sum(m_vals) / len(d_syms) if d_syms else 0.0
         base_evidence = (0.6 * recall) + (0.4 * precision)
 
-        # Baseline smoothing epsilon
-        score = base_evidence + 0.02
+        # Baseline exponential scoring for distinct hypothesis discrimination
+        if matched_count > 0:
+            score = math.exp(3.2 * base_evidence)
+        else:
+            score = 0.05
         
         # Risk factor boosters
         if "cardiac" in d_name.lower() or "angina" in d_name.lower():
             if age >= 55:
-                score += 0.15
+                score *= 1.25
             if "hypertension" in pre_existing_str or "heart" in pre_existing_str or "diabetes" in pre_existing_str:
-                score += 0.20
+                score *= 1.35
             if "troponin" in abnormal_biomarkers or "ecg" in abnormal_biomarkers:
-                score += 0.50
+                score *= 2.5
+            if "arm" in qa_str or "jaw" in qa_str or "exertion" in qa_str:
+                score *= 1.6
         
         if "stroke" in d_name.lower():
             if "hypertension" in pre_existing_str or age >= 60:
-                score += 0.20
+                score *= 1.30
+            if "droop" in qa_str or "slur" in qa_str or "thunderclap" in qa_str:
+                score *= 2.0
                 
         if "pneumonia" in d_name.lower():
             if "diabetes" in pre_existing_str or "copd" in pre_existing_str or "asthma" in pre_existing_str:
-                score += 0.15
+                score *= 1.25
             if "infiltrate" in abnormal_biomarkers or "wbc" in abnormal_biomarkers:
-                score += 0.40
+                score *= 2.2
+            if "sputum" in qa_str or "phlegm" in qa_str or "cough" in qa_str:
+                score *= 1.4
 
         if "dengue" in d_name.lower():
             if "platelet" in abnormal_biomarkers or "ns1" in abnormal_biomarkers:
-                score += 0.50
+                score *= 2.5
+            if "rash" in qa_str or "petechiae" in qa_str:
+                score *= 1.5
 
-        # Penalize if major hallmark symptom is missing when many symptoms are provided
-        if len(input_syms) >= 4 and len(matched) == 0:
-            score = 0.005
+        if "cholecystitis" in d_name.lower():
+            if "fatty" in qa_str or "right upper" in qa_str:
+                score *= 1.8
 
-        raw_scores[d_name] = max(score, 0.005)
+        raw_scores[d_name] = max(score, 0.01)
 
     # Softmax / Normalize to probability distribution
     total = sum(raw_scores.values())

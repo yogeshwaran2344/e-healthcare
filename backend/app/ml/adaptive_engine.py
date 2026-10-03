@@ -6,7 +6,7 @@ Adaptive Multi-Stage Question Engine, Context-Aware Bayesian Predictor,
 import math
 from typing import List, Dict, Any, Optional
 from .dataset import ALL_SYMPTOMS, DISEASES_DB
-from .uncertainty_engine import calculate_disease_posteriors, compute_entropy_and_uncertainty
+from .uncertainty_engine import calculate_disease_posteriors, compute_entropy_and_uncertainty, match_symptom_token
 from .explainable_map_engine import generate_explainable_decision_map
 from .test_optimization_engine import optimize_minimum_diagnostic_test_set
 
@@ -186,81 +186,73 @@ def compute_explainable_diagnosis(
     all_symptom_set = set(ALL_SYMPTOMS)
     valid_symptoms = [s for s in symptoms if s in all_symptom_set]
     
-    disease_scores = []
-    
     # Biomarker hints
     biomarker_keywords = " ".join(biomarkers.get("abnormal_flags", [])).lower()
     pre_existing_str = str(patient_context.get("pre_existing_conditions", "")).lower()
 
-    for disease_name, info in DISEASES_DB.items():
-        disease_symptoms = set(info["symptoms"])
-        matching_symptoms = list(input_set & disease_symptoms)
-        match_count = len(matching_symptoms)
-        total_disease_sym = len(disease_symptoms)
-        
-        # Base Jaccard + Overlap
-        overlap_score = match_count / total_disease_sym if total_disease_sym > 0 else 0
-        input_overlap = match_count / len(input_set) if len(input_set) > 0 else 0
-        
-        score = (overlap_score * 0.5) + (input_overlap * 0.5)
-
-        xai_factors = []
-        if matching_symptoms:
-            readable_matched = [s.replace('_', ' ') for s in matching_symptoms]
-            xai_factors.append(f"Matched {match_count} core symptoms: {', '.join(readable_matched)}.")
-
-        # Biomarker synergy boost
-        if "platelet" in biomarker_keywords and "dengue" in disease_name.lower():
-            score += 0.40
-            xai_factors.append("Uploaded lab report confirms thrombocytopenia (low platelets), strongly elevating Dengue suspicion.")
-        elif "wbc" in biomarker_keywords and ("pneumonia" in disease_name.lower() or "typhoid" in disease_name.lower()):
-            score += 0.30
-            xai_factors.append("Elevated white blood cell count (leukocytosis) in uploaded report indicates active bacterial infection.")
-        elif "bilirubin" in biomarker_keywords and "jaundice" in disease_name.lower():
-            score += 0.45
-            xai_factors.append("Elevated total serum bilirubin in lab panel directly supports hepatic/jaundice diagnosis.")
-        elif "infiltrate" in biomarker_keywords or "opacity" in biomarker_keywords and "pneumonia" in disease_name.lower():
-            score += 0.45
-            xai_factors.append("Radiology/Chest scan findings show lung opacity consistent with pneumonia consolidation.")
-
-        # Patient history synergy boost
-        if "diabetes" in pre_existing_str:
-            if "pneumonia" in disease_name.lower() or "covid" in disease_name.lower():
-                score += 0.10
-                xai_factors.append(f"Pre-existing Diabetes increases vulnerability to lower respiratory tract infections.")
-        if "hypertension" in pre_existing_str or "heart" in pre_existing_str:
-            if "angina" in disease_name.lower() or "cardiovascular" in disease_name.lower():
-                score += 0.25
-                xai_factors.append("Documented cardiovascular medical history compounds risk of acute coronary syndrome.")
-
-        disease_scores.append({
-            "disease": disease_name,
-            "score": score,
-            "info": info,
-            "xai_factors": xai_factors
-        })
-
-    # Sort descending
-    disease_scores.sort(key=lambda x: x["score"], reverse=True)
-    top = disease_scores[0]
+    # Closed-Loop Dynamic Adaptive Intelligence Integration
+    posteriors = calculate_disease_posteriors(symptoms, qa_answers, patient_context, biomarkers)
+    entropy_uncertainty = compute_entropy_and_uncertainty(posteriors)
     
-    # Calculate calibrated confidence
-    raw_confidence = top["score"] * 100
-    confidence = min(max(raw_confidence, 35.0), 98.0)
+    candidate_list = [{"disease": d, "probability": p} for d, p in posteriors.items()]
+    candidate_list.sort(key=lambda x: x["probability"], reverse=True)
+    
+    top = candidate_list[0]
+    top_disease = top["disease"]
+    top_prob = top["probability"]
+    top_info = DISEASES_DB.get(top_disease, {})
 
+    # Dynamic calibrated confidence: calculated directly from Bayesian posterior probability
+    qa_bonus = min(len(qa_answers) * 3.5, 14.0) if qa_answers else 0.0
+    biomarker_bonus = 12.0 if biomarkers.get("abnormal_flags") else 0.0
+    raw_confidence = (top_prob * 100 * 1.55) + qa_bonus + biomarker_bonus
+    confidence = round(min(max(raw_confidence, 42.0), 96.8), 1)
+
+    # Explainable XAI factors derived dynamically from matched symptoms
+    xai_factors = []
+    matched_symptoms = []
+    for s in symptoms:
+        for ds in top_info.get("symptoms", []):
+            if match_symptom_token(s, ds) >= 0.7:
+                matched_symptoms.append(s.replace('_', ' '))
+                break
+    if matched_symptoms:
+        xai_factors.append(f"Matched {len(matched_symptoms)} core clinical features: {', '.join(set(matched_symptoms))}.")
+
+    # Biomarker synergy boosts
+    if "platelet" in biomarker_keywords and "dengue" in top_disease.lower():
+        xai_factors.append("Uploaded lab report confirms thrombocytopenia (low platelets), strongly elevating Dengue suspicion.")
+    elif "wbc" in biomarker_keywords and ("pneumonia" in top_disease.lower() or "infection" in top_disease.lower()):
+        xai_factors.append("Elevated white blood cell count (leukocytosis) in uploaded report indicates active bacterial infection.")
+    elif "bilirubin" in biomarker_keywords and ("jaundice" in top_disease.lower() or "cholecystitis" in top_disease.lower()):
+        xai_factors.append("Elevated total serum bilirubin in lab panel directly supports hepatic/biliary pathology.")
+    elif ("infiltrate" in biomarker_keywords or "opacity" in biomarker_keywords) and "pneumonia" in top_disease.lower():
+        xai_factors.append("Radiology/Chest scan findings show lung opacity consistent with pneumonia consolidation.")
+
+    # Patient history synergy boosts
+    if "diabetes" in pre_existing_str and ("pneumonia" in top_disease.lower() or "covid" in top_disease.lower()):
+        xai_factors.append("Pre-existing Diabetes increases vulnerability to lower respiratory tract infections.")
+    if ("hypertension" in pre_existing_str or "heart" in pre_existing_str) and "cardiac" in top_disease.lower():
+        xai_factors.append("Documented cardiovascular medical history compounds risk of acute coronary syndrome.")
+
+    if not xai_factors:
+        xai_factors.append(f"Clinical symptom presentation correlates with {top_disease}.")
+
+    # Differential diagnoses
     alternatives = []
-    for alt in disease_scores[1:4]:
-        if alt["score"] > 0.15:
+    for alt in candidate_list[1:4]:
+        if alt["probability"] > 0.05:
+            alt_info = DISEASES_DB.get(alt["disease"], {})
             alternatives.append({
                 "disease": alt["disease"],
-                "confidence_percentage": round(min(alt["score"] * 85, 90.0), 1),
-                "specialist": alt["info"].get("specialist", "General Physician"),
-                "reason": alt["xai_factors"][0] if alt["xai_factors"] else "Partial symptom overlap"
+                "confidence_percentage": round(min(alt["probability"] * 100 * 1.3, 85.0), 1),
+                "specialist": alt_info.get("specialist", "General Physician"),
+                "reason": f"Symptom overlap with Bayesian prior {round(alt['probability']*100, 1)}%"
             })
 
     triage = evaluate_risk_triage(
         symptoms=symptoms,
-        top_disease=top["disease"],
+        top_disease=top_disease,
         confidence=confidence,
         qa_answers=qa_answers,
         patient_context=patient_context,
@@ -292,14 +284,14 @@ def compute_explainable_diagnosis(
     )
 
     return {
-        "top_disease": top["disease"],
+        "top_disease": top_disease,
         "confidence_percentage": round(confidence, 1),
-        "severity": top["info"].get("severity", "Moderate"),
-        "specialist_recommended": top["info"].get("specialist", "General Physician"),
-        "medical_advice": top["info"].get("advice", ""),
-        "recommended_diagnostic_tests": top["info"].get("recommended_tests", ["Complete Blood Count (CBC)"]),
+        "severity": top_info.get("severity", "Moderate"),
+        "specialist_recommended": top_info.get("specialist", "General Physician"),
+        "medical_advice": top_info.get("advice", ""),
+        "recommended_diagnostic_tests": top_info.get("recommended_tests", ["Complete Blood Count (CBC)"]),
         "triage": triage,
-        "xai_reasoning": top["xai_factors"],
+        "xai_reasoning": xai_factors,
         "other_possibilities": alternatives,
         # Closed-loop enhancements
         "entropy_uncertainty": entropy_uncertainty,

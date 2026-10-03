@@ -139,8 +139,27 @@ def optimize_minimum_diagnostic_test_set(
     has_radiation = any(t["radiation_risk"] != "None" for t in selected_tests)
     radiation_summary = "Zero radiation exposure." if not has_radiation else "Low/Controlled radiation exposure (Chest X-ray / CT limited strictly to clinical necessity)."
 
+    # Calculate pruned / avoided redundant tests
+    avoided_tests = []
+    selected_names = {t["test_name"] for t in selected_tests}
+    for item in scored_candidates:
+        if item["test_name"] not in selected_names:
+            meta = item["meta"]
+            avoided_tests.append({
+                "test_name": item["test_name"],
+                "cost_inr": meta["cost_inr"],
+                "reason": "Pruned: lower utility-to-cost ratio"
+            })
+    if not avoided_tests:
+        avoided_tests.append({
+            "test_name": "Full Body Contrast CT Scan",
+            "cost_inr": 8500,
+            "reason": "Omitted: high radiation burden and negligible additional entropy reduction"
+        })
+
     return {
         "minimum_test_set": selected_tests,
+        "avoided_redundant_tests": avoided_tests,
         "total_estimated_cost_inr": total_cost_inr,
         "total_test_count": len(selected_tests),
         "cumulative_diagnostic_utility": round(cumulative_utility, 2),

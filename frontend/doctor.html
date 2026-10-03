@@ -150,9 +150,53 @@
 
                     <!-- Queue List -->
                     <div id="queueContainer" class="row g-3">
-                        <div class="col-12 text-center py-5 text-muted">
-                            <div class="spinner-border text-primary" role="status"></div>
-                            <p class="mt-2">Loading clinical handovers...</p>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-danger bg-white h-100">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge bg-danger">P1 Urgent Triage</span>
+                                    <small class="text-muted">Case #101 &bull; Active Queue</small>
+                                </div>
+                                <h6 class="fw-bold mb-1 text-dark">Rahul Verma &bull; Age 38 (Male)</h6>
+                                <p class="small text-muted mb-2">Chief Complaint: Sharp crushing chest tightness with left-arm radiation. Cold clammy diaphoresis.</p>
+                                <div class="p-2 bg-light rounded small mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">AI Differential:</span>
+                                        <strong class="text-danger">Acute Coronary Syndrome (76.4% match)</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Shannon Entropy:</span>
+                                        <span>2.73 bits (Diagnostic Uncertainty: 68%)</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-auto">
+                                    <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> SBAR Verified</span>
+                                    <button class="btn btn-primary btn-sm px-3 fw-semibold" onclick="selectConsultation(101)">Inspect & Prescribe</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-warning bg-white h-100">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge bg-warning text-dark">P2 Standard Triage</span>
+                                    <small class="text-muted">Case #102 &bull; Active Queue</small>
+                                </div>
+                                <h6 class="fw-bold mb-1 text-dark">Sarah Jenkins &bull; Age 45 (Female)</h6>
+                                <p class="small text-muted mb-2">Chief Complaint: High continuous fever (102.4°F), deep chest cough with rust-colored sputum.</p>
+                                <div class="p-2 bg-light rounded small mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">AI Differential:</span>
+                                        <strong class="text-primary">Bacterial Pneumonia (42.9% match)</strong>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="text-muted">Recommended Tests:</span>
+                                        <span>Chest X-Ray (PA View), Sputum Culture</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-auto">
+                                    <span class="badge bg-primary-subtle text-primary"><i class="bi bi-file-earmark-medical"></i> Labs Attached</span>
+                                    <button class="btn btn-outline-primary btn-sm px-3 fw-semibold" onclick="selectConsultation(102)">Inspect & Prescribe</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -242,7 +286,18 @@
                     </div>
 
                     <div id="doctorErFeedContainer" class="d-flex flex-column gap-3">
-                        <div class="text-center py-4 text-muted">Loading inbound emergency alerts...</div>
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-danger">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-danger">Inbound EMS En Route &bull; 6 Mins ETA</span>
+                                <small class="text-muted">ALS Ambulance #07 &bull; Reserved: Trauma Bay 3</small>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">Patient: Rahul Verma (Age 38, Male) &bull; Suspected Acute Myocardial Infarction</h6>
+                            <p class="small text-muted mb-2">Vitals Stream: SpO2 88% &bull; Pulse 124 bpm &bull; Blood Pressure: 158/98 mmHg. ER Oxygen & Heparin Protocol Pre-Alerted.</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-secondary-subtle text-secondary border">Dispatch Telemetry Active</span>
+                                <button class="btn btn-danger btn-sm py-0 px-2 fw-semibold" onclick="document.getElementById('erPassportPatientId').value='4'; document.getElementById('erPassportPurpose').value='Inbound emergency trauma triage';">Load Emergency Passport</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -280,7 +335,44 @@
                     </div>
 
                     <div id="doctorQueueBoardContainer" class="table-responsive">
-                        <div class="text-center py-4 text-muted">Loading active queue...</div>
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Patient Name</th>
+                                    <th>Triage Priority</th>
+                                    <th>Chief Complaint</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="table-danger-subtle">
+                                    <td><strong class="fs-6 text-danger">A-112</strong></td>
+                                    <td><strong>Rahul Verma</strong> <small class="text-muted">(Age 38, M)</small></td>
+                                    <td><span class="badge bg-danger">P1 Urgent</span></td>
+                                    <td>Acute retrosternal chest pain, diaphoresis</td>
+                                    <td><span class="badge bg-danger">IN-CONSULTATION</span></td>
+                                    <td><button class="btn btn-outline-danger btn-sm py-0 px-2">Calling</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong class="fs-6 text-warning">A-113</strong></td>
+                                    <td><strong>Sarah Jenkins</strong> <small class="text-muted">(Age 45, F)</small></td>
+                                    <td><span class="badge bg-warning text-dark">P2 Standard</span></td>
+                                    <td>Persistent fever, productive chest cough</td>
+                                    <td><span class="badge bg-primary-subtle text-primary">NEXT WAITING</span></td>
+                                    <td><button class="btn btn-primary btn-sm py-0 px-2" onclick="callQueueToken('A-113')">Call In</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong class="fs-6 text-secondary">A-114</strong></td>
+                                    <td><strong>Vikram Patel</strong> <small class="text-muted">(Age 52, M)</small></td>
+                                    <td><span class="badge bg-secondary">P3 Routine</span></td>
+                                    <td>Routine hypertension & lipid review</td>
+                                    <td><span class="badge bg-light text-dark border">Waiting (Est 14 min)</span></td>
+                                    <td><button class="btn btn-outline-secondary btn-sm py-0 px-2">Notify</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -325,7 +417,22 @@
                     </div>
 
                     <div id="docBlockchainBlocksContainer" class="d-flex flex-column gap-3">
-                        <div class="text-center py-4 text-muted">Loading ledger blocks...</div>
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-primary">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-primary">Block #0 &bull; GENESIS</span>
+                                <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Cryptographically Intact</span>
+                            </div>
+                            <div class="small text-muted mb-1 text-truncate"><strong>Block Hash:</strong> <span class="hash-mono text-dark" style="font-size:0.75rem;">f553ce87ebd1e3b2ea073c34f9ea750d326a6a72aa36c95f1aa6ed5f88fbfa48</span></div>
+                            <div class="small text-muted"><strong>HMAC Signature:</strong> Valid Digital Validator Anchor</div>
+                        </div>
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-success">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-success">Block #1 &bull; LAB_REPORT</span>
+                                <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Cryptographically Intact</span>
+                            </div>
+                            <div class="small text-muted mb-1 text-truncate"><strong>Block Hash:</strong> <span class="hash-mono text-dark" style="font-size:0.75rem;">8133b1e66281c28edbb915b0a902f5e8f7eb66059fb1ad3f9071a853b5bda6a1</span></div>
+                            <div class="small text-muted"><strong>Zero-PHI Integrity Anchor:</strong> Record ID #1 &bull; Merkle Root: <span class="hash-mono text-secondary" style="font-size:0.75rem;">a789e4e553ccc9dc4197d6c8de3f4f7252d540fffab1836a63f3045b665bb871</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -348,7 +455,28 @@
                     </div>
 
                     <div id="doctorDisagreementsContainer" class="d-flex flex-column gap-3">
-                        <div class="text-center py-4 text-muted">Loading disagreement records...</div>
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-warning">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-warning text-dark">Clinician Overrule &bull; Bedside Exam Finding</span>
+                                <small class="text-muted">Record #DISAG-101 &bull; Verified</small>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">Patient #4 &bull; Acute Appendicitis vs Gastritis Divergence</h6>
+                            <p class="small text-muted mb-2">AI Initial Prediction: Acute Gastritis (68.4% match based on epigastric pain). Doctor Bedside Finding: Localized McBurney's point rebound tenderness & positive Rovsing sign. Clinician ordered stat Abdominal Ultrasound.</p>
+                            <div class="p-2 bg-white rounded small border">
+                                <strong>Ground-Truth Outcome:</strong> Confirmed Acute Suppurative Appendicitis on histology. Clinician override precision verified correct (Closed-Loop Calibration updated).
+                            </div>
+                        </div>
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-danger">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-danger">Clinician Overrule &bull; Risk-Aversion Upgrade</span>
+                                <small class="text-muted">Record #DISAG-102 &bull; Verified</small>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">Patient #7 &bull; NSTEMI vs Musculoskeletal Chest Wall Pain</h6>
+                            <p class="small text-muted mb-2">AI Initial Prediction: Costochondritis (62.1% match). Doctor Bedside Judgment: Known diabetic with exertional onset. Clinician overrode to Cardiology Urgent Protocol and ordered Serial High-Sensitivity Troponin-I.</p>
+                            <div class="p-2 bg-white rounded small border">
+                                <strong>Ground-Truth Outcome:</strong> Serial Troponin-I positive (0.14 ng/mL). Coronary catheterization confirmed 90% LAD stenosis. Prevented premature discharge.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -402,7 +530,18 @@
                     <div class="p-3 bg-light rounded-4 border mb-4">
                         <h6 class="fw-bold text-dark mb-2"><i class="bi bi-pie-chart-fill text-secondary me-1"></i> Root-Cause Diagnostic Failure Mode Breakdown:</h6>
                         <div id="failureModesContainer" class="d-flex flex-wrap gap-2">
-                            <!-- Dynamic pills -->
+                            <div class="p-2 px-3 rounded-pill bg-white border shadow-sm small">
+                                <strong>NO ERROR (Concordant Success):</strong> <span class="badge bg-success rounded-pill ms-1">10</span>
+                            </div>
+                            <div class="p-2 px-3 rounded-pill bg-white border shadow-sm small">
+                                <strong>INSUFFICIENT LAB DATA:</strong> <span class="badge bg-warning text-dark rounded-pill ms-1">1</span>
+                            </div>
+                            <div class="p-2 px-3 rounded-pill bg-white border shadow-sm small">
+                                <strong>MISSING SYMPTOM:</strong> <span class="badge bg-info text-dark rounded-pill ms-1">1</span>
+                            </div>
+                            <div class="p-2 px-3 rounded-pill bg-white border shadow-sm small">
+                                <strong>ATYPICAL PRESENTATION:</strong> <span class="badge bg-danger rounded-pill ms-1">1</span>
+                            </div>
                         </div>
                     </div>
 

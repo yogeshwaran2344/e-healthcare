@@ -651,3 +651,63 @@ def evaluate_caregiver_alert(
         patient_name=patient_name
     )
     return result
+
+# ========================================================
+# 12. Public Adaptive Decision Loop Simulator Endpoint
+# ========================================================
+
+@router.post("/public-decision-simulation")
+def public_decision_simulation(
+    payload: Dict[str, Any] = Body(...)
+):
+    """
+    Public demonstration endpoint: runs the complete live clinical decision loop
+    (Entropy -> Information Gain -> Minimum Test Knapsack -> XAI Decision Map)
+    without requiring authentication.
+    """
+    symptoms = payload.get("symptoms", ["chest_pain", "fatigue"])
+    qa_answers = payload.get("qa_answers", {})
+    patient_context = payload.get("patient_context", {"age": 45, "pre_existing_conditions": "None"})
+
+    posteriors = calculate_disease_posteriors(symptoms, qa_answers, patient_context)
+    entropy_info = compute_entropy_and_uncertainty(posteriors)
+    
+    top_candidate = entropy_info["top_candidate"]
+    top_disease = top_candidate["disease"]
+    
+    # Next best question
+    next_q = select_next_best_question(symptoms, list(qa_answers.keys()), qa_answers, patient_context)
+
+    # Minimum test optimization
+    candidates_list = [{"disease": d, "probability": p} for d, p in posteriors.items()]
+    candidates_list.sort(key=lambda x: x["probability"], reverse=True)
+    min_test = optimize_minimum_diagnostic_test_set(
+        top_disease=top_disease,
+        top_candidates=candidates_list,
+        current_uncertainty=entropy_info["uncertainty_score"],
+        symptoms=symptoms,
+        triage_level="Doctor Consultation"
+    )
+
+    # Explainable Decision Map
+    decision_map = generate_explainable_decision_map(
+        target_disease=top_disease,
+        symptoms=symptoms,
+        qa_answers=qa_answers,
+        patient_context=patient_context,
+        biomarkers={},
+        confidence_percentage=round(min(max(top_candidate["probability"] * 100 * 1.5, 42.0), 96.0), 1)
+    )
+
+    return {
+        "symptoms": symptoms,
+        "shannon_entropy": entropy_info["shannon_entropy"],
+        "uncertainty_score": entropy_info["uncertainty_score"],
+        "certainty_band": entropy_info["certainty_band"],
+        "top_candidate": top_candidate,
+        "candidate_distribution": entropy_info["candidate_distribution"],
+        "next_question": next_q,
+        "minimum_diagnostic_test_set": min_test,
+        "explainable_decision_map": decision_map
+    }
+

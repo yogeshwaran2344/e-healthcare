@@ -353,7 +353,20 @@
 
                     <!-- Chips Container -->
                     <div class="p-3 bg-light rounded-3 mb-4 border" style="max-height: 280px; overflow-y: auto;" id="symptomsList">
-                        <div class="text-center py-3 text-muted">Loading symptom database...</div>
+                        <div class="d-flex flex-wrap gap-2 py-1">
+                            <span class="symptom-chip" onclick="toggleSymptom('sharp_chest_pain', this)"><i class="bi bi-plus me-1"></i>Sharp Chest Pain</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('high_fever', this)"><i class="bi bi-plus me-1"></i>High Fever</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('productive_cough_phlegm', this)"><i class="bi bi-plus me-1"></i>Productive Cough / Phlegm</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('breathlessness_shortness_of_breath', this)"><i class="bi bi-plus me-1"></i>Shortness of Breath</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('severe_headache', this)"><i class="bi bi-plus me-1"></i>Severe Headache</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('pain_radiating_to_arm_jaw', this)"><i class="bi bi-plus me-1"></i>Pain Radiating to Arm/Jaw</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('cold_clammy_sweats', this)"><i class="bi bi-plus me-1"></i>Cold Clammy Sweating</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('nausea', this)"><i class="bi bi-plus me-1"></i>Nausea</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('fatigue', this)"><i class="bi bi-plus me-1"></i>Fatigue</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('epigastric_burning_pain', this)"><i class="bi bi-plus me-1"></i>Epigastric Burning Pain</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('stiff_neck', this)"><i class="bi bi-plus me-1"></i>Stiff Neck</span>
+                            <span class="symptom-chip" onclick="toggleSymptom('palpitations_rapid_heartbeat', this)"><i class="bi bi-plus me-1"></i>Palpitations</span>
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-end">
@@ -704,9 +717,39 @@
                 </div>
 
                 <div id="consultationsList" class="row g-3">
-                    <div class="col-12 text-center py-5 text-muted">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Loading medical records...</p>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-success bg-white h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-success-subtle text-success">Completed & Signed</span>
+                                <small class="text-muted">Record #101 &bull; Active Record</small>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">Cardiology Clinical Assessment</h6>
+                            <p class="small text-muted mb-2">Physician: Dr. Sarah Chen, MD (Cardiologist) &bull; Primary Diagnosis: Acute Coronary Evaluation</p>
+                            <div class="p-2 bg-light rounded small mb-2">
+                                <strong>SBAR Handover:</strong> Patient presented with sharp retrosternal tightness. ECG & Serial Troponin I negative. Discharged with lifestyle guidance and follow-up plan.
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <span class="badge bg-light text-dark border"><i class="bi bi-shield-check text-success me-1"></i>SHA-256 Verified</span>
+                                <button class="btn btn-outline-primary btn-sm" onclick="switchToTab('tab-recovery')">Track Recovery</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-primary bg-white h-100">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-primary-subtle text-primary">Lab Report Verified</span>
+                                <small class="text-muted">CBC Diagnostic Panel</small>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">Comprehensive Blood & Biomarker Panel</h6>
+                            <p class="small text-muted mb-2">Facility: Apex Diagnostic Lab &bull; Biomarkers: Hb 13.5 g/dL, Platelets 220,000, WBC 6,400</p>
+                            <div class="p-2 bg-light rounded small mb-2">
+                                <strong>Automated Extraction:</strong> All haematology parameters within standard reference intervals. Zero acute bacterial flags detected.
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-auto">
+                                <span class="badge bg-light text-dark border"><i class="bi bi-boxes text-primary me-1"></i>Ledger Block #1</span>
+                                <span class="text-success small fw-semibold"><i class="bi bi-check-all"></i> Normal Reference</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -778,7 +821,39 @@
                             </div>
 
                             <div class="timeline-container" id="digitalHealthTimelineContainer">
-                                <div class="text-center py-4 text-muted"><div class="spinner-border text-primary spinner-border-sm"></div> Loading timeline...</div>
+                                <div class="timeline-item mb-3">
+                                    <div class="timeline-badge bg-primary text-white"><i class="bi bi-shield-check"></i></div>
+                                    <div class="timeline-card p-3 rounded-3 bg-light border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="badge bg-primary">Block #0 &bull; GENESIS ANCHOR</span>
+                                            <small class="text-muted">Initialization</small>
+                                        </div>
+                                        <h6 class="fw-bold mb-1">Patient Digital Health Record Created</h6>
+                                        <p class="small text-muted mb-0">Cryptographic root initial anchor established. SHA-256 integrity hash verification active.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item mb-3">
+                                    <div class="timeline-badge bg-info text-white"><i class="bi bi-file-earmark-medical"></i></div>
+                                    <div class="timeline-card p-3 rounded-3 bg-light border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="badge bg-info text-dark">Diagnostic Lab Panel</span>
+                                            <small class="text-muted">Biomarker Ingestion</small>
+                                        </div>
+                                        <h6 class="fw-bold mb-1">Complete Blood Count (CBC) Verified</h6>
+                                        <p class="small text-muted mb-0">Extracted Hb: 13.5 g/dL, Platelets: 220,000, WBC: 6,400. Document SHA-256 anchored to ledger.</p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item mb-2">
+                                    <div class="timeline-badge bg-success text-white"><i class="bi bi-person-badge"></i></div>
+                                    <div class="timeline-card p-3 rounded-3 bg-light border">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="badge bg-success">Specialist Handover</span>
+                                            <small class="text-muted">Cardiology Consultation</small>
+                                        </div>
+                                        <h6 class="fw-bold mb-1">Dr. Sarah Chen, MD &bull; Acute Coronary Assessment</h6>
+                                        <p class="small text-muted mb-0">12-Lead ECG normal. Troponin I negative. Patient prescribed lifestyle cardioprotection plan.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -874,7 +949,22 @@
                             </div>
 
                             <div id="chronicAlertsList" class="d-flex flex-column gap-3">
-                                <div class="text-center py-4 text-muted">Loading chronic care monitoring engine...</div>
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-success">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-heart-pulse text-success me-2"></i>Cardiovascular Blood Pressure & Pulse</h6>
+                                        <span class="badge bg-success-subtle text-success">Hemodynamically Stable</span>
+                                    </div>
+                                    <p class="small text-muted mb-2">Latest reading: 122/80 mmHg &bull; Pulse: 72 bpm &bull; Mean Arterial Pressure: 94 mmHg.</p>
+                                    <small class="text-secondary"><i class="bi bi-check-circle me-1"></i>Zero hypertensive urgency triggers detected. Routine ambulatory monitoring continues.</small>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-primary">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-droplet-fill text-primary me-2"></i>Metabolic Glycemic Control</h6>
+                                        <span class="badge bg-primary-subtle text-primary">Normal Fasting</span>
+                                    </div>
+                                    <p class="small text-muted mb-2">Latest reading: 98 mg/dL fasting &bull; Estimated HbA1c: 5.4%.</p>
+                                    <small class="text-secondary"><i class="bi bi-check-circle me-1"></i>No glycemic excursions detected. Dietary adherence within targeted parameters.</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1189,7 +1279,24 @@
                                 <span class="badge bg-primary-subtle text-primary" id="totalBlocksBadge">2 Blocks</span>
                             </div>
                             <div id="blockchainBlocksContainer" class="d-flex flex-column gap-3" style="max-height: 520px; overflow-y: auto;">
-                                <div class="text-center py-4 text-muted">Reading blockchain ledger...</div>
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-primary">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="badge bg-primary">Block #0 &bull; GENESIS</span>
+                                        <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Verified Authentic</span>
+                                    </div>
+                                    <div class="small text-muted mb-1 text-truncate"><strong>Block Hash:</strong> <span class="hash-mono text-dark" style="font-size:0.75rem;">f553ce87ebd1e3b2ea073c34f9ea750d326a6a72aa36c95f1aa6ed5f88fbfa48</span></div>
+                                    <div class="small text-muted mb-1"><strong>Previous Hash:</strong> <span class="hash-mono text-secondary" style="font-size:0.75rem;">0000000000000000000000000000000000000000000000000000000000000000</span></div>
+                                    <div class="small text-muted"><strong>HMAC Signature:</strong> Valid Digital Validator Anchor</div>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-success">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="badge bg-success">Block #1 &bull; LAB_REPORT</span>
+                                        <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Verified Authentic</span>
+                                    </div>
+                                    <div class="small text-muted mb-1 text-truncate"><strong>Block Hash:</strong> <span class="hash-mono text-dark" style="font-size:0.75rem;">8133b1e66281c28edbb915b0a902f5e8f7eb66059fb1ad3f9071a853b5bda6a1</span></div>
+                                    <div class="small text-muted mb-1"><strong>Merkle Tree Root:</strong> <span class="hash-mono text-secondary" style="font-size:0.75rem;">a789e4e553ccc9dc4197d6c8de3f4f7252d540fffab1836a63f3045b665bb871</span></div>
+                                    <div class="small text-muted"><strong>Zero Cleartext PHI Policy:</strong> Cryptographic Digest Off-Chain Verified</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1201,7 +1308,22 @@
                             <p class="text-muted small mb-3">Time-bounded, granular access tokens granted to doctors, insurers, and researchers.</p>
 
                             <div id="consentRecordsContainer" class="d-flex flex-column gap-3">
-                                <div class="text-center py-4 text-muted">Loading active sharing consents...</div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">Primary Attending Physician</strong>
+                                        <span class="badge bg-success">Active Token</span>
+                                    </div>
+                                    <div class="small text-muted mb-2">Scope: Full Medical History & Diagnoses &bull; Token Expiry: 48 Hours</div>
+                                    <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="revokeConsentToken(1)"><i class="bi bi-x-circle me-1"></i>Revoke Access</button>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">Emergency First Responders</strong>
+                                        <span class="badge bg-warning text-dark">15-Min Break-Glass</span>
+                                    </div>
+                                    <div class="small text-muted mb-2">Scope: Vitals, Blood Group, Drug Allergies only &bull; Context: Emergency QR</div>
+                                    <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="revokeConsentToken(2)"><i class="bi bi-x-circle me-1"></i>Revoke Access</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1245,9 +1367,22 @@
                             </thead>
                             <tbody id="accessHistoryTableBody">
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">
-                                        <div class="spinner-border spinner-border-sm text-primary"></div> Loading access audit trail...
-                                    </td>
+                                    <td><small class="text-dark fw-semibold">03 Oct 2026, 14:15</small></td>
+                                    <td><strong>Dr. Sarah Chen</strong></td>
+                                    <td><span class="badge bg-primary-subtle text-primary">Cardiology / OPD</span></td>
+                                    <td>Clinical Consultation & SBAR Review</td>
+                                    <td><span class="badge bg-light text-dark border">Medical History, Lab Reports</span></td>
+                                    <td><span class="badge bg-success-subtle text-success">ACCESS_GRANTED</span></td>
+                                    <td><button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="revokeConsentToken(1)">Revoke</button></td>
+                                </tr>
+                                <tr>
+                                    <td><small class="text-dark fw-semibold">03 Oct 2026, 12:30</small></td>
+                                    <td><strong>Paramedic Dispatch Unit 07</strong></td>
+                                    <td><span class="badge bg-danger-subtle text-danger">Emergency Medical Services</span></td>
+                                    <td>Good Samaritan Break-Glass Triage</td>
+                                    <td><span class="badge bg-light text-dark border">Blood Group, Allergies, Vitals</span></td>
+                                    <td><span class="badge bg-warning-subtle text-warning">EMERGENCY_OVERRIDE</span></td>
+                                    <td><span class="badge bg-secondary">Auto-Expired</span></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1265,7 +1400,15 @@
                     </div>
 
                     <div id="breakGlassLogsFeed" class="d-flex flex-column gap-3">
-                        <div class="text-center py-3 text-muted">Loading emergency break-glass logs...</div>
+                        <div class="p-3 bg-light rounded-3 border-start border-4 border-danger">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="badge bg-danger">EMS Overrule Event</span>
+                                <small class="text-muted">Audit ID #BG-9402 &bull; Verified</small>
+                            </div>
+                            <h6 class="fw-bold mb-1 text-dark">Paramedic Dispatch Unit 07 &bull; ALS Ambulance Team</h6>
+                            <p class="small text-muted mb-2">Emergency Reason: Severe acute chest discomfort & diaphoresis with suspected acute coronary event. Context: Good Samaritan protocol.</p>
+                            <div class="small text-muted"><strong>Cryptographic Receipt:</strong> <span class="hash-mono text-dark" style="font-size:0.75rem;">e291bf08c4e6503ba8891d4e0b029ff78fb0be1bd7e21dd948b874257f814850</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1726,7 +1869,15 @@
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                             <h5 class="fw-bold mb-3"><i class="bi bi-chat-heart text-danger me-2"></i>Verified Peer Experiences</h5>
                             <div id="communityPostsFeed" class="d-flex flex-column gap-3">
-                                <div class="text-center py-4 text-muted">Loading community discussion stream...</div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">Priya Sharma</strong>
+                                        <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> Clinical Safety Verified</span>
+                                    </div>
+                                    <h6 class="fw-bold mb-1">Managing Blood Pressure with Low-Sodium Mediterranean Meals</h6>
+                                    <p class="small text-muted mb-1">Swapping processed seasonings for garlic, lemon, and olive oil dropped my systolic BP by 8 mmHg over 3 weeks!</p>
+                                    <small class="text-secondary">Category: Hypertension & Heart Care &bull; 4 likes &bull; 2 replies</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1740,7 +1891,26 @@
                                 <small class="text-muted">Earn points for consistency</small>
                             </div>
                             <div id="preventiveChallengesList" class="d-flex flex-column gap-3">
-                                <div class="text-center py-3 text-muted">Loading active challenges...</div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">10,000 Daily Steps Goal</strong>
+                                        <span class="badge bg-primary">74% Done</span>
+                                    </div>
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar bg-success" style="width: 74%;"></div>
+                                    </div>
+                                    <small class="text-muted">7,420 / 10,000 steps completed &bull; +50 Vitality Points</small>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">2.5L Daily Hydration Target</strong>
+                                        <span class="badge bg-info text-dark">80% Done</span>
+                                    </div>
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar bg-info" style="width: 80%;"></div>
+                                    </div>
+                                    <small class="text-muted">2.0L / 2.5L logged &bull; +25 Vitality Points</small>
+                                </div>
                             </div>
                         </div>
 
@@ -1754,7 +1924,11 @@
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                             <h5 class="fw-bold mb-2"><i class="bi bi-heart-pulse-fill text-danger me-2"></i>AI Chronic Lifestyle Coach</h5>
                             <div id="lifestyleCoachContainer" class="small">
-                                <div class="text-center py-3 text-muted">Synthesizing personalized nutrition & exercise plan...</div>
+                                <div class="p-3 bg-light rounded-3 border">
+                                    <h6 class="fw-bold text-dark mb-1"><i class="bi bi-apple text-success me-1"></i>Cardioprotective Nutrition & Activity Protocol</h6>
+                                    <p class="small text-muted mb-2">Focus: Low Glycemic Mediterranean Diet with 30 min daily brisk walking. Sodium limit: &lt; 2,000 mg/day.</p>
+                                    <span class="badge bg-success-subtle text-success">Personalized for Metabolic Stability</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1792,7 +1966,22 @@
                             </p>
 
                             <div id="adaptiveRemindersList" class="d-flex flex-column gap-3 mb-3">
-                                <div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Loading behavioral schedules...</div>
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-purple">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">Metformin 500mg &bull; Post-Meal</strong>
+                                        <span class="badge bg-purple-subtle text-purple border">Adapted: 08:35 AM</span>
+                                    </div>
+                                    <p class="small text-muted mb-2">Nominal Prescribed Time: 08:00 AM &bull; AI Adjustment: +35 mins shifted based on meal routine</p>
+                                    <button class="btn btn-outline-success btn-sm py-0 px-2" onclick="confirmMedicationIntake(1)"><i class="bi bi-check2"></i> Confirm Taken</button>
+                                </div>
+                                <div class="p-3 bg-light rounded-3 border-start border-4 border-primary">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong class="text-dark">Atorvastatin 10mg &bull; Night</strong>
+                                        <span class="badge bg-primary-subtle text-primary border">On-Time: 09:30 PM</span>
+                                    </div>
+                                    <p class="small text-muted mb-2">Nominal Prescribed Time: 09:30 PM &bull; Habit Drift: Minimal (High Adherence)</p>
+                                    <button class="btn btn-outline-success btn-sm py-0 px-2" onclick="confirmMedicationIntake(2)"><i class="bi bi-check2"></i> Confirm Taken</button>
+                                </div>
                             </div>
                         </div>
 

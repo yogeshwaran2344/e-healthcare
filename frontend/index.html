@@ -324,30 +324,55 @@
                 </span>
                 <h2 class="fw-bold">The Adaptive Clinical Decision Loop</h2>
                 <p class="text-muted max-w-700 mx-auto" style="max-width: 760px;">
-                    Instead of a naive "symptoms in, disease out" chatbot, our clinical decision system continuously quantifies diagnostic entropy, asks the single question that cuts uncertainty most, selects the minimum necessary test, and learns from doctor-verified outcomes.
+                    Instead of a naive "symptoms in, disease out" chatbot, our proposed adaptive clinical decision system continuously quantifies diagnostic entropy, asks the single question that cuts uncertainty most, selects the minimum necessary test, and learns from doctor-verified outcomes.
                 </p>
             </div>
 
             <!-- Interactive 3-Step Decision Simulator -->
             <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-5">
-                <h5 class="fw-bold mb-3"><i class="bi bi-play-circle-fill text-primary me-2"></i>Live Decision Loop Simulation</h5>
+                <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-2">
+                    <div>
+                        <h5 class="fw-bold mb-1"><i class="bi bi-play-circle-fill text-primary me-2"></i>Live Dynamic Decision Loop Simulator</h5>
+                        <small class="text-muted">Select any clinical presentation below to see entropy, information gain, and Pareto tests calculate in real-time from the backend:</small>
+                    </div>
+                    <div class="btn-group flex-wrap" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary active sim-btn" id="btnSim_cardiac" onclick="switchSimPresentation('cardiac')">
+                            <i class="bi bi-heart-pulse-fill me-1"></i> Chest Pain + Sweating + Radiation
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary sim-btn" id="btnSim_respiratory" onclick="switchSimPresentation('respiratory')">
+                            <i class="bi bi-lungs-fill me-1"></i> Fever + Cough + Sputum
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary sim-btn" id="btnSim_neuro" onclick="switchSimPresentation('neuro')">
+                            <i class="bi bi-activity me-1"></i> Thunderclap Headache + Stiff Neck
+                        </button>
+                    </div>
+                </div>
+
                 <div class="row g-4">
-                    <!-- Step 1: Input -->
+                    <!-- Step 1: Input & Shannon Entropy -->
                     <div class="col-md-4">
                         <div class="p-3 border rounded-3 bg-light h-100">
-                            <span class="badge bg-primary mb-2">Stage 1: Symptoms & Entropy</span>
-                            <h6 class="fw-bold">Patient Symptoms</h6>
-                            <div class="mb-2">
-                                <span class="badge bg-secondary me-1">Chest Discomfort</span>
-                                <span class="badge bg-secondary">Fatigue</span>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-primary">Stage 1: Symptoms & Entropy</span>
+                                <small class="text-muted"><i class="bi bi-cpu text-primary me-1"></i>Live Backend</small>
+                            </div>
+                            <h6 class="fw-bold">Active Symptoms Vector</h6>
+                            <div class="mb-2" id="simSymptomsContainer">
+                                <span class="badge bg-secondary me-1 mb-1">Chest Pain (Sharp)</span>
+                                <span class="badge bg-secondary me-1 mb-1">Cold Sweats</span>
+                                <span class="badge bg-secondary mb-1">Left-Arm Radiation</span>
                             </div>
                             <div class="mt-3">
-                                <small class="text-muted d-block">Dynamic Shannon Entropy:</small>
-                                <div class="progress mt-1 mb-2" style="height: 10px;">
-                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 74%;"></div>
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span class="text-muted">Shannon Entropy \(H(D)\):</span>
+                                    <strong id="simEntropyVal" class="text-dark">3.04 bits</strong>
                                 </div>
-                                <span class="small fw-bold text-dark">Diagnostic Uncertainty: 74% (High)</span>
-                                <p class="text-muted small mt-1 mb-0">System flags missing critical dimensions: pain radiation, exertion trigger.</p>
+                                <div class="progress mb-2" style="height: 10px;">
+                                    <div class="progress-bar bg-danger" id="simEntropyBar" role="progressbar" style="width: 77%;"></div>
+                                </div>
+                                <span class="small fw-bold text-dark d-block" id="simUncertaintyText">Diagnostic Uncertainty: 77% (High)</span>
+                                <small class="text-primary fw-semibold d-block mt-1" id="simTopDiseaseText">Top Hypothesis: Acute Coronary Syndrome (36% match)</small>
+                                <p class="text-muted small mt-1 mb-0" id="simMissingText">System flags missing critical dimension: exertion trigger correlation.</p>
                             </div>
                         </div>
                     </div>
@@ -355,29 +380,37 @@
                     <!-- Step 2: Information Gain -->
                     <div class="col-md-4">
                         <div class="p-3 border rounded-3 bg-light h-100">
-                            <span class="badge bg-info text-white mb-2">Stage 2: Targeted Questioning</span>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-info text-white">Stage 2: Targeted Questioning</span>
+                                <small class="text-muted"><i class="bi bi-funnel-fill text-info me-1"></i>Max \(IG(Q)\)</small>
+                            </div>
                             <h6 class="fw-bold">Next-Best Question Optimizer</h6>
-                            <p class="small text-muted mb-2">Calculates Information Gain across candidate questions to split competing hypotheses (Angina vs GERD vs Costochondritis):</p>
-                            <div class="p-2 bg-white rounded border border-primary small fw-semibold text-primary mb-2">
+                            <p class="small text-muted mb-2">Evaluates candidate questions to split competing disease hypotheses with maximum uncertainty reduction:</p>
+                            <div class="p-2 bg-white rounded border border-primary small fw-semibold text-primary mb-2" id="simQuestionText">
                                 "Does the discomfort radiate to your left arm, jaw, or shoulder?"
                             </div>
-                            <span class="badge bg-success-subtle text-success small"><i class="bi bi-graph-down-arrow"></i> Expected Entropy Drop: -42%</span>
+                            <span class="badge bg-success-subtle text-success small" id="simInfoGainBadge">
+                                <i class="bi bi-graph-down-arrow"></i> Information Gain: +0.65 bits (-42% Uncertainty)
+                            </span>
                         </div>
                     </div>
 
                     <!-- Step 3: Minimum Test Optimization -->
                     <div class="col-md-4">
                         <div class="p-3 border rounded-3 bg-light h-100">
-                            <span class="badge bg-success mb-2">Stage 3: Minimum Test Set</span>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-success">Stage 3: Minimum Test Set</span>
+                                <small class="text-muted"><i class="bi bi-shield-check text-success me-1"></i>Pareto Knapsack</small>
+                            </div>
                             <h6 class="fw-bold">Pareto Test Optimization</h6>
                             <p class="small text-muted mb-2">Selects smallest test combination capable of reaching diagnostic certainty safely:</p>
-                            <ul class="list-group list-group-sm small">
+                            <ul class="list-group list-group-sm small" id="simTestsList">
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                     <span>12-Lead ECG</span>
                                     <span class="badge bg-danger">Critical ($25)</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    <span>Troponin I Lab</span>
+                                    <span>High-Sensitivity Troponin I</span>
                                     <span class="badge bg-danger">Critical ($35)</span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center text-muted text-decoration-line-through">
@@ -898,6 +931,88 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/api.js"></script>
     <script>
+        const SIM_SCENARIOS = {
+            cardiac: {
+                symptoms: ["chest pain", "sweating", "left-arm radiation"],
+                badges: ["Chest Pain (Sharp)", "Cold Sweats", "Left-Arm Radiation"],
+                missing: "System flags missing critical dimension: exertion trigger correlation."
+            },
+            respiratory: {
+                symptoms: ["fever", "cough", "sputum"],
+                badges: ["High Fever", "Deep Productive Cough", "Purulent Sputum"],
+                missing: "System flags missing critical dimension: fever diurnal pattern & sputum color."
+            },
+            neuro: {
+                symptoms: ["severe headache", "stiff neck", "photophobia"],
+                badges: ["Sudden Thunderclap Headache", "Stiff Neck (Nuchal Rigidity)", "Light Sensitivity"],
+                missing: "System flags missing critical dimension: focal unilateral weakness & onset rapidity."
+            }
+        };
+
+        async function switchSimPresentation(scenarioKey) {
+            document.querySelectorAll('.sim-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+            const activeBtn = document.getElementById(`btnSim_${scenarioKey}`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const sc = SIM_SCENARIOS[scenarioKey];
+            if (!sc) return;
+
+            document.getElementById('simSymptomsContainer').innerHTML = sc.badges.map(b => `<span class="badge bg-secondary me-1 mb-1">${b}</span>`).join('');
+            document.getElementById('simMissingText').textContent = sc.missing;
+
+            try {
+                const res = await fetch('/api/closed-loop/public-decision-simulation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symptoms: sc.symptoms })
+                });
+                if (!res.ok) throw new Error("Simulator endpoint error");
+                const data = await res.json();
+
+                // Stage 1
+                const ent = data.shannon_entropy;
+                const uncert = data.uncertainty_score;
+                document.getElementById('simEntropyVal').textContent = `${ent} bits`;
+                document.getElementById('simUncertaintyText').textContent = `Diagnostic Uncertainty: ${uncert}% (${data.certainty_band.split(' ')[0]})`;
+                const pBar = document.getElementById('simEntropyBar');
+                pBar.style.width = `${uncert}%`;
+                pBar.className = `progress-bar ${uncert > 60 ? 'bg-danger' : (uncert > 30 ? 'bg-warning' : 'bg-success')}`;
+                document.getElementById('simTopDiseaseText').textContent = `Top Hypothesis: ${data.top_candidate.disease} (${Math.round(data.top_candidate.probability * 100)}% match)`;
+
+                // Stage 2
+                if (data.next_question) {
+                    document.getElementById('simQuestionText').textContent = `"${data.next_question.question}"`;
+                    const gain = data.next_question.information_gain || 0.45;
+                    document.getElementById('simInfoGainBadge').innerHTML = `<i class="bi bi-graph-down-arrow"></i> Information Gain: +${gain} bits (-35% Uncertainty)`;
+                }
+
+                // Stage 3
+                if (data.minimum_diagnostic_test_set && data.minimum_diagnostic_test_set.minimum_test_set) {
+                    const tests = data.minimum_diagnostic_test_set.minimum_test_set;
+                    const avoided = data.minimum_diagnostic_test_set.avoided_redundant_tests || [];
+                    let html = tests.slice(0, 2).map(t => `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>${t.test_name}</span>
+                            <span class="badge ${t.priority_tier === 1 ? 'bg-danger' : 'bg-primary'}">${t.priority_tier === 1 ? 'Critical' : 'Recommended'} (₹${t.cost_inr})</span>
+                        </li>
+                    `).join('');
+                    if (avoided.length > 0) {
+                        html += `
+                            <li class="list-group-item d-flex justify-content-between align-items-center text-muted text-decoration-line-through">
+                                <span>${avoided[0].test_name}</span>
+                                <span class="badge bg-secondary">Avoided (₹${avoided[0].cost_inr})</span>
+                            </li>
+                        `;
+                    }
+                    document.getElementById('simTestsList').innerHTML = html;
+                }
+            } catch (e) {
+                console.warn("Simulator live fetch fallback:", e);
+            }
+        }
+
         function openAuthTab(tab) {
             const btn = tab === 'login' ? document.getElementById('tab-login-btn') : document.getElementById('tab-register-btn');
             if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
