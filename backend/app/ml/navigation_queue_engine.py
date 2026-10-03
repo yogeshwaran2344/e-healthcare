@@ -1,6 +1,6 @@
 """
 Hospital Indoor Navigation Graph & Smart Priority Queue Management Engine.
-Patentable Mechanism:
+Core Technical Mechanisms:
 - Multi-floor hospital topological routing graph with Dijkstra shortest-path navigation.
 - Augmented Reality (AR) camera waypoint overlay projection (turn-by-turn guidance).
 - Clinical Urgency Priority Queue: Dynamic queue insertion algorithm that automatically

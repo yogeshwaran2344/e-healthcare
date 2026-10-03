@@ -1,6 +1,6 @@
 """
 AI Predictive Care Engine & Chronic Disease Deterioration Forecaster.
-Patentable Mechanism:
+Core Technical Mechanisms:
 - Longitudinal deterioration risk index (0-100) derived from Bayesian symptom progression,
   lab biomarker trends, and pre-existing chronic conditions.
 - Automated predictive follow-up scheduling engine that recommends proactive specialist consults

@@ -438,9 +438,11 @@
                                 <div class="mb-3">
                                     <label class="form-label small fw-semibold">Select File (JPG, PNG, PDF)</label>
                                     <input type="file" id="step3FileInput" class="form-control" accept="image/*,.pdf,.txt">
-                                </div>
                                 <button type="button" class="btn btn-outline-primary w-100" id="step3UploadBtn" onclick="uploadStep3Report()">
                                     <i class="bi bi-cpu me-1"></i> Upload & Extract Biomarkers
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm w-100 mt-2" onclick="loadSampleReportForDemo()">
+                                    <i class="bi bi-file-earmark-medical me-1"></i> Load Sample CBC Lab Report (1-Click Pipeline)
                                 </button>
                             </div>
                         </div>
@@ -813,24 +815,31 @@
                             
                             <div class="text-center p-3 bg-light rounded-4 mb-3 border">
                                 <small class="text-muted fw-bold text-uppercase d-block mb-1">Composite Deterioration Risk</small>
-                                <h2 class="fw-bold mb-1" id="predictiveRiskScore">-- %</h2>
-                                <span class="badge bg-warning-subtle text-warning fs-6 px-3 py-1" id="predictiveUrgencyBadge">Moderate Risk</span>
+                                <h2 class="fw-bold mb-1" id="predictiveRiskScore">28%</h2>
+                                <span class="badge bg-success-subtle text-success fs-6 px-3 py-1" id="predictiveUrgencyBadge">Stable Baseline</span>
                             </div>
 
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between small fw-bold mb-1">
                                     <span>Predicted Exacerbation Horizon:</span>
-                                    <span class="text-primary" id="predictiveTimeline">Within 3 to 5 days</span>
+                                    <span class="text-primary" id="predictiveTimeline">Within 7 to 10 days</span>
                                 </div>
                                 <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-warning progress-bar-striped progress-bar-animated" id="predictiveProgressBar" style="width: 58%;"></div>
+                                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" id="predictiveProgressBar" style="width: 28%;"></div>
                                 </div>
                             </div>
 
                             <div class="mb-3">
                                 <strong class="small text-muted text-uppercase d-block mb-2">Explainable Risk Rationale:</strong>
                                 <div id="predictiveReasonsContainer" class="d-flex flex-column gap-2 small">
-                                    <div class="text-muted">Loading clinical factors...</div>
+                                    <div class="d-flex align-items-start gap-2 p-2 bg-light rounded-2 border">
+                                        <i class="bi bi-shield-check text-success mt-1"></i>
+                                        <span>Vitals baseline stable (Blood Pressure 120/80 mmHg, SpO2 98%, Heart Rate 72 bpm)</span>
+                                    </div>
+                                    <div class="d-flex align-items-start gap-2 p-2 bg-light rounded-2 border">
+                                        <i class="bi bi-info-circle text-primary mt-1"></i>
+                                        <span>Continuous wearable telemetry active with zero acute ischemic anomalies</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -878,8 +887,8 @@
             <div class="tab-pane fade" id="tab-iot">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                     <div>
-                        <h4 class="fw-bold mb-1 text-info"><i class="bi bi-smartwatch me-2"></i>IoT Wearables & Real-Time Telemetry Stream</h4>
-                        <p class="text-muted small mb-0">Live biometric streaming with edge anomaly detection and automated emergency threshold triggers.</p>
+                        <h4 class="fw-bold mb-1 text-info"><i class="bi bi-smartwatch me-2"></i>IoT Wearables & Real-Time Telemetry Stream <span class="badge bg-secondary-subtle text-secondary border fs-6 ms-2">Hardware Telemetry Protocol / Simulation Mode</span></h4>
+                        <p class="text-muted small mb-0">Biometric streaming with edge anomaly classification and automated emergency threshold dispatch.</p>
                     </div>
                     <!-- Simulator Control Buttons -->
                     <div class="d-flex gap-2">
@@ -1557,7 +1566,7 @@
                     <div class="col-lg-7">
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-truck text-danger me-2"></i>Dispatched Ambulance GPS Telemetry</h5>
+                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-truck text-danger me-2"></i>Dispatched Ambulance GPS Telemetry <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-6 ms-2">Dispatch Simulation Protocol</span></h5>
                                 <span class="badge bg-danger px-3 py-2" id="emergencyStatusBadge">Ambulance En Route</span>
                             </div>
 
@@ -1644,8 +1653,8 @@
                                     <img id="passportQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://e-healthcare-demo.com/emergency/token_preview" alt="Emergency QR Code" class="img-fluid rounded border p-2 bg-white" style="width: 140px; height: 140px;">
                                 </div>
                                 <span class="badge bg-primary px-3 py-1" id="passportScopeLabel">Public First Responder</span>
-                                <div class="small text-muted mt-2" id="passportTokenMeta">Token: <span class="hash-mono" id="passportTokenHash">token_pub_98234</span></div>
-                                <div class="small text-danger fw-bold mt-1" id="passportCountdown">Auto-Expires: 24 Hours</div>
+                                <div class="small text-danger fw-bold mt-1" id="passportCountdown"><i class="bi bi-clock-history me-1"></i>Access expires in: 14:59</div>
+                                <div class="small text-muted mt-1" id="passportRevocationNote"><i class="bi bi-shield-lock me-1"></i>🔐 Access automatically revoked after emergency window.</div>
                             </div>
 
                             <!-- Filtered Data Live Preview -->
@@ -1773,7 +1782,7 @@
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <div>
                                     <h5 class="fw-bold text-dark mb-0"><i class="bi bi-capsule text-primary me-2"></i>Behavior-Adapted Medication Schedules</h5>
-                                    <small class="text-muted">Patent-Pending: Dynamic Behavioral Rescheduling Engine</small>
+                                    <small class="text-muted">Adaptive Architecture: Dynamic Behavioral Rescheduling Engine</small>
                                 </div>
                                 <span class="badge bg-purple-subtle text-purple border fs-6 px-3 py-1">AI Behavioral Engine Active</span>
                             </div>

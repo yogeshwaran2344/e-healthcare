@@ -16,7 +16,7 @@ CONTEXT_PERMISSIONS = {
         "label": "Public Emergency First Responder",
         "description": "Minimal non-sensitive life-saving data viewable by general public or bystander.",
         "allowed_fields": ["blood_group", "drug_allergies", "emergency_contact_phone", "full_name"],
-        "token_validity_minutes": 1440 # 24 hours
+        "token_validity_minutes": 15 # 15-minute emergency bystander window
     },
     "AMBULANCE_PARAMEDIC": {
         "label": "Paramedic / ALS Ambulance Unit",
@@ -26,7 +26,7 @@ CONTEXT_PERMISSIONS = {
             "pre_existing_conditions", "current_medications", "recent_vitals",
             "emergency_contact_phone", "resuscitation_preference"
         ],
-        "token_validity_minutes": 60 # 1 hour
+        "token_validity_minutes": 30 # 30-minute en-route paramedic window
     },
     "HOSPITAL_ER_TRAUMA": {
         "label": "Hospital Trauma Bay & Attending ER Physician",
@@ -37,7 +37,7 @@ CONTEXT_PERMISSIONS = {
             "emergency_contact_phone", "resuscitation_preference", "recent_lab_biomarkers",
             "radiology_reports", "recent_diagnoses", "treating_physician_notes"
         ],
-        "token_validity_minutes": 240 # 4 hours
+        "token_validity_minutes": 120 # 2-hour trauma resuscitation window
     }
 }
 

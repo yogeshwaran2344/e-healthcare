@@ -1,6 +1,6 @@
 """
 Community Health Moderation, Preventive Wellness Gamification & AI Lifestyle Coach.
-Patentable Mechanism:
+Core Technical Mechanisms:
 - NLP-driven clinical misinformation and safety moderation engine for patient support forums.
 - Gamified preventive adherence feedback loop with automated streak verification and rewards.
 - Contextual chronic-tailored AI lifestyle and nutrition synthesizer.

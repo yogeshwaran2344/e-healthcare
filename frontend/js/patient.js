@@ -238,6 +238,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     await loadProfileData();
     await loadDoctorsDropdown();
     setupSpeechRecognition();
+
+    // Proactively pre-populate modules so the UI is immediately populated
+    loadPredictiveTab().catch(() => {});
+    loadLiveEmergencyPassport().catch(() => {});
+    loadPatientEmergencyAudit().catch(() => {});
+    loadDigitalHealthTimeline().catch(() => {});
+    loadBlockchainTab().catch(() => {});
+    loadAccessHistoryTab().catch(() => {});
+    loadCommunityTab().catch(() => {});
+    fetchAndRenderPassport('PUBLIC_BASIC').catch(() => {});
 });
 
 // Multilingual South Indian & Pan-Indian Symptom Keyword Mapping
@@ -645,23 +655,53 @@ function goToStep3(e) {
     updateStepper(3);
 }
 
-async function uploadStep3Report() {
+async function loadSampleReportForDemo() {
+    const sampleText = `COMPLETE BLOOD COUNT (CBC) & METABOLIC PANEL
+Patient Name: Patient Sovereign Vault
+Report Type: Blood Test
+Date: 2026-10-03
+Parameters:
+Hemoglobin: 11.2 g/dL
+WBC Count: 13,400 /uL
+Platelet Count: 210,000 /uL
+Fasting Glucose: 98 mg/dL
+Total Bilirubin: 0.9 mg/dL
+Clinical Impression: Mild microcytic anemia with moderate reactive leukocytosis indicative of acute infection.`;
+
+    const blob = new Blob([sampleText], { type: 'text/plain' });
+    const file = new File([blob], 'CBC_Report_Patient_Blood_Panel.txt', { type: 'text/plain' });
+
+    try {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const input = document.getElementById('step3FileInput');
+        if (input) input.files = dt.files;
+    } catch (e) {
+        console.warn("DataTransfer fallback:", e);
+    }
+
+    await uploadStep3Report(file);
+}
+
+async function uploadStep3Report(injectedFile = null) {
     const fileInput = document.getElementById('step3FileInput');
     const reportType = document.getElementById('step3ReportType').value;
     const btn = document.getElementById('step3UploadBtn');
     const box = document.getElementById('extractedBiomarkersBox');
 
-    if (!fileInput.files || fileInput.files.length === 0) {
+    const fileToUpload = injectedFile || (fileInput && fileInput.files && fileInput.files[0]);
+
+    if (!fileToUpload) {
         alert("Please select a file (image or PDF) to upload.");
         return;
     }
 
     btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Analyzing Biomarkers...`;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Analyzing Biomarkers & Anchoring Ledger...`;
 
     const formData = new FormData();
     formData.append('report_type', reportType);
-    formData.append('file', fileInput.files[0]);
+    formData.append('file', fileToUpload);
 
     try {
         const res = await API.postForm('/api/reports/upload', formData);
@@ -675,7 +715,7 @@ async function uploadStep3Report() {
         box.innerHTML = `
             <div class="alert alert-success py-2 small mb-2"><i class="bi bi-check-circle"></i> Analyzed: ${res.original_filename}</div>
             <div class="mb-2">
-                <small class="fw-bold d-block text-secondary">Extracted Parameters:</small>
+                <small class="fw-bold d-block text-secondary">Extracted Clinical Biomarkers:</small>
                 ${Object.entries(params).map(([k, v]) => `<span class="biomarker-pill normal">${k}: ${v}</span>`).join('')}
             </div>
             ${abnormal.length > 0 ? `
@@ -687,6 +727,12 @@ async function uploadStep3Report() {
             ${rad.length > 0 ? `
                 <div class="small text-dark mt-2 border-top pt-2">
                     <strong>Radiology Impressions:</strong> ${rad.join('; ')}
+                </div>
+            ` : ''}
+            ${res.file_sha256 ? `
+                <div class="mt-2 p-2 bg-light rounded border small">
+                    <div class="text-truncate"><i class="bi bi-shield-lock-fill text-primary me-1"></i><strong>Document SHA-256 Digest:</strong> <span class="hash-mono text-dark" style="font-size:0.75rem;">${res.file_sha256}</span></div>
+                    <div class="mt-1"><i class="bi bi-link-45deg text-success me-1"></i><strong>Immutable Ledger Anchor:</strong> Block #${res.blockchain_block_index || 1} &bull; <span class="badge bg-success-subtle text-success">${res.verification_status || 'VERIFIED_ON_BLOCKCHAIN'}</span></div>
                 </div>
             ` : ''}
         `;
@@ -2386,6 +2432,30 @@ async function regeneratePassportToken() {
     await fetchAndRenderPassport(activePassportScope, true);
 }
 
+let passportCountdownInterval = null;
+function startPassportCountdownTimer(validityMinutes) {
+    if (passportCountdownInterval) clearInterval(passportCountdownInterval);
+    let secondsLeft = (validityMinutes || 15) * 60;
+    const countdownEl = document.getElementById('passportCountdown');
+    const noteEl = document.getElementById('passportRevocationNote');
+    if (!countdownEl) return;
+
+    function renderTime() {
+        if (secondsLeft <= 0) {
+            clearInterval(passportCountdownInterval);
+            countdownEl.innerHTML = `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Emergency Window Expired</span>`;
+            if (noteEl) noteEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-shield-lock me-1"></i>🔐 Access automatically revoked after emergency window.</span>`;
+            return;
+        }
+        const m = Math.floor(secondsLeft / 60);
+        const s = secondsLeft % 60;
+        countdownEl.innerHTML = `<i class="bi bi-clock-history me-1"></i>Access expires in: ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        secondsLeft--;
+    }
+    renderTime();
+    passportCountdownInterval = setInterval(renderTime, 1000);
+}
+
 async function fetchAndRenderPassport(scope, forceNew = false) {
     const previewBox = document.getElementById('passportDataPreviewBox');
     const qrImg = document.getElementById('passportQrImg');
@@ -2402,7 +2472,7 @@ async function fetchAndRenderPassport(scope, forceNew = false) {
 
         if (label) label.textContent = tokenRes.scope_label;
         if (tokenHash) tokenHash.textContent = tokenRes.token;
-        if (countdown) countdown.textContent = `Auto-Expires: ${tokenRes.validity_minutes} Minutes`;
+        startPassportCountdownTimer(tokenRes.validity_minutes || 15);
 
         // Update QR Code Image
         const viewUrl = window.location.origin + (tokenRes.emergency_view_url || tokenRes.qr_access_url);

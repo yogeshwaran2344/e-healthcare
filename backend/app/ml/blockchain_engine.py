@@ -1,6 +1,6 @@
 """
 Blockchain Health Records Engine & Patient-Owned Smart Consent Matrix.
-Patentable Mechanism:
+Core Technical Mechanisms:
 - Cryptographic SHA-256 tamper-evident hash-linked medical ledger.
 - Merkle tree computation linking diagnoses, prescriptions, and lab biomarkers.
 - Automated integrity verification algorithm detecting unauthorized alterations.
@@ -16,7 +16,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 
-LEDGER_SECRET_KEY = os.getenv("LEDGER_SECRET_KEY", "healthcare_blockchain_private_key_2026_patent").encode("utf-8")
+LEDGER_SECRET_KEY = os.getenv("LEDGER_SECRET_KEY", "healthcare_blockchain_private_key_2026_secure").encode("utf-8")
 
 def compute_sha256(data: str) -> str:
     """Computes standard SHA-256 hex digest."""

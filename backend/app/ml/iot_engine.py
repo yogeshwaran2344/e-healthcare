@@ -1,6 +1,6 @@
 """
 IoT Medical Wearables Integration, Real-Time Vitals Streamer & Telemetry Anomaly Engine.
-Patentable Mechanism:
+Core Technical Mechanisms:
 - Multi-modal sensor telemetry aggregator with edge-anomaly classification.
 - Dynamic critical threshold alerting with auto-escalation to hospital ER dashboards.
 - Synthetic ECG waveform generator for synchronized telemetry streaming.

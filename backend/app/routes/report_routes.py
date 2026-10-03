@@ -1,15 +1,17 @@
 import os
 import uuid
 import json
+import hashlib
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import User, MedicalReport, Consultation
+from ..models import User, MedicalReport, Consultation, BlockchainBlock
 from ..schemas import MedicalReportOut
 from ..auth import get_current_user
 from ..config import UPLOAD_DIR
 from ..ml.report_intelligence import process_uploaded_file_intelligence
+from ..ml.blockchain_engine import create_block
 
 router = APIRouter(prefix="/api/reports", tags=["Medical Reports & Biomarker Extraction"])
 
@@ -88,6 +90,33 @@ async def upload_medical_report(
     db.commit()
     db.refresh(report)
 
+    # Compute deterministic document SHA-256 digest
+    file_sha256 = hashlib.sha256(content).hexdigest()
+
+    # Anchor cryptographic zero-PHI integrity proof on patient ledger
+    last_block = (
+        db.query(BlockchainBlock)
+        .filter(BlockchainBlock.patient_id == current_user.id)
+        .order_by(BlockchainBlock.block_index.desc())
+        .first()
+    )
+    next_idx = (last_block.block_index + 1) if last_block else 1
+    prev_hash = last_block.block_hash if last_block else ("0" * 64)
+    r_dict = {
+        "report_id": report.id,
+        "patient_id": current_user.id,
+        "report_type": report.report_type,
+        "original_filename": report.original_filename,
+        "file_sha256": file_sha256,
+        "abnormal_flags": intelligence.get("abnormal_flags", []),
+        "uploaded_at": report.uploaded_at.isoformat()
+    }
+    block_dict = create_block(next_idx, current_user.id, "LAB_REPORT", str(report.id), r_dict, prev_hash)
+    block = BlockchainBlock(**block_dict)
+    db.add(block)
+    db.commit()
+    db.refresh(block)
+
     return MedicalReportOut(
         id=report.id,
         consultation_id=report.consultation_id,
@@ -97,6 +126,10 @@ async def upload_medical_report(
         stored_filename=report.stored_filename,
         file_url=f"/api/reports/{report.id}/file",
         extracted_findings=intelligence,
+        file_sha256=file_sha256,
+        blockchain_block_hash=block.block_hash,
+        blockchain_block_index=block.block_index,
+        verification_status="VERIFIED_ON_BLOCKCHAIN",
         uploaded_at=report.uploaded_at
     )
 

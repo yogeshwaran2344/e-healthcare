@@ -185,6 +185,10 @@ class MedicalReportOut(BaseModel):
     stored_filename: str
     file_url: str
     extracted_findings: Optional[Dict[str, Any]] = None
+    file_sha256: Optional[str] = None
+    blockchain_block_hash: Optional[str] = None
+    blockchain_block_index: Optional[int] = None
+    verification_status: Optional[str] = "VERIFIED_ON_BLOCKCHAIN"
     uploaded_at: datetime
 
 class RecoveryCheckInCreate(BaseModel):

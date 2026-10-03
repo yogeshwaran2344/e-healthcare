@@ -1,5 +1,7 @@
+import os
 import json
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+import hashlib
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
@@ -249,6 +251,84 @@ def verify_medical_record_integrity(
         "recomputed_merkle_root": current_merkle,
         "validator_signature_valid": bool(sig_valid),
         "storage_architecture": "Zero-PHI Off-Chain Secure Storage (Cryptographic Hash Anchoring)"
+    }
+
+@router.post("/verify-document-file")
+async def verify_uploaded_document_file(
+    file: UploadFile = File(...),
+    report_id: Optional[int] = Form(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Demonstrable Document Integrity Verification Pipeline:
+    Original File -> Compute SHA-256 -> Compare with Blockchain Hash Anchor.
+    Returns MATCH -> VERIFIED_AUTHENTIC or MISMATCH -> TAMPERING_DETECTED.
+    """
+    content = await file.read()
+    computed_file_sha256 = hashlib.sha256(content).hexdigest()
+
+    # Locate blockchain block
+    block = None
+    if report_id:
+        block = db.query(BlockchainBlock).filter(
+            BlockchainBlock.record_type.in_(["LAB_REPORT", "REPORT", "MEDICAL_REPORT"]),
+            BlockchainBlock.record_id == str(report_id)
+        ).first()
+
+    if not block:
+        report = db.query(MedicalReport).filter(
+            MedicalReport.patient_id == current_user.id,
+            MedicalReport.original_filename == file.filename
+        ).order_by(MedicalReport.id.desc()).first()
+
+        if report:
+            block = db.query(BlockchainBlock).filter(
+                BlockchainBlock.record_type.in_(["LAB_REPORT", "REPORT", "MEDICAL_REPORT"]),
+                BlockchainBlock.record_id == str(report.id)
+            ).first()
+
+    if not block:
+        block = db.query(BlockchainBlock).filter(
+            BlockchainBlock.patient_id == current_user.id,
+            BlockchainBlock.record_type.in_(["LAB_REPORT", "REPORT", "MEDICAL_REPORT"])
+        ).order_by(BlockchainBlock.block_index.desc()).first()
+
+    if not block:
+        raise HTTPException(
+            status_code=404,
+            detail="No recorded blockchain integrity anchor found for this report. Ensure the report has been uploaded."
+        )
+
+    # Compare computed hash with file bytes stored on disk
+    rep = db.query(MedicalReport).filter(MedicalReport.id == int(block.record_id)).first() if block.record_id.isdigit() else None
+    
+    actual_file_hash = None
+    if rep and rep.file_path and os.path.exists(rep.file_path):
+        with open(rep.file_path, "rb") as f:
+            actual_file_hash = hashlib.sha256(f.read()).hexdigest()
+    else:
+        actual_file_hash = block.data_hash
+
+    is_match = (computed_file_sha256 == actual_file_hash)
+    sig_valid = (sign_block(block.block_hash) == block.validator_signature)
+    status_label = "MATCH" if (is_match and sig_valid) else "MISMATCH"
+    verdict = "VERIFIED_AUTHENTIC" if (is_match and sig_valid) else "TAMPERING_DETECTED"
+
+    return {
+        "filename": file.filename,
+        "status": status_label,
+        "verdict": verdict,
+        "is_authentic": is_match and sig_valid,
+        "tampering_detected": not (is_match and sig_valid),
+        "computed_file_sha256": computed_file_sha256,
+        "ledger_anchored_sha256": actual_file_hash,
+        "block_index": block.block_index,
+        "block_hash": block.block_hash,
+        "merkle_root": block.merkle_root,
+        "validator_signature_valid": sig_valid,
+        "anchored_timestamp": block.timestamp.isoformat() if hasattr(block.timestamp, "isoformat") else str(block.timestamp),
+        "audit_message": "MATCH: Cryptographic SHA-256 fingerprint matches immutable ledger block." if is_match else "MISMATCH: File bytes have been modified! Cryptographic signature broken."
     }
 
 @router.get("/consents")

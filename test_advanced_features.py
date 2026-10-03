@@ -1,5 +1,5 @@
 """
-Verification test script for all 6 Patentable Add-Ons.
+Verification test script for all 6 Advanced Add-Ons.
 Tests:
 1. AI + Predictive Care & Chronic Alerts
 2. IoT Wearables & Live Telemetry Stream
@@ -66,6 +66,44 @@ def run_tests():
     assert consents_resp.status_code == 200
     print(f"Active Consent Records: {len(consents_resp.json())}")
 
+    # Demonstrable Document Verification Test
+    print("Testing End-to-End Report Upload & File SHA-256 Ledger Anchor...")
+    sample_file_bytes = b"Hemoglobin: 13.2 g/dL, WBC: 7400/mcL, Platelets: 240,000/mcL"
+    up_res = client.post(
+        "/api/reports/upload",
+        headers=headers,
+        data={"report_type": "Complete Blood Count"},
+        files={"file": ("cbc_automated_test.txt", sample_file_bytes, "text/plain")}
+    )
+    assert up_res.status_code == 200
+    report_data = up_res.json()
+    print(f"Report Anchored: ID #{report_data['id']} | SHA-256: {report_data['file_sha256'][:16]}... | Block: {report_data['blockchain_block_hash'][:16]}...")
+
+    # Authentic check
+    v_auth = client.post(
+        "/api/blockchain/verify-document-file",
+        headers=headers,
+        data={"record_id": str(report_data["id"]), "record_type": "LAB_REPORT"},
+        files={"file": ("cbc_automated_test.txt", sample_file_bytes, "text/plain")}
+    )
+    assert v_auth.status_code == 200
+    assert v_auth.json()["is_authentic"] is True
+    assert v_auth.json()["status"] == "MATCH"
+    print(f"Authentic File Verification: {v_auth.json()['status']} ({v_auth.json()['verdict']})")
+
+    # Tampered check
+    tampered_bytes = b"Hemoglobin: 19.9 g/dL [MODIFIED_FOR_TAMPER_TEST]"
+    v_tamper = client.post(
+        "/api/blockchain/verify-document-file",
+        headers=headers,
+        data={"record_id": str(report_data["id"]), "record_type": "LAB_REPORT"},
+        files={"file": ("cbc_automated_test.txt", tampered_bytes, "text/plain")}
+    )
+    assert v_tamper.status_code == 200
+    assert v_tamper.json()["is_authentic"] is False
+    assert v_tamper.json()["status"] == "MISMATCH"
+    print(f"Tampered File Verification: {v_tamper.json()['status']} ({v_tamper.json()['verdict']})")
+
     print("\n--- 5. Testing Indoor Hospital Navigation & Queue ---")
     floors_resp = client.get("/api/navigation/floors")
     assert floors_resp.status_code == 200
@@ -117,7 +155,7 @@ def run_tests():
     print(f"AI Lifestyle Coach: {coach_resp.json()['nutrition_plan']['dietary_framework']}")
 
     print("\n==========================================")
-    print("ALL 6 PATENTABLE ADD-ONS VERIFIED 100% OK!")
+    print("ALL 6 ADVANCED ADD-ONS VERIFIED 100% OK!")
     print("==========================================")
 
 if __name__ == "__main__":

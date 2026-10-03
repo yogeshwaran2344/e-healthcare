@@ -1,6 +1,6 @@
 """
 Emergency Response Dispatcher & Live Ambulance Telemetry Engine.
-Patentable Mechanism:
+Core Technical Mechanisms:
 - One-Tap Rapid SOS with autonomous Emergency Medical Passport transmission
   (blood group, severe allergies, current meds, live IoT vitals).
 - Pre-hospital trauma orchestration: Pre-allocates hospital ER trauma bay and

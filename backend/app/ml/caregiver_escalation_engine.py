@@ -1,7 +1,7 @@
 """
 Context-Aware Caregiver Alerts Engine
 Multi-Tier Severity Escalation System based on Predictive Health Risk Scoring
-Patent angle: 'A caregiver alert system that prioritizes and escalates notifications based on predictive health risk scoring.'
+Core Mechanism: A caregiver alert system that prioritizes and escalates notifications based on predictive health risk scoring.
 """
 
 from typing import Dict, Any, List

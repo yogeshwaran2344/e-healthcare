@@ -20,6 +20,14 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prescribeDoctorName').value = currentDoctor.full_name;
 
     await loadDoctorConsultations();
+
+    // Proactively pre-populate all clinical dashboard tabs
+    loadDoctorCalibration().catch(() => {});
+    loadDoctorDisagreements().catch(() => {});
+    loadDoctorBlockchain().catch(() => {});
+    loadDoctorQueue().catch(() => {});
+    loadDoctorERFeed().catch(() => {});
+    loadDoctorTelemetry().catch(() => {});
 });
 
 // Load Consultations
@@ -457,7 +465,7 @@ function previewDoctorScan(url, title) {
 }
 
 // ===================================================================
-// CLINICIAN PATENTABLE MODULE CONTROLLERS
+// CLINICIAN ADVANCED MODULE CONTROLLERS
 // ===================================================================
 
 let docEcgAnimId = null;
@@ -717,6 +725,61 @@ async function doctorVerifyBlockchain() {
     } catch (err) {
         alert("Error verifying: " + err.message);
     }
+}
+
+async function executeDemonstrableFileVerification(injectedFile = null) {
+    const input = document.getElementById('docVerifyFileInput');
+    const resultBox = document.getElementById('fileVerificationResultBox');
+    const file = injectedFile || (input && input.files && input.files[0]);
+
+    if (!file) {
+        alert("Please select a medical report file to verify.");
+        return;
+    }
+
+    resultBox.classList.remove('d-none');
+    resultBox.innerHTML = `<div class="p-3 bg-white rounded border text-center text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Computing SHA-256 and validating against immutable ledger...</div>`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await API.postForm('/api/blockchain/verify-document-file', formData);
+        const isMatch = (res.status === 'MATCH');
+
+        resultBox.innerHTML = `
+            <div class="p-3 bg-white rounded-3 border">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <span class="badge ${isMatch ? 'bg-success' : 'bg-danger'} fs-6 px-3 py-2">
+                        <i class="bi ${isMatch ? 'bi-check-circle-fill' : 'bi-x-octagon-fill'} me-1"></i>
+                        ${res.status}: ${res.verdict}
+                    </span>
+                    <span class="small text-muted">Block #${res.block_index || 1} &bull; Anchored: ${res.anchored_timestamp}</span>
+                </div>
+                <div class="small mb-2 ${isMatch ? 'text-success fw-bold' : 'text-danger fw-bold'}">
+                    ${res.audit_message}
+                </div>
+                <div class="p-2 bg-light rounded border font-monospace small mb-2" style="font-size:0.75rem; word-break:break-all;">
+                    <div><strong>1. Computed File Digest:</strong> <span class="${isMatch ? 'text-success' : 'text-danger'}">${res.computed_file_sha256}</span></div>
+                    <div><strong>2. Ledger Anchored Hash:</strong> <span class="text-primary">${res.ledger_anchored_sha256}</span></div>
+                    <div><strong>3. Merkle Root:</strong> <span class="text-secondary">${res.merkle_root}</span></div>
+                    <div><strong>4. Validator Signature:</strong> <span class="badge ${res.validator_signature_valid ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}">${res.validator_signature_valid ? 'VALID HMAC-SHA256' : 'INVALID'}</span></div>
+                </div>
+                <div class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i><strong>Architectural Invariant:</strong> Zero cleartext PHI stored on-chain. Integrity mathematically proven via SHA-256 equality.
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        resultBox.innerHTML = `<div class="alert alert-danger small py-2 mb-0">Verification Error: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+async function testTamperedDocumentDemonstration() {
+    const tamperedContent = "MODIFIED_UNAUTHORIZED_ALTERATION: Diagnosed disease altered to Healthy (Fraudulent Tampering Test)";
+    const blob = new Blob([tamperedContent], { type: 'text/plain' });
+    const file = new File([blob], 'Tampered_Altered_Report.txt', { type: 'text/plain' });
+    await executeDemonstrableFileVerification(file);
 }
 
 // ===================================================================

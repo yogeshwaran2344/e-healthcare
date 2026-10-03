@@ -83,5 +83,8 @@ def assess_multimodal_health(
         triage=assessment["triage"],
         xai_reasoning=assessment["xai_reasoning"],
         biomarkers_detected=biomarkers,
-        other_possibilities=assessment["other_possibilities"]
+        other_possibilities=assessment["other_possibilities"],
+        entropy_uncertainty=assessment.get("entropy_uncertainty"),
+        explainable_decision_map=assessment.get("explainable_decision_map"),
+        minimum_diagnostic_test_set=assessment.get("minimum_diagnostic_test_set")
     )
