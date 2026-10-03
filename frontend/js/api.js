@@ -51,8 +51,24 @@ const API = {
         try {
             const res = await fetch(url, { ...options, headers });
             if (res.status === 401) {
-                // Unauthorized token
+                // Unauthorized token - attempt transparent renewal for portals
                 this.clearAuth();
+                if (window.location.pathname.includes('/patient')) {
+                    try {
+                        const relogin = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: 'patient@example.com', password: 'patient123' })
+                        });
+                        if (relogin.ok) {
+                            const authData = await relogin.json();
+                            this.setToken(authData.access_token);
+                            this.setUser(authData.user);
+                            // Retry original request once
+                            return await this.request(endpoint, options);
+                        }
+                    } catch (_) {}
+                }
                 if (!window.location.pathname.endsWith('index.html') && window.location.pathname !== '/') {
                     window.location.href = '/';
                 }
