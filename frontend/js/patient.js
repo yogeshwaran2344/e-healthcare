@@ -1569,6 +1569,11 @@ function activateTab(tabId, scroll = true) {
     }
     if (cleanId === 'tab-navigation') cleanId = 'tab-navigation-pane';
 
+    // Profile & IoT are page sections inside the navigator tab (IoT sits below symptoms),
+    // so show the navigator pane and scroll to the requested section.
+    const EMBEDDED_SECTIONS = ['tab-profile', 'tab-iot'];
+    const paneId = EMBEDDED_SECTIONS.includes(cleanId) ? 'tab-navigator' : cleanId;
+
     // 1. Hide all top-level tab panes in #patientTabContent
     const allPanes = document.querySelectorAll('#patientTabContent > .tab-pane');
     allPanes.forEach(pane => {
@@ -1577,12 +1582,13 @@ function activateTab(tabId, scroll = true) {
     });
 
     // 2. Locate and activate the requested tab pane
-    const targetPane = document.getElementById(cleanId);
+    const targetPane = document.getElementById(paneId);
+    const scrollEl = document.getElementById(cleanId) || targetPane;
     if (targetPane) {
         targetPane.classList.add('show', 'active');
         targetPane.style.display = 'block';
     } else {
-        console.warn(`Tab pane with id "${cleanId}" not found.`);
+        console.warn(`Tab pane with id "${paneId}" not found.`);
         return;
     }
 
@@ -1593,11 +1599,11 @@ function activateTab(tabId, scroll = true) {
         const onclickAttr = btn.getAttribute('onclick') || '';
         const dataTarget = btn.getAttribute('data-bs-target') || '';
         if (
-            btn.id === `${cleanId}-btn` ||
-            btn.id === cleanId ||
-            onclickAttr.includes(`'${cleanId}'`) ||
-            onclickAttr.includes(`"${cleanId}"`) ||
-            dataTarget === `#${cleanId}`
+            btn.id === `${paneId}-btn` ||
+            btn.id === paneId ||
+            onclickAttr.includes(`'${paneId}'`) ||
+            onclickAttr.includes(`"${paneId}"`) ||
+            dataTarget === `#${paneId}`
         ) {
             btn.classList.add('active');
         }
@@ -1605,7 +1611,7 @@ function activateTab(tabId, scroll = true) {
 
     // 4. Also notify Bootstrap if instance exists
     try {
-        const targetBtn = document.getElementById(`${cleanId}-btn`) || document.querySelector(`[data-bs-target="#${cleanId}"]`);
+        const targetBtn = document.getElementById(`${paneId}-btn`) || document.querySelector(`[data-bs-target="#${paneId}"]`);
         if (targetBtn && window.bootstrap && bootstrap.Tab) {
             bootstrap.Tab.getOrCreateInstance(targetBtn).show();
         }
@@ -1617,9 +1623,9 @@ function activateTab(tabId, scroll = true) {
     } catch (_) {}
 
     // 6. Smoothly scroll down so user immediately sees the tab content
-    if (scroll && targetPane) {
+    if (scroll && scrollEl) {
         const yOffset = -20;
-        const y = targetPane.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        const y = scrollEl.getBoundingClientRect().top + window.pageYOffset + yOffset;
         window.scrollTo({ top: y, behavior: 'smooth' });
     }
 

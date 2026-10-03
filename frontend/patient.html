@@ -211,16 +211,6 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3 btn-highlight" id="tab-profile-btn" onclick="activateTab('tab-profile')" type="button" role="tab">
-                    <i class="bi bi-person-vcard text-primary me-1"></i> Personal Profile
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-semibold py-2 px-3 btn-highlight" id="tab-iot-btn" onclick="activateTab('tab-iot')" type="button" role="tab">
-                    <i class="bi bi-smartwatch text-info me-1"></i> IoT Wearables &amp; Vitals
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
                 <button class="nav-link fw-semibold py-2 px-3" id="tab-blockchain-btn" onclick="activateTab('tab-blockchain')" type="button" role="tab">
                     <i class="bi bi-shield-lock-fill text-success me-1"></i> Blockchain Records
                 </button>
@@ -470,6 +460,7 @@
                                 </button>
                             </div>
                         </div>
+                        </div>
 
                         <div class="col-lg-6">
                             <h6 class="fw-bold mb-2"><i class="bi bi-shield-check text-success me-1"></i> Automated Biomarker Extraction Results</h6>
@@ -613,10 +604,199 @@
                     </div>
                 </div>
 
+
+                <!-- ========== SECTION: IoT WEARABLES & LIVE VITALS (below symptoms) ========== -->
+                <div class="d-flex align-items-center gap-2 mt-2 mb-3">
+                    <hr class="flex-grow-1 m-0">
+                    <span class="badge bg-info-subtle text-info-emphasis px-3 py-2"><i class="bi bi-smartwatch me-1"></i> IoT Wearables &amp; Vitals</span>
+                    <hr class="flex-grow-1 m-0">
+                </div>
+            <div class="portal-section mb-4" id="tab-iot">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div>
+                        <h4 class="fw-bold mb-1 text-info"><i class="bi bi-smartwatch me-2"></i>IoT Wearables & Real-Time Telemetry Stream <span class="badge bg-secondary-subtle text-secondary border fs-6 ms-2">Hardware Telemetry Protocol / Simulation Mode</span></h4>
+                        <p class="text-muted small mb-0">Biometric streaming with edge anomaly classification and automated emergency threshold dispatch.</p>
+                    </div>
+                    <!-- Simulator Control Buttons -->
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="simulateIoTReading('blood_pressure', false)">
+                            <i class="bi bi-activity me-1"></i> Sync Normal Vitals
+                        </button>
+                        <button class="btn btn-danger btn-sm sos-btn-pulse px-3" onclick="simulateIoTReading('spo2', true)">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Simulate Critical SpO2 Breach (87%)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Emergency Alert Banner if vitals cross threshold -->
+                <div id="iotEmergencyAlertBanner" class="alert alert-danger py-3 px-4 rounded-4 shadow-sm d-none mb-4 critical-flash-border">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-danger"><i class="bi bi-bell-fill me-2"></i>CRITICAL VITAL THRESHOLD BREACH DETECTED!</h5>
+                            <span class="small text-danger-emphasis" id="iotEmergencyMessage">Hypoxemia detected (SpO2 87%). Immediate clinical response required.</span>
+                        </div>
+                        <button class="btn btn-danger fw-bold px-4" onclick="switchToTab('tab-emergency'); triggerOneTapSOS();">
+                            <i class="bi bi-broadcast me-1"></i> Dispatch 1-Tap SOS Now
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3-Channel Vitals Acquisition Options -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                    <h5 class="fw-bold mb-2"><i class="bi bi-broadcast-pin text-primary me-2"></i>Vitals Acquisition Channel</h5>
+                    <p class="text-muted small mb-3">Pair your smartwatch via Web Bluetooth, extract recent report biomarkers, or enter vitals manually.</p>
+                    
+                    <ul class="nav nav-pills mb-3" id="vitalsSourceTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-ble">
+                                <i class="bi bi-bluetooth me-1"></i> 1. Bluetooth Smartwatch
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-report">
+                                <i class="bi bi-file-earmark-medical me-1"></i> 2. Recent Lab Reports
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-manual">
+                                <i class="bi bi-pencil-square me-1"></i> 3. Manual Vitals Entry
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content border-top pt-3">
+                        <!-- 1. Web Bluetooth Scan -->
+                        <div class="tab-pane fade show active" id="vitals-ble">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-smartwatch text-primary me-1"></i> Pair Smartwatch / BLE Vitals Sensor</h6>
+                                <p class="text-muted small mb-3">Browser prompts for Bluetooth access to stream Heart Rate, SpO2, and Pulse data.</p>
+                                <button type="button" class="btn btn-primary fw-semibold px-4" onclick="connectBluetoothSmartwatch()">
+                                    <i class="bi bi-bluetooth me-1"></i> Request Bluetooth Permission & Pair
+                                </button>
+                                <div id="bleStatusMessage" class="small mt-2 text-muted">Ready to pair. If your device doesn't have Bluetooth, choose Lab Reports or Manual Entry.</div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Recent Lab Reports Extract -->
+                        <div class="tab-pane fade" id="vitals-report">
+                            <div class="p-3 bg-light rounded-3 border text-center">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> Extract Vitals from Recent Medical Reports</h6>
+                                <p class="text-muted small mb-3">Pulls clinical vitals & biomarkers (BP, Glucose, Heart Rate) extracted from your uploaded records.</p>
+                                <button type="button" class="btn btn-info text-white fw-semibold px-4" onclick="importVitalsFromReports()">
+                                    <i class="bi bi-cloud-arrow-down me-1"></i> Import from Latest Lab Record
+                                </button>
+                                <div id="reportVitalsPreview" class="mt-2 small text-muted">Awaiting import request.</div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Manual Entry -->
+                        <div class="tab-pane fade" id="vitals-manual">
+                            <form id="manualVitalsForm" onsubmit="submitManualVitals(event)" class="row g-2">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Heart Rate (BPM)</label>
+                                    <input type="number" id="manualHR" class="form-control" placeholder="76" value="76" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold">Blood Pressure (mmHg)</label>
+                                    <input type="text" id="manualBP" class="form-control" placeholder="120/80" value="120/80" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-semibold">SpO2 (%)</label>
+                                    <input type="number" id="manualSpO2" class="form-control" placeholder="98" min="70" max="100" value="98" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-semibold">Glucose (mg/dL)</label>
+                                    <input type="number" id="manualGlucose" class="form-control" placeholder="110" value="110" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-semibold">Temp (°F)</label>
+                                    <input type="text" id="manualTemp" class="form-control" placeholder="98.6" value="98.6" required>
+                                </div>
+                                <div class="col-12 mt-3 text-end">
+                                    <button type="submit" class="btn btn-success fw-semibold px-4">
+                                        <i class="bi bi-check-circle me-1"></i> Save & Broadcast Manual Vitals
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paired Devices Strip -->
+                <div class="row g-3 mb-4" id="iotDevicesContainer">
+                    <div class="col-12 text-center py-3 text-muted">Discovering paired medical wearables...</div>
+                </div>
+
+                <!-- Live Vitals Gauges & ECG Canvas -->
+                <div class="row g-4 mb-4">
+                    <!-- Blood Pressure -->
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardBp">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-danger-subtle text-danger"><i class="bi bi-heart-pulse me-1"></i>Blood Pressure</span>
+                                <span class="badge bg-success-subtle text-success small" id="badgeBpStatus">Normal</span>
+                            </div>
+                            <h2 class="fw-bold mb-0 text-dark" id="valBp">120/80</h2>
+                            <small class="text-muted">mmHg (Omron Platinum)</small>
+                        </div>
+                    </div>
+                    <!-- Blood Glucose -->
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardGlucose">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-warning-subtle text-warning"><i class="bi bi-droplet me-1"></i>Blood Glucose</span>
+                                <span class="badge bg-warning-subtle text-warning small" id="badgeGlucoseStatus">Elevated</span>
+                            </div>
+                            <h2 class="fw-bold mb-0 text-dark" id="valGlucose">168</h2>
+                            <small class="text-muted">mg/dL (Dexcom G7 CGM)</small>
+                        </div>
+                    </div>
+                    <!-- SpO2 -->
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardSpo2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-info-subtle text-info"><i class="bi bi-lungs me-1"></i>Oxygen SpO2</span>
+                                <span class="badge bg-success-subtle text-success small" id="badgeSpo2Status">Optimal</span>
+                            </div>
+                            <h2 class="fw-bold mb-0 text-dark" id="valSpo2">98</h2>
+                            <small class="text-muted">% (Wellue O2Ring)</small>
+                        </div>
+                    </div>
+                    <!-- Body Temperature -->
+                    <div class="col-md-3">
+                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardTemp">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-thermometer-half me-1"></i>Temperature</span>
+                                <span class="badge bg-success-subtle text-success small">Normal</span>
+                            </div>
+                            <h2 class="fw-bold mb-0 text-dark" id="valTemp">98.6</h2>
+                            <small class="text-muted">°F (Digital Sensor)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live ECG Canvas Waveform Plot -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-activity text-success me-2"></i>Synchronized Lead-II ECG Rhythm Waveform</h5>
+                            <small class="text-muted">Live streaming telemetry from KardiaMobile 6-lead patch (Heart Rate: <span id="valHeartRate" class="fw-bold text-success">76 bpm</span>)</small>
+                        </div>
+                        <span class="badge bg-success px-3 py-2"><i class="bi bi-circle-fill me-1 small"></i>Live Streaming</span>
+                    </div>
+                    <div class="ecg-canvas-container ecg-grid">
+                        <canvas id="ecgCanvas" width="900" height="150" style="width: 100%; height: 150px;"></canvas>
+                    </div>
+                </div>
             </div>
 
-            <!-- TAB 2: PERSONAL HEALTH PROFILE -->
-            <div class="tab-pane fade" id="tab-profile">
+                <!-- ========== SECTION: PERSONAL HEALTH PROFILE ========== -->
+                <div class="d-flex align-items-center gap-2 mt-2 mb-3">
+                    <hr class="flex-grow-1 m-0">
+                    <span class="badge bg-primary-subtle text-primary px-3 py-2"><i class="bi bi-person-vcard me-1"></i> Personal Profile</span>
+                    <hr class="flex-grow-1 m-0">
+                </div>
+            <div class="portal-section mb-4" id="tab-profile">
                 <div class="row justify-content-center">
                     <div class="col-lg-8">
                         <div class="card border-0 shadow-sm rounded-4 p-4">
@@ -717,6 +897,8 @@
                     </div>
                 </div>
             </div>
+            </div>
+
 
             <!-- TAB 3: CONSULTATIONS & PRESCRIPTIONS -->
             <div class="tab-pane fade" id="tab-history">
@@ -982,187 +1164,6 @@
                 </div>
             </div>
 
-            <!-- =========================================================
-                 TAB 6: IOT WEARABLES INTEGRATION & REAL-TIME VITALS
-                 ========================================================= -->
-            <div class="tab-pane fade" id="tab-iot">
-                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                    <div>
-                        <h4 class="fw-bold mb-1 text-info"><i class="bi bi-smartwatch me-2"></i>IoT Wearables & Real-Time Telemetry Stream <span class="badge bg-secondary-subtle text-secondary border fs-6 ms-2">Hardware Telemetry Protocol / Simulation Mode</span></h4>
-                        <p class="text-muted small mb-0">Biometric streaming with edge anomaly classification and automated emergency threshold dispatch.</p>
-                    </div>
-                    <!-- Simulator Control Buttons -->
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-secondary btn-sm" onclick="simulateIoTReading('blood_pressure', false)">
-                            <i class="bi bi-activity me-1"></i> Sync Normal Vitals
-                        </button>
-                        <button class="btn btn-danger btn-sm sos-btn-pulse px-3" onclick="simulateIoTReading('spo2', true)">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Simulate Critical SpO2 Breach (87%)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Emergency Alert Banner if vitals cross threshold -->
-                <div id="iotEmergencyAlertBanner" class="alert alert-danger py-3 px-4 rounded-4 shadow-sm d-none mb-4 critical-flash-border">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <h5 class="fw-bold mb-1 text-danger"><i class="bi bi-bell-fill me-2"></i>CRITICAL VITAL THRESHOLD BREACH DETECTED!</h5>
-                            <span class="small text-danger-emphasis" id="iotEmergencyMessage">Hypoxemia detected (SpO2 87%). Immediate clinical response required.</span>
-                        </div>
-                        <button class="btn btn-danger fw-bold px-4" onclick="switchToTab('tab-emergency'); triggerOneTapSOS();">
-                            <i class="bi bi-broadcast me-1"></i> Dispatch 1-Tap SOS Now
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 3-Channel Vitals Acquisition Options -->
-                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
-                    <h5 class="fw-bold mb-2"><i class="bi bi-broadcast-pin text-primary me-2"></i>Vitals Acquisition Channel</h5>
-                    <p class="text-muted small mb-3">Pair your smartwatch via Web Bluetooth, extract recent report biomarkers, or enter vitals manually.</p>
-                    
-                    <ul class="nav nav-pills mb-3" id="vitalsSourceTabs" role="tablist">
-                        <li class="nav-item">
-                            <button class="nav-link active fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-ble">
-                                <i class="bi bi-bluetooth me-1"></i> 1. Bluetooth Smartwatch
-                            </button>
-                        </li>
-                        <li class="nav-item">
-                            <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-report">
-                                <i class="bi bi-file-earmark-medical me-1"></i> 2. Recent Lab Reports
-                            </button>
-                        </li>
-                        <li class="nav-item">
-                            <button class="nav-link fw-semibold" data-bs-toggle="pill" data-bs-target="#vitals-manual">
-                                <i class="bi bi-pencil-square me-1"></i> 3. Manual Vitals Entry
-                            </button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content border-top pt-3">
-                        <!-- 1. Web Bluetooth Scan -->
-                        <div class="tab-pane fade show active" id="vitals-ble">
-                            <div class="p-3 bg-light rounded-3 border text-center">
-                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-smartwatch text-primary me-1"></i> Pair Smartwatch / BLE Vitals Sensor</h6>
-                                <p class="text-muted small mb-3">Browser prompts for Bluetooth access to stream Heart Rate, SpO2, and Pulse data.</p>
-                                <button type="button" class="btn btn-primary fw-semibold px-4" onclick="connectBluetoothSmartwatch()">
-                                    <i class="bi bi-bluetooth me-1"></i> Request Bluetooth Permission & Pair
-                                </button>
-                                <div id="bleStatusMessage" class="small mt-2 text-muted">Ready to pair. If your device doesn't have Bluetooth, choose Lab Reports or Manual Entry.</div>
-                            </div>
-                        </div>
-
-                        <!-- 2. Recent Lab Reports Extract -->
-                        <div class="tab-pane fade" id="vitals-report">
-                            <div class="p-3 bg-light rounded-3 border text-center">
-                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-pdf text-danger me-1"></i> Extract Vitals from Recent Medical Reports</h6>
-                                <p class="text-muted small mb-3">Pulls clinical vitals & biomarkers (BP, Glucose, Heart Rate) extracted from your uploaded records.</p>
-                                <button type="button" class="btn btn-info text-white fw-semibold px-4" onclick="importVitalsFromReports()">
-                                    <i class="bi bi-cloud-arrow-down me-1"></i> Import from Latest Lab Record
-                                </button>
-                                <div id="reportVitalsPreview" class="mt-2 small text-muted">Awaiting import request.</div>
-                            </div>
-                        </div>
-
-                        <!-- 3. Manual Entry -->
-                        <div class="tab-pane fade" id="vitals-manual">
-                            <form id="manualVitalsForm" onsubmit="submitManualVitals(event)" class="row g-2">
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-semibold">Heart Rate (BPM)</label>
-                                    <input type="number" id="manualHR" class="form-control" placeholder="76" value="76" required>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label small fw-semibold">Blood Pressure (mmHg)</label>
-                                    <input type="text" id="manualBP" class="form-control" placeholder="120/80" value="120/80" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small fw-semibold">SpO2 (%)</label>
-                                    <input type="number" id="manualSpO2" class="form-control" placeholder="98" min="70" max="100" value="98" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small fw-semibold">Glucose (mg/dL)</label>
-                                    <input type="number" id="manualGlucose" class="form-control" placeholder="110" value="110" required>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small fw-semibold">Temp (°F)</label>
-                                    <input type="text" id="manualTemp" class="form-control" placeholder="98.6" value="98.6" required>
-                                </div>
-                                <div class="col-12 mt-3 text-end">
-                                    <button type="submit" class="btn btn-success fw-semibold px-4">
-                                        <i class="bi bi-check-circle me-1"></i> Save & Broadcast Manual Vitals
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Paired Devices Strip -->
-                <div class="row g-3 mb-4" id="iotDevicesContainer">
-                    <div class="col-12 text-center py-3 text-muted">Discovering paired medical wearables...</div>
-                </div>
-
-                <!-- Live Vitals Gauges & ECG Canvas -->
-                <div class="row g-4 mb-4">
-                    <!-- Blood Pressure -->
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardBp">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-danger-subtle text-danger"><i class="bi bi-heart-pulse me-1"></i>Blood Pressure</span>
-                                <span class="badge bg-success-subtle text-success small" id="badgeBpStatus">Normal</span>
-                            </div>
-                            <h2 class="fw-bold mb-0 text-dark" id="valBp">120/80</h2>
-                            <small class="text-muted">mmHg (Omron Platinum)</small>
-                        </div>
-                    </div>
-                    <!-- Blood Glucose -->
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardGlucose">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-warning-subtle text-warning"><i class="bi bi-droplet me-1"></i>Blood Glucose</span>
-                                <span class="badge bg-warning-subtle text-warning small" id="badgeGlucoseStatus">Elevated</span>
-                            </div>
-                            <h2 class="fw-bold mb-0 text-dark" id="valGlucose">168</h2>
-                            <small class="text-muted">mg/dL (Dexcom G7 CGM)</small>
-                        </div>
-                    </div>
-                    <!-- SpO2 -->
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardSpo2">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-info-subtle text-info"><i class="bi bi-lungs me-1"></i>Oxygen SpO2</span>
-                                <span class="badge bg-success-subtle text-success small" id="badgeSpo2Status">Optimal</span>
-                            </div>
-                            <h2 class="fw-bold mb-0 text-dark" id="valSpo2">98</h2>
-                            <small class="text-muted">% (Wellue O2Ring)</small>
-                        </div>
-                    </div>
-                    <!-- Body Temperature -->
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm rounded-4 p-3 bg-white vital-gauge-card h-100" id="cardTemp">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-thermometer-half me-1"></i>Temperature</span>
-                                <span class="badge bg-success-subtle text-success small">Normal</span>
-                            </div>
-                            <h2 class="fw-bold mb-0 text-dark" id="valTemp">98.6</h2>
-                            <small class="text-muted">°F (Digital Sensor)</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Live ECG Canvas Waveform Plot -->
-                <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-activity text-success me-2"></i>Synchronized Lead-II ECG Rhythm Waveform</h5>
-                            <small class="text-muted">Live streaming telemetry from KardiaMobile 6-lead patch (Heart Rate: <span id="valHeartRate" class="fw-bold text-success">76 bpm</span>)</small>
-                        </div>
-                        <span class="badge bg-success px-3 py-2"><i class="bi bi-circle-fill me-1 small"></i>Live Streaming</span>
-                    </div>
-                    <div class="ecg-canvas-container ecg-grid">
-                        <canvas id="ecgCanvas" width="900" height="150" style="width: 100%; height: 150px;"></canvas>
-                    </div>
-                </div>
-            </div>
 
             <!-- =========================================================
                  TAB 7: BLOCKCHAIN HEALTH RECORDS & SMART CONSENT
