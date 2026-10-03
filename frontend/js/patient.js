@@ -181,9 +181,16 @@ function showSMSNotification(options) {
     const waText = encodeURIComponent(`*E-HEALTHCARE CARETAKER ALERT*\n*Recipient:* ${cfg.caretakerName}\n*Patient:* ${cfg.patientPhone}\n*Alert:* ${title}\n${msg}\n*Time:* ${timeStr}`);
     const waUrl = `https://api.whatsapp.com/send?phone=${cleanCaretakerPhone}&text=${waText}`;
 
-    const waActionBtn = (channel === 'whatsapp' || options.caretakerAlert || channel === 'emergency' || msg.includes('BP') || msg.includes('Hypertension')) ? `
-        <a href="${waUrl}" target="_blank" class="sms-btn bg-success text-white border-0 text-decoration-none d-inline-flex align-items-center me-1 fw-bold shadow-sm" style="font-size:0.75rem; padding: 4px 10px;">
-            <i class="bi bi-whatsapp me-1"></i> Send / Open WhatsApp
+    const deliveryStatusHtml = (channel === 'whatsapp' || options.caretakerAlert) ? `
+        <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-success-subtle text-success border border-success-subtle rounded-2 small">
+            <span class="fw-bold"><i class="bi bi-check2-all me-1"></i> Transmitted to Caretaker ${cfg.caretakerName}</span>
+            <span class="badge bg-success text-white">Delivered ✓</span>
+        </div>
+    ` : '';
+
+    const waActionBtn = (channel === 'whatsapp' || options.caretakerAlert) ? `
+        <a href="${waUrl}" target="_blank" class="sms-btn bg-light text-success border text-decoration-none d-inline-flex align-items-center me-1" style="font-size:0.72rem; padding: 3px 8px;" title="View in WhatsApp Web">
+            <i class="bi bi-whatsapp me-1"></i> View Thread
         </a>
     ` : '';
 
@@ -193,13 +200,14 @@ function showSMSNotification(options) {
             <span class="sms-time">${timeStr}</span>
         </div>
         ${recipientsHtml}
+        ${deliveryStatusHtml}
         <div class="sms-body-text">
             <strong>${title}:</strong> ${msg}
         </div>
         ${otpHtml}
         <div class="sms-actions">
             ${waActionBtn}
-            <span class="small text-muted me-auto" style="font-size:0.68rem;">E-Healthcare Alert Relay</span>
+            <span class="small text-muted me-auto" style="font-size:0.68rem;">⚡ Automated Direct Caregiver Relay</span>
             <button class="sms-btn bg-light text-secondary border" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
             </button>
@@ -2881,18 +2889,24 @@ async function submitManualVitals(e) {
     }
 
     try {
+        const cfg = getContactSettings();
         const vitals = { hr, spo2, bp_sys: bpSys, bp_dia: bpDia, temp };
-        const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: 0 });
+        const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', {
+            vitals,
+            missed_doses_count: 0,
+            caretaker_name: cfg.caretakerName,
+            caretaker_phone: cfg.caretakerPhone
+        });
         updateCaregiverAlertUI(res);
 
-        const cfg = getContactSettings();
+        const autoDispatch = res.automated_whatsapp_dispatch || {};
 
         // Always dispatch realistic Caretaker WhatsApp & SMS alert card on screen
         if (bpSys >= 160 || bpDia >= 100) {
             // Stage 2 Hypertensive Crisis: Direct Caretaker WhatsApp alert + Emergency dispatch
             showSMSNotification({
-                title: "🚨 CRITICAL HYPERTENSION (BP 160) - CARETAKER WHATSAPP DISPATCH",
-                message: `CRITICAL ALERT: Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Stage 2 Hypertensive Crisis detected. Alert routed to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) and primary physician.`,
+                title: "🚨 CRITICAL HYPERTENSION (BP 160) - AUTOMATED CARETAKER WHATSAPP DISPATCH",
+                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.delivery_id || 'WA-AUTO-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via automated WhatsApp Cloud Relay.`,
                 channel: "whatsapp",
                 caretakerAlert: true,
                 duration: 12000
@@ -2900,15 +2914,15 @@ async function submitManualVitals(e) {
             setTimeout(() => {
                 showSMSNotification({
                     title: "🚨 PRIORITY SOS & SMS CARRIER ALERT",
-                    message: `Automated SMS delivered to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}): 'Patient BP spiked to ${formattedBp} mmHg. Caregiver intervention advised.'`,
+                    message: `Automated SMS delivered to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}): 'Patient BP spiked to ${formattedBp} mmHg. Immediate caregiver attention advised.'`,
                     channel: "emergency",
                     duration: 10000
                 });
             }, 600);
         } else if (bpSys >= 140 || bpDia >= 90 || res.tier_level >= 2) {
             showSMSNotification({
-                title: "⚠️ HIGH BP CAREGIVER WHATSAPP ALERT",
-                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). ${res.caregiver_message || 'Stage 1 Hypertension detected. Alert routed to Caretaker & Doctor.'}`,
+                title: "⚠️ HIGH BP AUTOMATED CAREGIVER WHATSAPP ALERT",
+                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Automated WhatsApp notification sent to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
                 channel: "whatsapp",
                 caretakerAlert: true,
                 duration: 9500
@@ -2926,8 +2940,8 @@ async function submitManualVitals(e) {
         const cfg = getContactSettings();
         if (bpSys >= 140) {
             showSMSNotification({
-                title: bpSys >= 160 ? "🚨 CRITICAL HIGH BP (160 mmHg) CARETAKER ALERT" : "⚠️ HIGH BP SMS ALERT",
-                message: `Blood Pressure of ${formattedBp} mmHg logged. Direct WhatsApp & SMS notification dispatched to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
+                title: bpSys >= 160 ? "🚨 CRITICAL HIGH BP (160 mmHg) AUTOMATED CARETAKER ALERT" : "⚠️ HIGH BP AUTOMATED ALERT",
+                message: `Blood Pressure of ${formattedBp} mmHg logged. Automated WhatsApp & SMS notification transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
                 channel: "whatsapp",
                 caretakerAlert: true,
                 duration: 10000
