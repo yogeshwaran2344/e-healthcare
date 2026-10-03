@@ -1512,6 +1512,47 @@
                 </div>
 
                 <div class="row g-4">
+                    <div class="col-12">
+                        <div class="emergency-mode-card p-4 mb-0">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                                <div>
+                                    <span class="badge bg-danger mb-2">EMERGENCY MODE · READ ONLY</span>
+                                    <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-person-vcard-fill text-danger me-2"></i>Live Emergency Medical Passport</h5>
+                                    <p class="text-muted small mb-0">Assembled from your latest authorized records. Not a stored copy. Sharing is audited.</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger btn-sm fw-semibold" onclick="loadLiveEmergencyPassport()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh live profile
+                                </button>
+                            </div>
+                            <div id="liveEmergencyPassportBox" class="small">
+                                <div class="text-muted">Open this tab to load your live emergency profile.</div>
+                            </div>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold mb-0">Who accessed this emergency profile</h6>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadPatientEmergencyAudit()">Refresh log</button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Accessor</th>
+                                                <th>Role</th>
+                                                <th>Purpose</th>
+                                                <th>Info type</th>
+                                                <th>Mode</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="patientEmergencyAuditBody">
+                                            <tr><td colspan="6" class="text-muted">Open this tab to load access events.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="small text-muted mb-0 mt-1">Clinical values are omitted from this log.</p>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Live Ambulance Telemetry HUD -->
                     <div class="col-lg-7">
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">

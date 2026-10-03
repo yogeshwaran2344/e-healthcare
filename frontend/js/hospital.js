@@ -157,3 +157,33 @@ async function handleHospitalBreakGlass(e) {
         alert("Break-Glass Error: " + err.message);
     }
 }
+
+async function loadEmergencyAccessAudit() {
+    const tbody = document.getElementById('hospEmergencyAuditBody');
+    const note = document.getElementById('hospEmergencyAuditNote');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm"></div> Loading access events...</td></tr>`;
+    try {
+        const res = await API.get('/api/emergency/audit-log');
+        const events = res.events || [];
+        if (note) note.textContent = res.note || '';
+        if (!events.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">No emergency access events recorded yet.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = events.map(ev => `
+            <tr>
+                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '—'}</td>
+                <td class="small">${ev.accessor_name || '—'}</td>
+                <td><span class="badge bg-secondary-subtle text-secondary">${ev.accessor_role || '—'}</span></td>
+                <td class="font-monospace">#${ev.patient_id}</td>
+                <td class="small">${ev.purpose || '—'}</td>
+                <td class="small">${ev.information_type || '—'}</td>
+                <td>${ev.is_emergency ? '<span class="badge bg-danger">Emergency</span>' : '<span class="badge bg-secondary">Non-emergency</span>'}</td>
+                <td class="small">${ev.access_channel || '—'}</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="alert alert-danger small mb-0">Error: ${err.message}</td></tr>`;
+    }
+}

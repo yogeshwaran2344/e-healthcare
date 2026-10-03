@@ -106,3 +106,10 @@ def serve_hospital():
         return FileResponse(hospital_path)
     return {"message": "Hospital & Institution Portal"}
 
+@app.get("/emergency/view")
+def serve_emergency_view():
+    emergency_path = os.path.join(PROJECT_ROOT, "frontend", "emergency.html")
+    if os.path.exists(emergency_path):
+        return FileResponse(emergency_path)
+    return {"message": "Emergency Medical Passport"}
+

@@ -180,6 +180,20 @@ def seed_patentable_addons(patient, doctor, db, consultation=None):
     ))
     db.commit()
 
+def ensure_hospital_admin(db):
+    """Additive admin account for emergency-access audit UI. Does not alter existing users."""
+    existing = db.query(User).filter(User.email == "admin@example.com").first()
+    if existing:
+        return
+    db.add(User(
+        full_name="Hospital Administrator",
+        email="admin@example.com",
+        password_hash=hash_password("admin123"),
+        role="admin",
+        phone="+91 90000 11111",
+    ))
+    db.commit()
+
 def seed():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -208,6 +222,7 @@ def seed():
                     print("Patentable add-ons seeded successfully.")
                 else:
                     print("Database already contains seed data and patentable add-ons.")
+            ensure_hospital_admin(db)
             return
 
 
@@ -354,6 +369,7 @@ def seed():
 
         # 4. Seed Patentable Add-Ons
         seed_patentable_addons(patient, created_doctors[0], db, consultation)
+        ensure_hospital_admin(db)
         db.commit()
         print("Database successfully seeded with AI Personal Health Navigator + 6 Patentable Add-Ons!")
 

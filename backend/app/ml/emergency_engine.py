@@ -109,3 +109,63 @@ def calculate_ambulance_telemetry(
         "assigned_trauma_bay": "ER Trauma Bay #3 (Cardiac Resus)",
         "blood_bank_crossmatch": "Pre-staged 2 units matched for patient"
     }
+
+
+NOT_RECORDED = "Not recorded"
+
+
+def _recorded(value, fallback=NOT_RECORDED):
+    if value is None:
+        return fallback
+    if isinstance(value, str) and not value.strip():
+        return fallback
+    return value
+
+
+def assemble_live_emergency_passport(
+    patient,
+    latest_vitals: Optional[Dict[str, Any]] = None,
+    latest_medications: Optional[str] = None,
+    physician: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Builds a concise emergency profile from the latest authorized patient records.
+    Does not invent clinical data when fields are empty.
+    """
+    meds = latest_medications if latest_medications else patient.current_medications
+    blood_group = _recorded(getattr(patient, "blood_group", None))
+    allergies = _recorded(getattr(patient, "drug_allergies", None), "None recorded")
+    conditions = _recorded(getattr(patient, "pre_existing_conditions", None), "None recorded")
+    medications = _recorded(meds, "None recorded")
+    contact_phone = _recorded(getattr(patient, "phone", None), "None recorded")
+
+    physician = physician or {}
+    vitals = latest_vitals or {}
+
+    return {
+        "generated_dynamically": True,
+        "read_only": True,
+        "patient_id": getattr(patient, "id", None),
+        "patient_name": getattr(patient, "full_name", "Unknown Patient"),
+        "full_name": getattr(patient, "full_name", "Unknown Patient"),
+        "age": patient.age if getattr(patient, "age", None) is not None else NOT_RECORDED,
+        "gender": _recorded(getattr(patient, "gender", None)),
+        "blood_group": blood_group,
+        "severe_drug_allergies": allergies,
+        "drug_allergies": allergies,
+        "pre_existing_conditions": conditions,
+        "current_medications": medications,
+        "emergency_contact": contact_phone,
+        "emergency_contact_phone": contact_phone,
+        "physician": {
+            "name": physician.get("name") or NOT_RECORDED,
+            "specialization": physician.get("specialization") or NOT_RECORDED,
+            "hospital": physician.get("hospital") or NOT_RECORDED,
+            "license_number": physician.get("license_number") or NOT_RECORDED,
+        },
+        "treating_physician_notes": physician.get("name") or NOT_RECORDED,
+        "latest_vitals_snapshot": vitals,
+        "recent_vitals": vitals,
+        "timestamp": datetime.utcnow().isoformat(),
+        "data_sources": ["users", "iot_vital_readings", "prescriptions", "consultations", "doctor_profiles"],
+    }

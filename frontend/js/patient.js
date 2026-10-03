@@ -2053,19 +2053,24 @@ async function triggerOneTapSOS() {
         alert(`🚨 EMERGENCY ACTIVATED!\nUnit: ${res.ambulance_unit}\nETA: ${res.eta_minutes} Mins\nER Trauma Bay #3 Reserved.`);
         
         switchToTab('tab-emergency');
-        await loadEmergencyTab();
+        await loadEmergencyTab({ includePassport: true });
 
         // Start active tracking polling
         if (emergencyPollInterval) clearInterval(emergencyPollInterval);
-        emergencyPollInterval = setInterval(loadEmergencyTab, 4000);
+        emergencyPollInterval = setInterval(() => loadEmergencyTab({ includePassport: false }), 4000);
 
     } catch (err) {
         alert("Failed to trigger SOS: " + err.message);
     }
 }
 
-async function loadEmergencyTab() {
+async function loadEmergencyTab(options = {}) {
+    const includePassport = options.includePassport !== false;
     try {
+        if (includePassport) {
+            loadLiveEmergencyPassport();
+            loadPatientEmergencyAudit();
+        }
         if (!currentPassportToken) {
             switchPassportContext('PUBLIC_BASIC');
         }
@@ -2310,6 +2315,68 @@ async function loadDigitalHealthTimeline() {
 let activePassportScope = 'PUBLIC_BASIC';
 let currentPassportToken = null;
 
+function renderLivePassportFields(p) {
+    if (!p) return '<div class="text-muted">No passport data.</div>';
+    const v = p.latest_vitals_snapshot || p.recent_vitals || {};
+    const phys = p.physician || {};
+    const vitals = [
+        v.blood_pressure || v.bp,
+        v.heart_rate || v.hr,
+        v.spo2 ? ('SpO2 ' + v.spo2) : null,
+        v.glucose
+    ].filter(Boolean).join(' · ') || 'Not recorded';
+    const physician = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' · ') || 'Not recorded';
+    return `
+        <div class="row g-2">
+            <div class="col-md-4"><span class="text-muted d-block">Identity</span><strong>${p.patient_name || p.full_name || '—'}</strong><div class="text-muted">${p.age || '—'} · ${p.gender || '—'}</div></div>
+            <div class="col-md-2"><span class="text-muted d-block">Blood group</span><span class="badge bg-danger fs-6">${p.blood_group || '—'}</span></div>
+            <div class="col-md-6"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${p.severe_drug_allergies || p.drug_allergies || '—'}</strong></div>
+            <div class="col-md-6"><span class="text-muted d-block">Critical conditions</span>${p.pre_existing_conditions || '—'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Medications</span>${p.current_medications || '—'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Emergency contact</span>${p.emergency_contact || p.emergency_contact_phone || '—'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Physician</span>${physician}</div>
+            <div class="col-12"><span class="text-muted d-block">Latest vitals</span>${vitals}</div>
+        </div>
+        <div class="small text-muted mt-2"><i class="bi bi-lock me-1"></i>Read-only live view · generated ${p.timestamp || ''}</div>
+    `;
+}
+
+async function loadLiveEmergencyPassport() {
+    const box = document.getElementById('liveEmergencyPassportBox');
+    if (!box) return;
+    try {
+        const res = await API.get('/api/emergency/live-passport');
+        box.innerHTML = renderLivePassportFields(res.passport);
+    } catch (err) {
+        box.innerHTML = `<div class="text-danger">${err.message}</div>`;
+    }
+}
+
+async function loadPatientEmergencyAudit() {
+    const tbody = document.getElementById('patientEmergencyAuditBody');
+    if (!tbody) return;
+    try {
+        const res = await API.get('/api/emergency/audit-log');
+        const events = res.events || [];
+        if (!events.length) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center py-3">No emergency access events yet.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = events.map(ev => `
+            <tr>
+                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '—'}</td>
+                <td class="small">${ev.accessor_name || '—'}</td>
+                <td class="small">${ev.accessor_role || '—'}</td>
+                <td class="small">${ev.purpose || '—'}</td>
+                <td class="small">${ev.information_type || '—'}</td>
+                <td>${ev.is_emergency ? '<span class="badge bg-danger">Emergency</span>' : '<span class="badge bg-secondary">Routine</span>'}</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-danger small">${err.message}</td></tr>`;
+    }
+}
+
 async function switchPassportContext(scope) {
     activePassportScope = scope;
     await fetchAndRenderPassport(scope);
@@ -2338,7 +2405,7 @@ async function fetchAndRenderPassport(scope, forceNew = false) {
         if (countdown) countdown.textContent = `Auto-Expires: ${tokenRes.validity_minutes} Minutes`;
 
         // Update QR Code Image
-        const viewUrl = window.location.origin + tokenRes.qr_access_url;
+        const viewUrl = window.location.origin + (tokenRes.emergency_view_url || tokenRes.qr_access_url);
         if (qrImg) {
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(viewUrl)}`;
         }
@@ -2363,7 +2430,11 @@ async function fetchAndRenderPassport(scope, forceNew = false) {
         if (data.pre_existing_conditions) html += `<div><strong>Conditions:</strong> ${data.pre_existing_conditions}</div>`;
         if (data.current_medications) html += `<div><strong>Medications:</strong> ${data.current_medications}</div>`;
         if (data.recent_vitals) {
-            html += `<div class="mt-1"><strong>Recent Vitals:</strong> BP ${data.recent_vitals.bp || '-'}, HR ${data.recent_vitals.hr || '-'}, SpO2 ${data.recent_vitals.spo2 || '-'}</div>`;
+            const v = data.recent_vitals;
+            const bp = v.blood_pressure || v.bp || '-';
+            const hr = v.heart_rate || v.hr || '-';
+            const spo2 = v.spo2 || '-';
+            html += `<div class="mt-1"><strong>Recent Vitals:</strong> BP ${bp}, HR ${hr}, SpO2 ${spo2}</div>`;
         }
         if (data.recent_lab_biomarkers) {
             html += `<div class="mt-1"><strong>Lab Biomarkers:</strong> WBC ${data.recent_lab_biomarkers.wbc || '-'}, Platelets ${data.recent_lab_biomarkers.platelets || '-'}</div>`;

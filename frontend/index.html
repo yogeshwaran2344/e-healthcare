@@ -723,6 +723,7 @@
                                 <div class="btn-group btn-group-sm w-100">
                                     <button class="btn btn-outline-success" onclick="loginDemo('patient')"><i class="bi bi-person"></i> Patient Account</button>
                                     <button class="btn btn-outline-info" onclick="loginDemo('doctor')"><i class="bi bi-hospital"></i> Doctor Portal</button>
+                                    <button class="btn btn-outline-dark" onclick="loginDemo('admin')"><i class="bi bi-shield-lock"></i> Admin Audit</button>
                                 </div>
                             </div>
                         </div>
@@ -916,25 +917,31 @@
             }
         }
 
+        function portalForRole(role) {
+            if (role === 'doctor') return '/doctor';
+            if (role === 'admin') return '/hospital';
+            return '/patient';
+        }
+
         function navigateToPortal(role) {
             const user = API.getUser();
             if (user) {
-                window.location.href = user.role === 'doctor' ? '/doctor' : '/patient';
+                window.location.href = portalForRole(user.role);
             } else {
                 window.location.href = '/patient';
             }
         }
 
         async function loginDemo(role) {
-            const email = role === 'doctor' ? 'doctor@example.com' : 'patient@example.com';
-            const pass = role === 'doctor' ? 'doctor123' : 'patient123';
+            const creds = {
+                doctor: ['doctor@example.com', 'doctor123'],
+                admin: ['admin@example.com', 'admin123'],
+                patient: ['patient@example.com', 'patient123']
+            };
+            const [email, pass] = creds[role] || creds.patient;
             try {
                 const res = await API.login(email, pass);
-                if (res.user.role === 'doctor') {
-                    window.location.href = '/doctor';
-                } else {
-                    window.location.href = '/patient';
-                }
+                window.location.href = portalForRole(res.user.role);
             } catch (err) {
                 alert("Demo login error: " + err.message);
             }
@@ -949,11 +956,7 @@
 
             try {
                 const res = await API.login(email, pass);
-                if (res.user.role === 'doctor') {
-                    window.location.href = '/doctor';
-                } else {
-                    window.location.href = '/patient';
-                }
+                window.location.href = portalForRole(res.user.role);
             } catch (err) {
                 alertEl.textContent = err.message;
                 alertEl.classList.remove('d-none');

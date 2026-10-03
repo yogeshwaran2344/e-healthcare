@@ -39,6 +39,11 @@ from ..ml.explainable_map_engine import generate_explainable_decision_map
 from ..ml.disagreement_engine import analyze_clinician_ai_divergence, DISCREPANCY_TAXONOMY
 from ..ml.outcome_feedback_engine import reconcile_three_way_outcome, compute_aggregate_model_calibration_metrics, FAILURE_MODES
 from ..ml.passport_consent_engine import generate_contextual_emergency_token, filter_patient_data_by_context, CONTEXT_PERMISSIONS
+from ..emergency_passport_service import (
+    build_live_passport,
+    passport_to_context_fields,
+    record_emergency_access,
+)
 
 router = APIRouter(prefix="/api/closed-loop", tags=["Adaptive Closed-Loop Clinical System"])
 
@@ -399,7 +404,8 @@ def create_passport_token(
         "scope_label": token_meta["scope_label"],
         "expires_at": qr_token.expires_at.isoformat(),
         "validity_minutes": token_meta["validity_minutes"],
-        "qr_access_url": f"/api/closed-loop/passport/view/{qr_token.token_hash}"
+        "qr_access_url": f"/api/closed-loop/passport/view/{qr_token.token_hash}",
+        "emergency_view_url": f"/emergency/view?token={qr_token.token_hash}",
     }
 
 @router.get("/passport/view/{token_hash}")
@@ -439,27 +445,26 @@ def view_contextual_passport(
     token.access_logs_json = json.dumps(logs)
     db.commit()
 
-    # Build full data dictionary
-    full_patient_data = {
-        "full_name": patient.full_name,
-        "age": patient.age or 35,
-        "gender": patient.gender or "Not specified",
-        "blood_group": patient.blood_group or "O+",
-        "drug_allergies": patient.drug_allergies or "None reported",
-        "emergency_contact_phone": patient.phone or "+91 98765 43210",
-        "pre_existing_conditions": patient.pre_existing_conditions or "None recorded",
-        "current_medications": patient.current_medications or "None",
-        "recent_vitals": {"bp": "122/80 mmHg", "hr": "76 bpm", "spo2": "98%", "temp": "98.6°F"},
-        "resuscitation_preference": "Full Code (Resuscitate)",
-        "recent_lab_biomarkers": {"wbc": "7,800 /uL (Normal)", "platelets": "240,000 /uL (Normal)"},
-        "radiology_reports": ["Chest X-Ray Normal (14 days ago)"],
-        "recent_diagnoses": ["Viral Upper Respiratory Infection (Resolved)"],
-        "treating_physician_notes": "Patient compliant with prescribed medication, no acute hemodynamic instability."
-    }
+    live_passport = build_live_passport(db, patient)
+    full_patient_data = passport_to_context_fields(live_passport)
 
     filtered_data = filter_patient_data_by_context(full_patient_data, token.context_scope)
     filtered_data["token_expires_at"] = token.expires_at.isoformat()
     filtered_data["access_count"] = token.access_count
+    filtered_data["read_only"] = True
+
+    record_emergency_access(
+        db,
+        accessor=None,
+        patient_id=patient.id,
+        purpose=f"QR contextual access ({token.context_scope})",
+        information_type="emergency_passport",
+        is_emergency=True,
+        access_channel="qr_token",
+        context_scope=token.context_scope,
+        accessor_name="QR / public responder",
+        accessor_role="emergency_responder",
+    )
 
     return filtered_data
 

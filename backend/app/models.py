@@ -479,3 +479,23 @@ class ContextualQRToken(Base):
     patient = relationship("User")
 
 
+class EmergencyAccessAudit(Base):
+    """Append-only log of emergency medical passport access events."""
+    __tablename__ = "emergency_access_audits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    accessor_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    accessor_role = Column(String(30), nullable=False)
+    accessor_name = Column(String(150), nullable=False)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    accessed_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    purpose = Column(String(255), nullable=True)
+    information_type = Column(String(120), default="emergency_passport")
+    is_emergency = Column(Boolean, default=True)
+    access_channel = Column(String(50), default="authenticated")
+    context_scope = Column(String(50), nullable=True)
+
+    accessor = relationship("User", foreign_keys=[accessor_id])
+    patient = relationship("User", foreign_keys=[patient_id])
+
+

@@ -550,7 +550,7 @@ async function loadDoctorERFeed() {
                 </div>
                 <div class="row g-2 small mb-2">
                     <div class="col-md-4">
-                        <span class="text-muted">Patient:</span> <strong>${e.patient_name} (${e.age || 48} yrs)</strong>
+                        <span class="text-muted">Patient:</span> <strong>${e.patient_name} (${e.age != null ? e.age + ' yrs' : 'age not recorded'})</strong>
                     </div>
                     <div class="col-md-4">
                         <span class="text-muted">Blood Group:</span> <strong class="text-danger">${e.blood_group}</strong>
@@ -559,13 +559,54 @@ async function loadDoctorERFeed() {
                         <span class="text-muted">Reserved Trauma Bay:</span> <strong class="text-primary">${e.trauma_bay}</strong>
                     </div>
                 </div>
-                <div class="alert alert-danger py-2 small mb-0">
-                    <i class="bi bi-shield-exclamation me-1"></i> <strong>Critical Allergies:</strong> ${e.allergies} | <strong>Live Vitals:</strong> BP ${e.vitals?.blood_pressure || '148/94'}, SpO2 ${e.vitals?.spo2 || '96%'}, HR ${e.vitals?.heart_rate || '88 bpm'}
+                <div class="alert alert-danger py-2 small mb-2">
+                    <i class="bi bi-shield-exclamation me-1"></i> <strong>Critical Allergies:</strong> ${e.allergies || 'Not recorded'} | <strong>Live Vitals:</strong> BP ${e.vitals?.blood_pressure || 'Not recorded'}, SpO2 ${e.vitals?.spo2 || 'Not recorded'}, HR ${e.vitals?.heart_rate || 'Not recorded'}
                 </div>
+                ${e.patient_id ? `<button type="button" class="btn btn-sm btn-outline-danger" onclick="prefillDoctorPassport(${e.patient_id})">Open live emergency passport</button>` : ''}
             </div>
         `).join('');
     } catch (err) {
         console.error("Error loading doctor ER feed:", err);
+    }
+}
+
+function prefillDoctorPassport(patientId) {
+    const idInput = document.getElementById('erPassportPatientId');
+    if (idInput) idInput.value = patientId;
+    const purpose = document.getElementById('erPassportPurpose');
+    if (purpose && !purpose.value) purpose.value = 'Inbound ER trauma assessment';
+    document.getElementById('erPassportPurpose')?.focus();
+}
+
+async function openDoctorLivePassport(e) {
+    e.preventDefault();
+    const patientId = document.getElementById('erPassportPatientId').value;
+    const purpose = document.getElementById('erPassportPurpose').value;
+    const box = document.getElementById('doctorLivePassportBox');
+    box.innerHTML = '<div class="text-muted small">Loading read-only emergency profile...</div>';
+    try {
+        const qs = new URLSearchParams({ purpose, is_emergency: 'true' });
+        const res = await API.get(`/api/emergency/live-passport/${patientId}?${qs.toString()}`);
+        const p = res.passport || {};
+        const v = p.latest_vitals_snapshot || {};
+        const phys = p.physician || {};
+        box.innerHTML = `
+            <div class="p-3 bg-white rounded-3 border">
+                <div class="d-flex justify-content-between">
+                    <strong>${p.patient_name || p.full_name}</strong>
+                    <span class="badge bg-danger">${p.blood_group}</span>
+                </div>
+                <div class="small mt-2"><strong class="text-danger">Allergies:</strong> ${p.drug_allergies}</div>
+                <div class="small"><strong>Conditions:</strong> ${p.pre_existing_conditions}</div>
+                <div class="small"><strong>Medications:</strong> ${p.current_medications}</div>
+                <div class="small"><strong>Contact:</strong> ${p.emergency_contact}</div>
+                <div class="small"><strong>Physician:</strong> ${[phys.name, phys.specialization, phys.hospital].filter(Boolean).join(' · ')}</div>
+                <div class="small"><strong>Vitals:</strong> ${v.blood_pressure || '-'} / HR ${v.heart_rate || '-'} / SpO2 ${v.spo2 || '-'}</div>
+                <div class="small text-muted mt-2">Read-only · access audited · ${res.mode || 'emergency'}</div>
+            </div>
+        `;
+    } catch (err) {
+        box.innerHTML = `<div class="alert alert-danger small mb-0">${err.message}</div>`;
     }
 }
 

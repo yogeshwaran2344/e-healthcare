@@ -6,12 +6,18 @@ from datetime import datetime
 
 from ..database import get_db
 from ..models import User, EmergencyAlert, IoTVitalReading
-from ..auth import get_current_user
+from ..auth import get_current_user, require_roles
 from ..ml.emergency_engine import (
     build_emergency_medical_passport,
     calculate_ambulance_telemetry,
     EMERGENCY_HOSPITALS
 )
+from ..emergency_passport_service import (
+    build_live_passport,
+    record_emergency_access,
+    serialize_audit_row,
+)
+from ..models import EmergencyAccessAudit
 
 router = APIRouter(prefix="/api/emergency", tags=["Emergency Response & Ambulance"])
 
@@ -53,18 +59,7 @@ def trigger_rapid_sos(
         elif r.metric_type == "heart_rate":
             vitals_dict["heart_rate"] = f"{int(r.primary_value)} bpm"
 
-    patient_dict = {
-        "full_name": current_user.full_name,
-        "age": current_user.age or 48,
-        "gender": current_user.gender or "Male",
-        "blood_group": current_user.blood_group or "B+",
-        "drug_allergies": current_user.drug_allergies or "Penicillin, Amoxicillin",
-        "pre_existing_conditions": current_user.pre_existing_conditions or "Diabetes Type 2, Hypertension",
-        "current_medications": current_user.current_medications or "Metformin 500mg, Telmisartan 40mg",
-        "phone": current_user.phone or "+91 91234 56789"
-    }
-
-    passport = build_emergency_medical_passport(patient_dict, vitals_dict)
+    passport = build_live_passport(db, current_user)
     telemetry = calculate_ambulance_telemetry(lat, lng, current_step=1, total_steps=6)
 
     alert = EmergencyAlert(
@@ -81,7 +76,7 @@ def trigger_rapid_sos(
         eta_minutes=telemetry["eta_minutes"],
         hospital_destination=telemetry["receiving_hospital"],
         reserved_trauma_bay=telemetry["assigned_trauma_bay"],
-        blood_bank_alert=f"{patient_dict['blood_group']} Pre-Match Dispatched",
+        blood_bank_alert=f"{passport.get('blood_group', 'Unknown')} Pre-Match Dispatched",
         patient_snapshot=json.dumps(passport),
         status="dispatched"
     )
@@ -90,6 +85,17 @@ def trigger_rapid_sos(
     db.refresh(alert)
 
     AMBULANCE_STEP_TRACKER[alert.id] = 1
+
+    record_emergency_access(
+        db,
+        accessor=current_user,
+        patient_id=current_user.id,
+        purpose="One-tap SOS dispatch",
+        information_type="emergency_passport",
+        is_emergency=True,
+        access_channel="sos",
+        context_scope="SOS_DISPATCH",
+    )
 
     return {
         "status": "EMERGENCY_DISPATCHED",
@@ -155,7 +161,7 @@ def get_active_emergency_status(
 
 @router.get("/doctor-feed")
 def get_hospital_er_feed(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("doctor", "admin")),
     db: Session = Depends(get_db)
 ):
     """
@@ -174,16 +180,21 @@ def get_hospital_er_feed(
         passport = json.loads(a.patient_snapshot) if a.patient_snapshot else {}
         feed.append({
             "id": a.id,
+            "patient_id": a.patient_id,
             "patient_name": p.full_name if p else "Emergency Patient",
             "age": p.age if p else None,
-            "blood_group": p.blood_group if p else "O+",
+            "blood_group": (p.blood_group if p and p.blood_group else None)
+            or passport.get("blood_group")
+            or "Not recorded",
             "emergency_type": a.emergency_type,
             "ambulance_unit": a.ambulance_unit,
             "eta_minutes": a.eta_minutes,
             "trauma_bay": a.reserved_trauma_bay,
             "status": a.status,
-            "allergies": passport.get("severe_drug_allergies", "None"),
-            "vitals": passport.get("latest_vitals_snapshot", {}),
+            "allergies": passport.get("severe_drug_allergies")
+            or passport.get("drug_allergies")
+            or "Not recorded",
+            "vitals": passport.get("latest_vitals_snapshot") or {},
             "created_at": a.created_at
         })
 
@@ -205,3 +216,113 @@ def resolve_emergency(
     alert.status = "resolved"
     db.commit()
     return {"message": "Emergency alert marked as resolved and closed."}
+
+
+def _authorize_passport_access(current_user: User, patient: User) -> None:
+    if current_user.id == patient.id and current_user.role == "patient":
+        return
+    if current_user.role in ("doctor", "admin"):
+        return
+    raise HTTPException(status_code=403, detail="Not authorized to view this emergency passport.")
+
+
+@router.get("/live-passport")
+def get_own_live_emergency_passport(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Patient (or clinician viewing self) live emergency passport from current authorized records.
+    """
+    if current_user.role not in ("patient", "doctor", "admin"):
+        raise HTTPException(status_code=403, detail="Not authorized.")
+
+    target = current_user
+    if current_user.role != "patient":
+        raise HTTPException(
+            status_code=400,
+            detail="Clinicians must request a specific patient via /api/emergency/live-passport/{patient_id}.",
+        )
+
+    passport = build_live_passport(db, target)
+    record_emergency_access(
+        db,
+        accessor=current_user,
+        patient_id=target.id,
+        purpose="Patient self-view of live emergency passport",
+        information_type="emergency_passport",
+        is_emergency=False,
+        access_channel="authenticated",
+        context_scope="SELF",
+    )
+    return {"passport": passport, "mode": "emergency-self"}
+
+
+@router.get("/live-passport/{patient_id}")
+def get_patient_live_emergency_passport(
+    patient_id: int,
+    purpose: str = Query(..., min_length=8, description="Clinical purpose / reason for access"),
+    is_emergency: bool = Query(True),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Role-gated live emergency passport. Doctors/admins provide a purpose; patients may only read self.
+    """
+    patient = db.query(User).filter(User.id == patient_id, User.role == "patient").first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found.")
+
+    _authorize_passport_access(current_user, patient)
+
+    if current_user.role == "patient" and current_user.id != patient.id:
+        raise HTTPException(status_code=403, detail="Patients may only view their own emergency passport.")
+
+    passport = build_live_passport(db, patient)
+    record_emergency_access(
+        db,
+        accessor=current_user,
+        patient_id=patient.id,
+        purpose=purpose,
+        information_type="emergency_passport",
+        is_emergency=is_emergency,
+        access_channel="authenticated",
+        context_scope="HOSPITAL_ER_TRAUMA" if current_user.role in ("doctor", "admin") else "SELF",
+    )
+    return {
+        "passport": passport,
+        "mode": "emergency" if is_emergency else "non-emergency",
+        "read_only": True,
+    }
+
+
+@router.get("/audit-log")
+def get_emergency_access_audit_log(
+    patient_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Audit history without clinical payload. Admin: all events. Doctor: own accesses.
+    Patient: accesses involving their own record.
+    """
+    query = db.query(EmergencyAccessAudit).order_by(EmergencyAccessAudit.accessed_at.desc())
+
+    if current_user.role == "admin":
+        if patient_id:
+            query = query.filter(EmergencyAccessAudit.patient_id == patient_id)
+    elif current_user.role == "doctor":
+        query = query.filter(EmergencyAccessAudit.accessor_id == current_user.id)
+        if patient_id:
+            query = query.filter(EmergencyAccessAudit.patient_id == patient_id)
+    elif current_user.role == "patient":
+        query = query.filter(EmergencyAccessAudit.patient_id == current_user.id)
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized to view emergency access audits.")
+
+    rows = query.limit(200).all()
+    return {
+        "total": len(rows),
+        "events": [serialize_audit_row(r) for r in rows],
+        "note": "Audit entries list accessor, patient id, time, purpose, and access type only. Clinical details are omitted.",
+    }
