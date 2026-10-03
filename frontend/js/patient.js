@@ -2843,13 +2843,38 @@ async function importVitalsFromReports() {
     }
 }
 
+function setQuickManualVitals(sys, dia, hr, spo2) {
+    const hrEl = document.getElementById('manualHR');
+    const bpEl = document.getElementById('manualBP');
+    const spo2El = document.getElementById('manualSpO2');
+    const glucEl = document.getElementById('manualGlucose');
+    const tempEl = document.getElementById('manualTemp');
+
+    if (hrEl) hrEl.value = hr || 76;
+    if (bpEl) bpEl.value = `${sys}/${dia}`;
+    if (spo2El) spo2El.value = spo2 || 98;
+    if (glucEl && !glucEl.value) glucEl.value = 110;
+    if (tempEl && !tempEl.value) tempEl.value = 98.6;
+
+    submitManualVitals();
+}
+
 async function submitManualVitals(e) {
-    e.preventDefault();
-    const hr = parseFloat(document.getElementById('manualHR').value) || 76;
-    const bpInput = (document.getElementById('manualBP').value || '120/80').trim();
-    const spo2 = parseFloat(document.getElementById('manualSpO2').value) || 98;
-    const glucose = parseFloat(document.getElementById('manualGlucose').value) || 110;
-    const temp = parseFloat(document.getElementById('manualTemp').value) || 98.6;
+    if (e && e.preventDefault) {
+        e.preventDefault();
+    }
+
+    const btn = document.getElementById('btnSaveManualVitals');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Saving &amp; Broadcasting...`;
+    }
+
+    const hr = parseFloat(document.getElementById('manualHR')?.value) || 76;
+    const bpInput = (document.getElementById('manualBP')?.value || '120/80').trim();
+    const spo2 = parseFloat(document.getElementById('manualSpO2')?.value) || 98;
+    const glucose = parseFloat(document.getElementById('manualGlucose')?.value) || 110;
+    const temp = parseFloat(document.getElementById('manualTemp')?.value) || 98.6;
 
     let bpSys = 120, bpDia = 80;
     if (bpInput.includes('/')) {
@@ -2865,10 +2890,25 @@ async function submitManualVitals(e) {
     }
     const formattedBp = `${Math.round(bpSys)}/${Math.round(bpDia)}`;
 
-    document.getElementById('valBp').textContent = formattedBp;
-    document.getElementById('valSpo2').textContent = spo2;
-    document.getElementById('valGlucose').textContent = glucose;
-    document.getElementById('valTemp').textContent = temp;
+    // Update gauge displays on screen
+    const valBp = document.getElementById('valBp');
+    const valSpo2 = document.getElementById('valSpo2');
+    const valGlucose = document.getElementById('valGlucose');
+    const valTemp = document.getElementById('valTemp');
+    const valHR = document.getElementById('valHeartRate');
+
+    if (valBp) valBp.textContent = formattedBp;
+    if (valSpo2) valSpo2.textContent = spo2;
+    if (valGlucose) valGlucose.textContent = glucose;
+    if (valTemp) valTemp.textContent = temp;
+    if (valHR) valHR.textContent = `${hr} bpm`;
+
+    // Persist in local storage for instant sync across tabs
+    try {
+        localStorage.setItem('ehealth_latest_vitals', JSON.stringify({
+            hr, bp: formattedBp, bp_sys: bpSys, bp_dia: bpDia, spo2, glucose, temp, timestamp: new Date().toISOString()
+        }));
+    } catch (_) {}
 
     // Update BP Gauge status badge
     const badgeBp = document.getElementById('badgeBpStatus');
@@ -2946,6 +2986,18 @@ async function submitManualVitals(e) {
                 caretakerAlert: true,
                 duration: 10000
             });
+        } else {
+            showSMSNotification({
+                title: "✅ VITALS RECORDED & BROADCASTED",
+                message: `BP ${formattedBp} mmHg, Heart Rate ${hr} bpm, SpO2 ${spo2}%, Glucose ${glucose} mg/dL logged and confirmed.`,
+                channel: "sms",
+                duration: 5000
+            });
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-check-circle me-1"></i> Save &amp; Broadcast Manual Vitals`;
         }
     }
 }
