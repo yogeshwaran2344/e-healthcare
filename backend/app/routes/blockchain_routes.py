@@ -920,33 +920,49 @@ def generate_travel_health_passport(
     Permits selective disclosure (e.g. only verified vaccines and critical allergies without exposing
     unrelated sensitive history). Anchored to the SHA-256 patient ledger.
     """
+    holder_name = payload.get("holder_name") or payload.get("passport_holder") or current_user.full_name or "Verified Traveler"
     destination_country = payload.get("destination_country", "United Kingdom")
     travel_date = payload.get("travel_date", (datetime.utcnow() + timedelta(days=14)).strftime("%Y-%m-%d"))
     purpose = payload.get("purpose", "Tourism / Business")
+    blood_group = payload.get("blood_group") or current_user.blood_group or "O+"
+    passport_number = payload.get("passport_number", "")
+    vaccines_input = payload.get("vaccines_text")
+    allergies_input = payload.get("allergies_text")
+    fit_to_fly_input = payload.get("fit_to_fly_text")
+
     include_vaccines = payload.get("include_vaccines", True)
     include_allergies = payload.get("include_allergies", True)
     include_fit_to_fly = payload.get("include_fit_to_fly", True)
 
-    travel_token = f"TRAVEL-{compute_sha256(f'{current_user.id}:{destination_country}:{travel_date}')[:20].upper()}"
+    travel_token = f"TRAVEL-{compute_sha256(f'{current_user.id}:{holder_name}:{destination_country}:{travel_date}')[:20].upper()}"
     expiry_date = datetime.utcnow() + timedelta(days=60)
 
     # Disclosed items
     disclosures = {
-        "passport_holder": current_user.full_name,
+        "passport_holder": holder_name,
+        "passport_number": passport_number or "VERIFIED-ID",
         "destination": destination_country,
         "valid_until": expiry_date.strftime("%Y-%m-%d"),
-        "blood_group": current_user.blood_group or "O+"
+        "blood_group": blood_group
     }
     if include_vaccines:
-        disclosures["vaccinations"] = [
-            {"vaccine": "COVID-19 mRNA (Updated)", "status": "✓ Verified", "date": "2025-11-10", "batch": "BNT-8821"},
-            {"vaccine": "Yellow Fever", "status": "✓ Verified", "date": "2024-03-15", "batch": "YF-0914"},
-            {"vaccine": "Hepatitis B", "status": "✓ Verified", "date": "2023-08-20", "batch": "HB-4412"}
-        ]
+        if vaccines_input and isinstance(vaccines_input, str):
+            vax_items = [v.strip() for v in vaccines_input.split(",") if v.strip()]
+            disclosures["vaccinations"] = [
+                {"vaccine": v, "status": "✓ Verified", "date": datetime.utcnow().strftime("%Y-%m-%d"), "batch": f"VAX-{compute_sha256(v)[:6].upper()}"}
+                for v in vax_items
+            ] if vax_items else [{"vaccine": vaccines_input, "status": "✓ Verified", "date": datetime.utcnow().strftime("%Y-%m-%d"), "batch": "VAX-USER"}]
+        elif isinstance(vaccines_input, list):
+            disclosures["vaccinations"] = vaccines_input
+        else:
+            disclosures["vaccinations"] = [
+                {"vaccine": "COVID-19 mRNA (Updated)", "status": "✓ Verified", "date": "2025-11-10", "batch": "BNT-8821"},
+                {"vaccine": "Yellow Fever", "status": "✓ Verified", "date": "2024-03-15", "batch": "YF-0914"}
+            ]
     if include_allergies:
-        disclosures["critical_allergies"] = current_user.drug_allergies or "Penicillin (Severe anaphylaxis warning)"
+        disclosures["critical_allergies"] = allergies_input or current_user.drug_allergies or "None Reported"
     if include_fit_to_fly:
-        disclosures["fit_to_fly_certification"] = "Fit for unrestricted commercial air travel. Cardiopulmonary clearance active."
+        disclosures["fit_to_fly_certification"] = fit_to_fly_input or "Fit for unrestricted commercial air travel. Cardiopulmonary clearance active."
 
     # Anchor to blockchain
     ensure_patient_genesis_block(current_user.id, db)

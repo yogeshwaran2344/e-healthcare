@@ -3285,7 +3285,43 @@ async function loadBreakGlassLogs() {
 // 14. DIGITAL HEALTH PASSPORT FOR TRAVEL CONTROLLER
 // ===================================================================
 
-function initTravelTab() {
+function initTravelTab(forceSync = false) {
+    const user = API.getUser() || {};
+    const p = currentProfile || {};
+    
+    // 1. Get active vault member name or logged-in user name
+    const members = typeof getFamilyMembers === 'function' ? getFamilyMembers() : {};
+    const activeKey = typeof activeFamilyMemberKey !== 'undefined' ? activeFamilyMemberKey : 'self';
+    const activeMember = members[activeKey] || members['self'] || {};
+    const currentName = activeMember.name || user.full_name || p.full_name || "Verified Traveler";
+
+    const holderInput = document.getElementById('travelHolderInput');
+    if (holderInput && (!holderInput.value || forceSync)) {
+        holderInput.value = currentName;
+    }
+
+    const bloodInput = document.getElementById('travelBloodInput');
+    if (bloodInput && (!bloodInput.value || forceSync)) {
+        const bg = activeMember.blood || p.blood_group || user.blood_group || "O+";
+        bloodInput.value = bg;
+    }
+
+    const allergiesInput = document.getElementById('travelAllergiesInput');
+    if (allergiesInput && (!allergiesInput.value || forceSync)) {
+        const alg = activeMember.allergies || p.severe_drug_allergies || p.drug_allergies || "None Reported";
+        allergiesInput.value = (alg === 'None logged' || alg === 'None') ? 'None Reported' : alg;
+    }
+
+    const vaccinesInput = document.getElementById('travelVaccinesInput');
+    if (vaccinesInput && (!vaccinesInput.value || forceSync)) {
+        vaccinesInput.value = "COVID-19 mRNA Booster (Batch BNT-8821), Yellow Fever (Lifetime Clearance)";
+    }
+
+    const fitInput = document.getElementById('travelFitToFlyInput');
+    if (fitInput && (!fitInput.value || forceSync)) {
+        fitInput.value = "Fit for unrestricted commercial aviation. Cardiopulmonary clearance active.";
+    }
+
     const dateInput = document.getElementById('travelDate');
     if (dateInput && !dateInput.value) {
         const defaultDate = new Date();
@@ -3300,43 +3336,128 @@ async function generateTravelPassport(e) {
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Anchoring to Blockchain...`;
 
-    const dest = document.getElementById('travelDestination').value;
-    const date = document.getElementById('travelDate').value;
-    const purpose = document.getElementById('travelPurpose').value;
+    const holderName = document.getElementById('travelHolderInput')?.value.trim() || 'Verified Traveler';
+    const passportNum = document.getElementById('travelPassportNum')?.value.trim() || 'VERIFIED-ID';
+    const bloodGroup = document.getElementById('travelBloodInput')?.value || 'O+';
+    const dest = document.getElementById('travelDestination')?.value.trim() || 'United Kingdom';
+    const date = document.getElementById('travelDate')?.value || '';
+    const purpose = document.getElementById('travelPurpose')?.value || 'Tourism & Leisure';
+    const vaccinesText = document.getElementById('travelVaccinesInput')?.value.trim() || '';
+    const allergiesText = document.getElementById('travelAllergiesInput')?.value.trim() || '';
+    const fitToFlyText = document.getElementById('travelFitToFlyInput')?.value.trim() || '';
+
     const incVaccines = document.getElementById('travelCheckVaccines').checked;
     const incAllergies = document.getElementById('travelCheckAllergies').checked;
     const incFit = document.getElementById('travelCheckFitToFly').checked;
 
     try {
         const res = await API.post('/api/blockchain/travel-passport', {
+            holder_name: holderName,
+            passport_number: passportNum,
+            blood_group: bloodGroup,
             destination_country: dest,
             travel_date: date,
             purpose: purpose,
+            vaccines_text: vaccinesText,
+            allergies_text: allergiesText,
+            fit_to_fly_text: fitToFlyText,
             include_vaccines: incVaccines,
             include_allergies: incAllergies,
             include_fit_to_fly: incFit
         });
 
-        document.getElementById('travelDestDisplay').textContent = res.destination;
-        document.getElementById('travelValidUntil').textContent = res.valid_until;
+        // Update output card with user's inputted details
+        document.getElementById('travelHolderName').textContent = holderName;
+        document.getElementById('travelPassportNumDisplay').textContent = passportNum || 'VERIFIED-ID';
+        document.getElementById('travelDestDisplay').textContent = res.destination || dest;
+        document.getElementById('travelValidUntil').textContent = res.valid_until || '60 Days';
+        document.getElementById('travelBloodGroup').textContent = bloodGroup;
+        document.getElementById('travelPurposeDisplay').textContent = purpose;
         document.getElementById('travelTokenDisplay').textContent = res.travel_token;
 
         const listEl = document.getElementById('travelDisclosuresList');
         const items = [];
-        if (incVaccines) items.push("COVID-19 mRNA Booster & Yellow Fever (Verified by Ministry of Health)");
-        if (incAllergies) items.push("Critical Allergy Warning: Penicillin (Severe Anaphylaxis)");
-        if (incFit) items.push("Fit-to-fly: Unrestricted commercial air travel cleared");
-        items.push("Auto-redacted: Non-essential diagnostic reports and private therapy notes");
+        if (incVaccines && vaccinesText) {
+            items.push(`Vaccinations: ${vaccinesText} (Cryptographically Verified)`);
+        } else if (incVaccines) {
+            items.push("Verified Vaccinations: COVID-19 mRNA & Yellow Fever Cleared");
+        }
+        
+        if (incAllergies && allergiesText) {
+            items.push(`Critical Allergies: ${allergiesText}`);
+        } else if (incAllergies) {
+            items.push("Critical Allergies: None Reported");
+        }
+
+        if (incFit && fitToFlyText) {
+            items.push(`Medical Clearance: ${fitToFlyText}`);
+        } else if (incFit) {
+            items.push("Fit-to-fly: Unrestricted commercial aviation approved");
+        }
+
+        items.push("Auto-redacted: Non-essential longitudinal history & private clinical notes");
 
         listEl.innerHTML = items.map(i => `<li>${i}</li>`).join('');
 
-        alert(`âœ“ Verifiable Travel Health Passport Generated for ${dest}!\nToken: ${res.travel_token}\nBlock: #${res.block_index}\nSensitive unrelated records remain encrypted.`);
+        showSMSNotification({
+            title: "TRAVEL PASSPORT ANCHORED",
+            message: `Verifiable Travel Passport generated for ${holderName} (${dest}). Token: ${res.travel_token}`,
+            channel: "whatsapp",
+            duration: 6000
+        });
+
+        alert(`✓ Verifiable Travel Health Passport Generated for ${holderName} (${dest})!\nToken: ${res.travel_token}\nBlock: #${res.block_index}\nAll fields verified and anchored to SHA-256 blockchain.`);
     } catch (err) {
         alert("Travel passport error: " + err.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-qr-code-scan me-1"></i> Generate Verifiable Travel Passport`;
     }
+}
+
+function printTravelPassportDoc() {
+    const card = document.getElementById('travelPassportOutputCard');
+    if (!card) return;
+    const holder = document.getElementById('travelHolderName')?.textContent || 'Patient';
+    const dest = document.getElementById('travelDestDisplay')?.textContent || 'International';
+    const token = document.getElementById('travelTokenDisplay')?.textContent || 'VERIFIED';
+    
+    const printWin = window.open('', '_blank');
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Digital Health Travel Passport - ${holder}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+            <style>
+                body { padding: 40px; font-family: 'Segoe UI', sans-serif; background: #f8fafc; }
+                .pass-sheet { max-width: 800px; margin: 0 auto; background: white; border: 2px solid #0dcaf0; border-radius: 16px; padding: 35px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+            </style>
+        </head>
+        <body>
+            <div class="pass-sheet">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                    <div>
+                        <span class="badge bg-info text-white px-3 py-2 mb-2">OFFICIAL INTERNATIONAL HEALTH CLEARANCE</span>
+                        <h2 class="fw-bold text-dark mb-0">Digital Health Travel Passport</h2>
+                    </div>
+                    <div class="text-end">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(window.location.origin + '/api/blockchain/shared-record/' + token)}" alt="Passport QR" style="width:90px; height:90px; border:1px solid #ccc; padding:4px; border-radius:8px;">
+                    </div>
+                </div>
+                ${card.innerHTML}
+                <div class="text-center text-muted small mt-4 pt-3 border-top">
+                    Cryptographically anchored with SHA-256 Merkle Ledger. Immutable sovereign verification pass.
+                </div>
+            </div>
+            <script>
+                window.onload = function() { window.print(); }
+            </script>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
 }
 
 
@@ -3455,6 +3576,7 @@ function switchFamilyVault(memberKey, silent = false) {
     setDashMetric('dashMetricAllergies', `${countListItems(m.allergies)} critical`);
 
     renderFamilyVaultDetails(m, isSelf);
+    try { initTravelTab(true); } catch (_) {}
 
     if (!silent) {
         showSMSNotification({

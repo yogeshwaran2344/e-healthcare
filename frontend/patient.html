@@ -1302,32 +1302,88 @@
                     <!-- Generator Configuration -->
                     <div class="col-lg-5">
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-                            <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-sliders text-info me-2"></i>Travel Clearance Settings</h5>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-sliders text-info me-2"></i>Travel Clearance Settings</h5>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="initTravelTab(true)" title="Auto-fill from active profile">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Sync Profile
+                                </button>
+                            </div>
                             <form id="travelPassportForm" onsubmit="generateTravelPassport(event)">
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Destination Country</label>
-                                    <select id="travelDestination" class="form-select" required>
-                                        <option value="United Kingdom" selected>United Kingdom (UK)</option>
-                                        <option value="United States">United States (USA)</option>
-                                        <option value="Singapore">Singapore</option>
-                                        <option value="Germany">Germany (Schengen Zone)</option>
-                                        <option value="United Arab Emirates">United Arab Emirates (UAE)</option>
-                                        <option value="Australia">Australia</option>
-                                    </select>
+                                    <label class="form-label small fw-semibold">Passport Holder Full Name *</label>
+                                    <input type="text" id="travelHolderInput" class="form-control" placeholder="Enter Full Name" required>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-sm-7">
+                                        <label class="form-label small fw-semibold">Passport / Gov ID No.</label>
+                                        <input type="text" id="travelPassportNum" class="form-control" placeholder="e.g. Z8912345 / AADHAAR">
+                                    </div>
+                                    <div class="col-sm-5">
+                                        <label class="form-label small fw-semibold">Blood Group *</label>
+                                        <select id="travelBloodInput" class="form-select" required>
+                                            <option value="O+" selected>O+</option>
+                                            <option value="O-">O-</option>
+                                            <option value="A+">A+</option>
+                                            <option value="A-">A-</option>
+                                            <option value="B+">B+</option>
+                                            <option value="B-">B-</option>
+                                            <option value="AB+">AB+</option>
+                                            <option value="AB-">AB-</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Departure Date</label>
-                                    <input type="date" id="travelDate" class="form-control" required>
+                                    <label class="form-label small fw-semibold">Destination Country *</label>
+                                    <input type="text" id="travelDestination" class="form-control" placeholder="Type or select country..." list="travelDestOptions" required>
+                                    <datalist id="travelDestOptions">
+                                        <option value="United Kingdom">
+                                        <option value="United States">
+                                        <option value="Singapore">
+                                        <option value="Germany (Schengen Zone)">
+                                        <option value="United Arab Emirates">
+                                        <option value="Australia">
+                                        <option value="Canada">
+                                        <option value="Japan">
+                                        <option value="France">
+                                        <option value="Switzerland">
+                                        <option value="Saudi Arabia">
+                                        <option value="Malaysia">
+                                    </datalist>
+                                </div>
+
+                                <div class="row g-2 mb-3">
+                                    <div class="col-sm-6">
+                                        <label class="form-label small fw-semibold">Departure Date *</label>
+                                        <input type="date" id="travelDate" class="form-control" required>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label small fw-semibold">Travel Purpose</label>
+                                        <select id="travelPurpose" class="form-select">
+                                            <option value="Tourism & Leisure" selected>Tourism & Leisure</option>
+                                            <option value="Business / Conference">Business / Conference</option>
+                                            <option value="Academic Study">Academic Study</option>
+                                            <option value="Medical Tourism / Treatment">Medical Treatment</option>
+                                            <option value="Employment / Relocation">Employment</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label small fw-semibold">Travel Purpose</label>
-                                    <select id="travelPurpose" class="form-select">
-                                        <option value="Tourism & Leisure" selected>Tourism & Leisure</option>
-                                        <option value="Business / Conference">Business / Conference</option>
-                                        <option value="Academic Study">Academic Study</option>
-                                    </select>
+                                    <label class="form-label small fw-semibold">Verified Vaccinations</label>
+                                    <input type="text" id="travelVaccinesInput" class="form-control" placeholder="e.g. COVID-19 mRNA Booster, Yellow Fever, Hep-B">
+                                    <div class="form-text text-muted" style="font-size:0.75rem;">Comma-separated list of administered vaccines.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Severe Drug / Health Allergies</label>
+                                    <input type="text" id="travelAllergiesInput" class="form-control" placeholder="e.g. Penicillin (Anaphylaxis Risk) or None">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Fit-to-Fly Medical Clearance Note</label>
+                                    <input type="text" id="travelFitToFlyInput" class="form-control" placeholder="e.g. Fit for unrestricted commercial aviation">
                                 </div>
 
                                 <div class="mb-3">
@@ -1335,7 +1391,7 @@
                                     <div class="form-check mb-1">
                                         <input class="form-check-input" type="checkbox" id="travelCheckVaccines" checked>
                                         <label class="form-check-label small" for="travelCheckVaccines">
-                                            Include Verified Vaccinations (COVID-19, Yellow Fever, Hep-B)
+                                            Include Verified Vaccinations
                                         </label>
                                     </div>
                                     <div class="form-check mb-1">
@@ -1373,47 +1429,54 @@
                                     <span class="badge bg-info-subtle text-info mb-1">INTERNATIONAL HEALTH CLEARANCE</span>
                                     <h4 class="fw-bold mb-0">Digital Health Travel Passport</h4>
                                 </div>
-                                <span class="badge bg-success fs-6"><i class="bi bi-check-circle-fill"></i> Clear for Travel</span>
+                                <span class="badge bg-success fs-6" id="travelPassportStatusBadge"><i class="bi bi-check-circle-fill"></i> Clear for Travel</span>
                             </div>
 
                             <div class="row g-3 mb-3">
                                 <div class="col-sm-6">
                                     <small class="text-muted d-block">PASSPORT HOLDER</small>
-                                    <strong class="text-dark" id="travelHolderName">John Doe</strong>
+                                    <strong class="text-dark" id="travelHolderName">—</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">PASSPORT / GOV ID</small>
+                                    <strong class="text-dark" id="travelPassportNumDisplay">—</strong>
                                 </div>
                                 <div class="col-sm-6">
                                     <small class="text-muted d-block">DESTINATION</small>
-                                    <strong class="text-dark" id="travelDestDisplay">United Kingdom</strong>
+                                    <strong class="text-dark" id="travelDestDisplay">—</strong>
                                 </div>
                                 <div class="col-sm-6">
                                     <small class="text-muted d-block">VALID UNTIL</small>
-                                    <strong class="text-dark" id="travelValidUntil">30 Nov 2026</strong>
+                                    <strong class="text-dark" id="travelValidUntil">—</strong>
                                 </div>
                                 <div class="col-sm-6">
                                     <small class="text-muted d-block">BLOOD GROUP</small>
-                                    <strong class="text-danger" id="travelBloodGroup">O+</strong>
+                                    <strong class="text-danger" id="travelBloodGroup">—</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <small class="text-muted d-block">PURPOSE OF TRAVEL</small>
+                                    <strong class="text-dark" id="travelPurposeDisplay">—</strong>
                                 </div>
                             </div>
 
                             <!-- Verified Disclosures List -->
                             <div class="p-3 bg-light rounded-3 border mb-3">
-                                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-patch-check-fill text-success me-1"></i>Disclosed & Cryptographically Verified Attributes:</h6>
+                                <h6 class="fw-bold text-dark mb-2"><i class="bi bi-patch-check-fill text-success me-1"></i>Disclosed &amp; Cryptographically Verified Attributes:</h6>
                                 <ul class="small mb-0 ps-3" id="travelDisclosuresList">
-                                    <li>COVID-19 mRNA Booster (Verified: 10 Nov 2025, Batch: BNT-8821)</li>
-                                    <li>Yellow Fever Vaccine (Verified: 15 Mar 2024, Lifetime Clearance)</li>
-                                    <li>Severe Allergy: Penicillin (Anaphylaxis Risk)</li>
-                                    <li>Fit-to-fly: Unrestricted commercial aviation approved</li>
+                                    <li class="text-muted">Fill in your travel clearance details on the left and click "Generate Verifiable Travel Passport" to anchor your pass to the SHA-256 blockchain ledger.</li>
                                 </ul>
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center p-3 bg-white border rounded-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 bg-white border rounded-3 flex-wrap gap-2">
                                 <div>
                                     <small class="text-muted d-block">BLOCKCHAIN MERKLE VERIFICATION TOKEN</small>
-                                    <code class="fw-bold text-primary" id="travelTokenDisplay">TRAVEL-8F3A992BC018FE4B8109</code>
+                                    <code class="fw-bold text-primary" id="travelTokenDisplay">Pending Generation...</code>
                                 </div>
-                                <button class="btn btn-outline-primary btn-sm" onclick="alert('Digital Travel Certificate QR generated and signed with SHA-256 root anchor!')">
-                                    <i class="bi bi-printer me-1"></i> Export Verifiable Pass
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-primary btn-sm" onclick="printTravelPassportDoc()">
+                                        <i class="bi bi-printer me-1"></i> Print / Export Pass
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
