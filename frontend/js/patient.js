@@ -1652,12 +1652,13 @@ async function submitRecoveryCheckin(e) {
 }
 
 function toggleSidebar() {
-    const sidebar = document.getElementById('patientSidebar');
-    if (!sidebar) return;
-    if (window.innerWidth < 992) {
-        sidebar.classList.toggle('mobile-open');
+    const el = document.getElementById('patientSidebarOffcanvas');
+    if (!el) return;
+    if (window.bootstrap && bootstrap.Offcanvas) {
+        const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(el);
+        offcanvas.toggle();
     } else {
-        sidebar.classList.toggle('collapsed');
+        el.classList.toggle('show');
     }
 }
 
@@ -1710,13 +1711,16 @@ function activateTab(tabId, scroll = true) {
         }
     });
 
-    // Auto-close sidebar drawer on mobile after selecting a feature
-    if (window.innerWidth < 992) {
-        const sidebar = document.getElementById('patientSidebar');
-        if (sidebar) sidebar.classList.remove('mobile-open');
-    }
+    // Auto-close offcanvas drawer after selecting a feature
+    try {
+        const offcanvasEl = document.getElementById('patientSidebarOffcanvas');
+        if (offcanvasEl && window.bootstrap && bootstrap.Offcanvas) {
+            const inst = bootstrap.Offcanvas.getInstance(offcanvasEl);
+            if (inst) inst.hide();
+        }
+    } catch (_) {}
 
-    // 4. Also notify Bootstrap if instance exists
+    // 4. Also notify Bootstrap tab if instance exists
     try {
         const targetBtn = document.getElementById(`${paneId}-btn`) || document.querySelector(`[data-bs-target="#${paneId}"]`);
         if (targetBtn && window.bootstrap && bootstrap.Tab) {

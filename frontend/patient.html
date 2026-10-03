@@ -15,12 +15,11 @@
     <div id="smsNotificationContainer" class="sms-notification-wrapper" aria-live="polite"></div>
 
     <!-- Top Navigation -->
-    <!-- Top Navigation -->
     <nav class="navbar navbar-expand navbar-custom sticky-top">
         <div class="container-fluid px-3 px-md-4">
             <div class="d-flex align-items-center">
                 <!-- 3-Lines Hamburger Menu Button -->
-                <button class="btn btn-outline-primary btn-sm me-3 sidebar-toggle-btn shadow-sm" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Toggle Features Menu (3 lines)">
+                <button class="btn btn-primary btn-sm me-3 sidebar-toggle-btn shadow-sm" id="sidebarToggleBtn" onclick="toggleSidebar()" type="button" title="Open Portal Features Menu (3 lines)">
                     <i class="bi bi-list fs-5"></i>
                 </button>
                 <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary mb-0" href="/">
@@ -41,22 +40,17 @@
         </div>
     </nav>
 
-    <!-- Main Left-Sidebar + Content Layout -->
-    <div class="portal-layout-wrapper" id="portalLayoutWrapper">
-        
-        <!-- LEFT-HAND SIDEBAR (All 13 Features) -->
-        <aside class="patient-sidebar bg-white border-end shadow-sm" id="patientSidebar">
-            <div class="p-3 border-bottom d-flex align-items-center justify-content-between bg-light">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-grid-3x3-gap-fill text-primary"></i>
-                    <strong class="text-dark small text-uppercase tracking-wider">Portal Features</strong>
-                </div>
-                <button class="btn btn-sm btn-light border d-lg-none py-0 px-2" onclick="toggleSidebar()" title="Close Sidebar">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+    <!-- LEFT-HAND SLIDE-OUT OFFCANVAS DRAWER (Triggered ONLY by 3-Lines Menu) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="patientSidebarOffcanvas" aria-labelledby="patientSidebarOffcanvasLabel" style="width: 300px; z-index: 1060;">
+        <div class="offcanvas-header bg-primary text-white py-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="brand-icon bg-white text-primary" style="width: 32px; height: 32px; font-size: 1rem;"><i class="bi bi-heart-pulse-fill"></i></span>
+                <h6 class="offcanvas-title fw-bold mb-0" id="patientSidebarOffcanvasLabel">Portal Features</h6>
             </div>
-            
-            <div class="sidebar-nav-list p-2">
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-2 bg-light">
+            <div class="sidebar-nav-list">
                 <ul class="nav nav-pills flex-column gap-1" id="patientSidebarTabs" role="tablist">
                     <li class="nav-item">
                         <button class="sidebar-tab-btn nav-link active" id="tab-navigator-btn" onclick="activateTab('tab-navigator')" type="button">
@@ -142,12 +136,11 @@
                     </li>
                 </ul>
             </div>
-        </aside>
+        </div>
+    </div>
 
-        <!-- MAIN DASHBOARD CONTENT AREA -->
-        <main class="patient-main-content p-3 p-md-4" id="patientMainContent">
-
-
+    <!-- MAIN DASHBOARD CONTENT AREA -->
+    <main class="container-fluid px-3 px-md-5 py-4" id="patientMainContent">
 
         <div class="tab-content" id="patientTabContent">
 
@@ -1942,7 +1935,6 @@
                 </div>
         </div>
         </main>
-    </div>
 
     <!-- View Prescription Modal -->
     <div class="modal fade" id="prescriptionModal" tabindex="-1">
