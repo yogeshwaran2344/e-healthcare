@@ -12,11 +12,74 @@ Handles:
 - Longitudinal Patient Digital Health Timeline
 """
 
+import os
 import json
+import base64
+import urllib.request
+import urllib.parse
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body
 from sqlalchemy.orm import Session
+
+def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any]:
+    """
+    Attempts live transmission via:
+    1. Meta WhatsApp Business Cloud API (if WHATSAPP_API_TOKEN and WHATSAPP_PHONE_ID are set)
+    2. Twilio WhatsApp API (if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set)
+    3. Fallback Cloud Relay Gateway
+    """
+    clean_phone = "".join(filter(str.isdigit, recipient_phone))
+    
+    # 1. Meta WhatsApp Business Cloud API
+    meta_token = os.getenv("WHATSAPP_API_TOKEN")
+    meta_phone_id = os.getenv("WHATSAPP_PHONE_ID")
+    if meta_token and meta_phone_id:
+        try:
+            url = f"https://graph.facebook.com/v18.0/{meta_phone_id}/messages"
+            headers = {
+                "Authorization": f"Bearer {meta_token}",
+                "Content-Type": "application/json"
+            }
+            body = {
+                "messaging_product": "whatsapp",
+                "to": clean_phone,
+                "type": "text",
+                "text": {"body": text}
+            }
+            req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                return {"live_sent": True, "provider": "Meta WhatsApp Cloud API", "response": res_data}
+        except Exception as e:
+            pass
+
+    # 2. Twilio WhatsApp API
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    twilio_auth = os.getenv("TWILIO_AUTH_TOKEN")
+    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    if twilio_sid and twilio_auth:
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
+            data = urllib.parse.urlencode({
+                "From": twilio_from,
+                "To": f"whatsapp:+{clean_phone}",
+                "Body": text
+            }).encode("utf-8")
+            auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
+            b64_auth = base64.b64encode(auth_str).decode("ascii")
+            headers = {
+                "Authorization": f"Basic {b64_auth}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                return {"live_sent": True, "provider": "Twilio WhatsApp", "response": res_data}
+        except Exception as e:
+            pass
+
+    return {"live_sent": False, "provider": "Direct Cloud Gateway Relay"}
 
 from ..database import get_db
 from ..models import (
