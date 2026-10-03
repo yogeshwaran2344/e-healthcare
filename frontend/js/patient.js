@@ -131,7 +131,7 @@ function showSMSNotification(options) {
     const title = (typeof options === 'object' && options.title) ? options.title : 'CONFIRMED NOTIFICATION';
     const channel = (typeof options === 'object' && options.channel) ? options.channel : 'sms'; // 'sms', 'whatsapp', 'emergency'
     const otp = (typeof options === 'object' && options.otp) ? options.otp : null;
-    const duration = (typeof options === 'object' && options.duration) ? options.duration : 7500;
+    const duration = (typeof options === 'object' && options.duration) ? options.duration : 8500;
     const cfg = getContactSettings();
 
     playSmsChime();
@@ -150,11 +150,11 @@ function showSMSNotification(options) {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    let channelBadge = `<span class="sms-app-badge text-success"><i class="bi bi-whatsapp"></i> WhatsApp</span>`;
+    let channelBadge = `<span class="sms-app-badge text-success"><i class="bi bi-whatsapp"></i> WhatsApp Caretaker</span>`;
     if (channel === 'sms') {
         channelBadge = `<span class="sms-app-badge text-primary"><i class="bi bi-chat-dots-fill"></i> SMS Carrier</span>`;
     } else if (channel === 'emergency') {
-        channelBadge = `<span class="sms-app-badge text-danger"><i class="bi bi-broadcast"></i> Priority SOS</span>`;
+        channelBadge = `<span class="sms-app-badge text-danger"><i class="bi bi-broadcast"></i> Priority SOS Alert</span>`;
     }
 
     const recipientsHtml = `
@@ -171,10 +171,20 @@ function showSMSNotification(options) {
                 <small class="text-muted d-block" style="font-size:0.68rem; font-weight:700;">ONE-TIME SECURITY CODE / OTP</small>
                 <span class="sms-otp-code">${otp}</span>
             </div>
-            <button class="sms-btn btn-outline-primary bg-white text-primary border" onclick="navigator.clipboard.writeText('${otp}'); this.textContent='âœ“ Copied';">
+            <button class="sms-btn btn-outline-primary bg-white text-primary border" onclick="navigator.clipboard.writeText('${otp}'); this.textContent='✓ Copied';">
                 Copy
             </button>
         </div>
+    ` : '';
+
+    const cleanCaretakerPhone = (cfg.caretakerPhone || '+919811122233').replace(/[^0-9]/g, '');
+    const waText = encodeURIComponent(`*E-HEALTHCARE CARETAKER ALERT*\n*Recipient:* ${cfg.caretakerName}\n*Patient:* ${cfg.patientPhone}\n*Alert:* ${title}\n${msg}\n*Time:* ${timeStr}`);
+    const waUrl = `https://api.whatsapp.com/send?phone=${cleanCaretakerPhone}&text=${waText}`;
+
+    const waActionBtn = (channel === 'whatsapp' || options.caretakerAlert || channel === 'emergency' || msg.includes('BP') || msg.includes('Hypertension')) ? `
+        <a href="${waUrl}" target="_blank" class="sms-btn bg-success text-white border-0 text-decoration-none d-inline-flex align-items-center me-1 fw-bold shadow-sm" style="font-size:0.75rem; padding: 4px 10px;">
+            <i class="bi bi-whatsapp me-1"></i> Send / Open WhatsApp
+        </a>
     ` : '';
 
     card.innerHTML = `
@@ -188,6 +198,7 @@ function showSMSNotification(options) {
         </div>
         ${otpHtml}
         <div class="sms-actions">
+            ${waActionBtn}
             <span class="small text-muted me-auto" style="font-size:0.68rem;">E-Healthcare Alert Relay</span>
             <button class="sms-btn bg-light text-secondary border" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
@@ -2874,12 +2885,32 @@ async function submitManualVitals(e) {
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: 0 });
         updateCaregiverAlertUI(res);
 
-        // Always dispatch realistic SMS alert card on screen
-        if (bpSys >= 140 || res.tier_level >= 2) {
+        const cfg = getContactSettings();
+
+        // Always dispatch realistic Caretaker WhatsApp & SMS alert card on screen
+        if (bpSys >= 160 || bpDia >= 100) {
+            // Stage 2 Hypertensive Crisis: Direct Caretaker WhatsApp alert + Emergency dispatch
             showSMSNotification({
-                title: bpSys >= 160 ? "🚨 CRITICAL HYPERTENSION SMS ALERT" : "⚠️ CAREGIVER VITAL ALERT",
-                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). ${res.caregiver_message || 'Stage 2 Hypertension detected. Alert routed to Caretaker & Doctor.'}`,
-                channel: bpSys >= 160 ? "emergency" : "sms",
+                title: "🚨 CRITICAL HYPERTENSION (BP 160) - CARETAKER WHATSAPP DISPATCH",
+                message: `CRITICAL ALERT: Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Stage 2 Hypertensive Crisis detected. Alert routed to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) and primary physician.`,
+                channel: "whatsapp",
+                caretakerAlert: true,
+                duration: 12000
+            });
+            setTimeout(() => {
+                showSMSNotification({
+                    title: "🚨 PRIORITY SOS & SMS CARRIER ALERT",
+                    message: `Automated SMS delivered to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}): 'Patient BP spiked to ${formattedBp} mmHg. Caregiver intervention advised.'`,
+                    channel: "emergency",
+                    duration: 10000
+                });
+            }, 600);
+        } else if (bpSys >= 140 || bpDia >= 90 || res.tier_level >= 2) {
+            showSMSNotification({
+                title: "⚠️ HIGH BP CAREGIVER WHATSAPP ALERT",
+                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). ${res.caregiver_message || 'Stage 1 Hypertension detected. Alert routed to Caretaker & Doctor.'}`,
+                channel: "whatsapp",
+                caretakerAlert: true,
                 duration: 9500
             });
         } else {
@@ -2892,12 +2923,14 @@ async function submitManualVitals(e) {
         }
     } catch (err) {
         console.error("Manual vitals evaluation error:", err);
+        const cfg = getContactSettings();
         if (bpSys >= 140) {
             showSMSNotification({
-                title: "🚨 HIGH BP SMS ALERT",
-                message: `High Blood Pressure of ${formattedBp} mmHg logged. SMS notification dispatched to caretaker.`,
-                channel: "sms",
-                duration: 8000
+                title: bpSys >= 160 ? "🚨 CRITICAL HIGH BP (160 mmHg) CARETAKER ALERT" : "⚠️ HIGH BP SMS ALERT",
+                message: `Blood Pressure of ${formattedBp} mmHg logged. Direct WhatsApp & SMS notification dispatched to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
+                channel: "whatsapp",
+                caretakerAlert: true,
+                duration: 10000
             });
         }
     }
@@ -3151,17 +3184,20 @@ async function triggerCaregiverAlertTest(level) {
     try {
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', { vitals, missed_doses_count: missedDoses });
         updateCaregiverAlertUI(res);
+        const isHighSeverity = res.tier_level >= 3 || level === 'moderate' || level === 'critical';
         showSMSNotification({
-            title: `🚨 ${res.tier_badge} SMS ALERT`,
+            title: `🚨 ${res.tier_badge} CAREGIVER ALERT`,
             message: `${res.primary_trigger}. ${res.caregiver_message}`,
-            channel: res.tier_level >= 4 ? "emergency" : "sms",
-            duration: 9000
+            channel: isHighSeverity ? "whatsapp" : "sms",
+            caretakerAlert: true,
+            duration: 9500
         });
     } catch (err) {
         showSMSNotification({
-            title: "SMS Alert Dispatched",
+            title: "Caregiver WhatsApp & SMS Alert Dispatched",
             message: "Caregiver alert test dispatched successfully to registered emergency contacts.",
-            channel: "sms"
+            channel: "whatsapp",
+            caretakerAlert: true
         });
     }
 }

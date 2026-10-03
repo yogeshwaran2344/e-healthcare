@@ -39,6 +39,30 @@ SYMPTOM_SPECIFIC_QUESTIONS = {
     "rash": {
         "question": "Describe the skin eruption:",
         "options": ["Itchy red patches / dry scaling", "Raised hives that appeared suddenly", "Blisters or pustules with burning sensation", "Tiny red/purple spots (petechiae)"]
+    },
+    "hair": {
+        "question": "How long have you noticed the hair fall or scalp concern?",
+        "options": ["Sudden diffuse shedding over the past few weeks (post-fever/stress)", "Gradual thinning at crown or widening parting line over months", "Circular smooth coin-sized bald patches developing rapidly", "Severe itchy dandruff with oily yellow flakes"]
+    },
+    "scalp": {
+        "question": "Describe your scalp condition and sensations:",
+        "options": ["Greasy flakes with persistent itching and redness", "Dry white powdery dandruff without redness", "Painful small pimple-like bumps at hair roots", "Normal scalp with sudden shedding"]
+    },
+    "acne": {
+        "question": "What type of facial breakouts are you predominantly experiencing?",
+        "options": ["Painful deep red cysts along jawline, chin and cheeks (hormonal)", "Surface whiteheads, blackheads and oily T-zone", "Small pustules triggered by cosmetics or sunscreen", "Acne with persistent facial redness and burning"]
+    },
+    "period": {
+        "question": "Describe your menstrual cycle and associated symptoms:",
+        "options": ["Irregular cycles (>35-45 days apart) with facial hair or weight changes", "Regular cycle but debilitating cramps during first 48 hours", "Extremely heavy flow requiring frequent pad changes or passing clots", "Cycle delayed by >2 months with lower pelvic heaviness"]
+    },
+    "menstrual": {
+        "question": "How severe are your menstrual cramps or flow irregularities?",
+        "options": ["Severe cramps radiating to lower back/thighs requiring bed rest", "Heavy bleeding with large clots (>7 days)", "Irregular spotting between cycles", "Mild discomfort manageable with simple heating pad"]
+    },
+    "gynac": {
+        "question": "Describe the primary gynecological or pelvic symptom:",
+        "options": ["Abnormal thick white curd-like or foul-smelling discharge with itching", "Deep pelvic or ovarian aching pain", "Hot flashes, night sweats, sleep disruption and mood shifts", "Cyclic severe breast tenderness and abdominal bloating"]
     }
 }
 

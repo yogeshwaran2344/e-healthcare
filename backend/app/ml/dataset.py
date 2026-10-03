@@ -6,6 +6,49 @@ with cost/information-gain/radiation-risk metadata, and clinical decision parame
 
 # Categorized symptom definitions for rich multi-system selection
 SYMPTOMS_BY_CATEGORY = {
+    "Everyday Basics & Common": [
+        {"id": "fever", "label": "Fever / Elevated Body Warmth"},
+        {"id": "headache", "label": "Headache / Head Heaviness"},
+        {"id": "common_cold_runny_nose", "label": "Common Cold / Runny Nose / Sneezing"},
+        {"id": "cough_general", "label": "Cough (Dry or Phlegm)"},
+        {"id": "sore_throat_irritation", "label": "Sore Throat / Throat Pain"},
+        {"id": "body_pain_fatigue", "label": "Body Ache & Fatigue / Tiredness"},
+        {"id": "indigestion_gas_acidity", "label": "Indigestion / Acidity / Gas / Bloating"},
+        {"id": "dizziness_lightheaded", "label": "Dizziness / Giddiness"},
+        {"id": "stomach_upset_loose_motion", "label": "Stomach Upset / Loose Motions"},
+        {"id": "constipation", "label": "Constipation / Hard Stools"}
+    ],
+    "Hair & Scalp Care": [
+        {"id": "hair_fall_excessive", "label": "Excessive Hair Fall / Hair Shedding"},
+        {"id": "hair_thinning_scalp", "label": "Hair Thinning / Widening Parting Line"},
+        {"id": "dandruff_scalp_flaking", "label": "Dandruff / Itchy Flaking Scalp"},
+        {"id": "scalp_itching_irritation", "label": "Severe Scalp Itching & Irritation"},
+        {"id": "patchy_hair_loss_alopecia", "label": "Patchy Coin-Shaped Hair Loss (Alopecia Areata)"},
+        {"id": "receding_hairline", "label": "Receding Hairline / Temporal Thinning"},
+        {"id": "scalp_redness_bumps", "label": "Scalp Redness & Pimples (Scalp Folliculitis)"},
+        {"id": "premature_greying", "label": "Premature Greying of Hair"},
+        {"id": "dry_brittle_hair", "label": "Dry / Brittle / Frizzy Hair"}
+    ],
+    "Acne & Facial Dermatology": [
+        {"id": "facial_acne_pimples", "label": "Facial Acne & Pimples (Breakouts)"},
+        {"id": "cystic_hormonal_acne", "label": "Deep Cystic / Hormonal Acne (Jawline & Cheeks)"},
+        {"id": "blackheads_whiteheads", "label": "Blackheads & Whiteheads (Comedones)"},
+        {"id": "excessive_oily_skin", "label": "Excessive Oily Skin & Grease Production"},
+        {"id": "post_acne_scars_spots", "label": "Post-Acne Dark Spots & Hyperpigmentation"},
+        {"id": "skin_redness_rosacea", "label": "Facial Redness & Sensitivity (Rosacea)"},
+        {"id": "dry_peeling_skin", "label": "Dry, Peeling & Flaky Facial Skin"}
+    ],
+    "Gynaecology & Women's Health": [
+        {"id": "irregular_missed_periods", "label": "Irregular / Delayed Menstrual Cycles (Oligomenorrhea)"},
+        {"id": "severe_period_cramps", "label": "Severe Menstrual Cramps (Dysmenorrhea)"},
+        {"id": "heavy_menstrual_bleeding", "label": "Heavy Menstrual Bleeding / Clots (Menorrhagia)"},
+        {"id": "pcos_pcod_symptoms", "label": "PCOS / PCOD Symptoms (Excess Facial Hair, Irregularity, Weight)"},
+        {"id": "lower_pelvic_ovarian_pain", "label": "Lower Pelvic / Ovarian Pain"},
+        {"id": "abnormal_vaginal_discharge", "label": "Abnormal Vaginal Discharge or Odor"},
+        {"id": "vaginal_itching_burning", "label": "Vaginal Itching or Burning Sensation"},
+        {"id": "breast_pain_tenderness", "label": "Cyclic Breast Pain & Tenderness (Mastalgia)"},
+        {"id": "hot_flashes_menopause", "label": "Hot Flashes & Night Sweats (Perimenopause)"}
+    ],
     "Respiratory": [
         {"id": "dry_cough", "label": "Dry Cough (Non-productive)"},
         {"id": "productive_cough_phlegm", "label": "Productive Cough with Phlegm/Sputum"},
@@ -277,6 +320,42 @@ TESTS_CATALOG = {
         "invasiveness": "Low",
         "diagnostic_utility": 0.93,
         "indicates": ["Deep Vein Thrombosis", "Pulmonary Embolism", "Coagulopathy"]
+    },
+    "Serum Ferritin & Iron Studies (Hair Loss/Anemia)": {
+        "cost_inr": 850,
+        "cost_tier": "Low",
+        "turnaround_hours": 4,
+        "radiation_risk": "None",
+        "invasiveness": "Low",
+        "diagnostic_utility": 0.91,
+        "indicates": ["Telogen Effluvium", "Iron Deficiency Hair Fall", "Nutritional Alopecia"]
+    },
+    "Female Hormone Panel (LH, FSH, Total Testosterone, DHEA-S)": {
+        "cost_inr": 1800,
+        "cost_tier": "Medium",
+        "turnaround_hours": 8,
+        "radiation_risk": "None",
+        "invasiveness": "Low",
+        "diagnostic_utility": 0.94,
+        "indicates": ["Polycystic Ovary Syndrome (PCOS)", "Hormonal Acne", "Menstrual Irregularity"]
+    },
+    "Pelvic Ultrasound (USG Pelvis TVS/TAS)": {
+        "cost_inr": 1500,
+        "cost_tier": "Medium",
+        "turnaround_hours": 2,
+        "radiation_risk": "None",
+        "invasiveness": "None",
+        "diagnostic_utility": 0.92,
+        "indicates": ["PCOS Ovarian Follicles", "Uterine Fibroids", "Ovarian Cysts", "Dysmenorrhea"]
+    },
+    "Scalp & Skin Trichoscopy / KOH Mount": {
+        "cost_inr": 600,
+        "cost_tier": "Low",
+        "turnaround_hours": 1,
+        "radiation_risk": "None",
+        "invasiveness": "None",
+        "diagnostic_utility": 0.88,
+        "indicates": ["Seborrheic Dermatitis", "Fungal Folliculitis", "Alopecia Pattern"]
     }
 }
 
@@ -451,7 +530,8 @@ DISEASES_DB = {
     },
     "Acute Viral Upper Respiratory Infection (Common Cold)": {
         "symptoms": [
-            "runny_nose", "sneezing", "sore_throat", "mild_fever", "dry_cough", "fatigue"
+            "runny_nose", "sneezing", "sore_throat", "mild_fever", "dry_cough", "fatigue",
+            "common_cold_runny_nose", "cough_general", "sore_throat_irritation"
         ],
         "mandatory_tests": [],
         "recommended_tests": ["Complete Blood Count (CBC)"],
@@ -459,5 +539,53 @@ DISEASES_DB = {
         "severity": "Low",
         "urgency_score": 20,
         "advice": "Symptomatic relief: warm saline gargles, hydration, paracetamol for fever. Antibiotics are strictly contraindicated."
+    },
+    "Telogen Effluvium & Scalp Seborrheic Dermatitis": {
+        "symptoms": [
+            "hair_fall_excessive", "hair_thinning_scalp", "dandruff_scalp_flaking",
+            "scalp_itching_irritation", "dry_brittle_hair", "scalp_redness_bumps"
+        ],
+        "mandatory_tests": ["Serum Ferritin & Iron Studies (Hair Loss/Anemia)"],
+        "recommended_tests": ["Scalp & Skin Trichoscopy / KOH Mount", "Complete Blood Count (CBC)"],
+        "specialist": "Trichologist / Dermatologist",
+        "severity": "Low to Moderate",
+        "urgency_score": 30,
+        "advice": "Evaluate serum ferritin and vitamin D3 levels. Use antifungal ketoconazole shampoo 2% twice weekly for dandruff. Avoid aggressive heat styling."
+    },
+    "Acne Vulgaris & Hormonal Sebum Imbalance": {
+        "symptoms": [
+            "facial_acne_pimples", "cystic_hormonal_acne", "blackheads_whiteheads",
+            "excessive_oily_skin", "post_acne_scars_spots", "skin_redness_rosacea"
+        ],
+        "mandatory_tests": [],
+        "recommended_tests": ["Female Hormone Panel (LH, FSH, Total Testosterone, DHEA-S)"],
+        "specialist": "Dermatologist",
+        "severity": "Low to Moderate",
+        "urgency_score": 35,
+        "advice": "Non-comedogenic skincare regimen. Topical salicylic acid 2% / benzoyl peroxide gel. Avoid manual squeezing to prevent scarring. Consult dermatologist for prescription retinoids."
+    },
+    "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity": {
+        "symptoms": [
+            "irregular_missed_periods", "pcos_pcod_symptoms", "heavy_menstrual_bleeding",
+            "cystic_hormonal_acne", "hair_thinning_scalp", "excessive_oily_skin"
+        ],
+        "mandatory_tests": ["Pelvic Ultrasound (USG Pelvis TVS/TAS)", "Female Hormone Panel (LH, FSH, Total Testosterone, DHEA-S)"],
+        "recommended_tests": ["Complete Blood Count (CBC)"],
+        "specialist": "Gynecologist & Endocrinologist",
+        "severity": "Moderate",
+        "urgency_score": 55,
+        "advice": "Schedule pelvic ultrasound (day 3-5 of cycle if possible). Insulin-sensitizing diet (low GI), regular physical exercise, and cyclical progesterone/hormonal management under gynecologist guidance."
+    },
+    "Primary Dysmenorrhea & Pelvic Pain": {
+        "symptoms": [
+            "severe_period_cramps", "lower_pelvic_ovarian_pain", "heavy_menstrual_bleeding",
+            "nausea", "body_pain_fatigue"
+        ],
+        "mandatory_tests": [],
+        "recommended_tests": ["Pelvic Ultrasound (USG Pelvis TVS/TAS)", "Complete Blood Count (CBC)"],
+        "specialist": "Gynecologist",
+        "severity": "Low to Moderate",
+        "urgency_score": 40,
+        "advice": "Mefenamic acid or prescribed NSAIDs at symptom onset, warm heating pad, and pelvic ultrasound to rule out underlying endometriosis or adenomyosis."
     }
 }
