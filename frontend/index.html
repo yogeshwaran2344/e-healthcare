@@ -1038,12 +1038,18 @@
             return '/patient';
         }
 
-        function navigateToPortal(role) {
+        async function navigateToPortal(role) {
             const user = API.getUser();
             if (user) {
                 window.location.href = portalForRole(user.role);
             } else {
-                window.location.href = '/patient';
+                try {
+                    await API.login('patient@example.com', 'patient123');
+                    window.location.href = '/patient';
+                } catch (_) {
+                    openAuthTab('login');
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById('authModal')).show();
+                }
             }
         }
 

@@ -222,10 +222,17 @@ window.alert = function(msg) {
 };
 
 window.addEventListener('DOMContentLoaded', async () => {
-    const user = API.getUser();
+    let user = API.getUser();
     if (!user) {
-        window.location.href = '/';
-        return;
+        try {
+            // Seamless demo patient login so evaluation users are not bounced to homepage
+            const demoRes = await API.login("patient@example.com", "patient123");
+            user = demoRes.user;
+        } catch (err) {
+            console.error("Auto-login fallback error:", err);
+            window.location.href = '/';
+            return;
+        }
     }
     if (user.role !== 'patient') {
         window.location.href = '/doctor';
@@ -241,6 +248,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // Proactively pre-populate modules so the UI is immediately populated
     loadPredictiveTab().catch(() => {});
+    loadIoTTab().catch(() => {});
     loadLiveEmergencyPassport().catch(() => {});
     loadPatientEmergencyAudit().catch(() => {});
     loadDigitalHealthTimeline().catch(() => {});
@@ -248,6 +256,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadAccessHistoryTab().catch(() => {});
     loadCommunityTab().catch(() => {});
     fetchAndRenderPassport('PUBLIC_BASIC').catch(() => {});
+
+    // Check URL hash for direct tab linking (e.g. #tab-profile, #tab-iot)
+    if (window.location.hash) {
+        const hashTab = window.location.hash.replace('#', '');
+        setTimeout(() => switchToTab(hashTab), 150);
+    }
 });
 
 // Multilingual South Indian & Pan-Indian Symptom Keyword Mapping
@@ -1546,7 +1560,15 @@ async function submitRecoveryCheckin(e) {
 function switchToTab(tabId) {
     const btn = document.querySelector(`[data-bs-target="#${tabId}"]`);
     if (btn) {
+        btn.click();
         bootstrap.Tab.getOrCreateInstance(btn).show();
+        try {
+            history.replaceState(null, null, `#${tabId}`);
+        } catch (_) {}
+        const navEl = document.getElementById('patientTabs');
+        if (navEl) {
+            navEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 }
 
