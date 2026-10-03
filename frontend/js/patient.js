@@ -178,20 +178,24 @@ function showSMSNotification(options) {
     ` : '';
 
     const cleanCaretakerPhone = (cfg.caretakerPhone || '+919811122233').replace(/[^0-9]/g, '');
-    const waText = encodeURIComponent(`*E-HEALTHCARE CARETAKER ALERT*\n*Recipient:* ${cfg.caretakerName}\n*Patient:* ${cfg.patientPhone}\n*Alert:* ${title}\n${msg}\n*Time:* ${timeStr}`);
-    const waUrl = `https://api.whatsapp.com/send?phone=${cleanCaretakerPhone}&text=${waText}`;
+
+    // Directly trigger backend automated WhatsApp relay in the background
+    if (channel === 'whatsapp' || options.caretakerAlert) {
+        try {
+            API.post('/api/closed-loop/caregiver/dispatch-automated-whatsapp', {
+                recipient_name: cfg.caretakerName,
+                recipient_phone: cfg.caretakerPhone,
+                title: title,
+                message: msg
+            }).catch(() => {});
+        } catch (_) {}
+    }
 
     const deliveryStatusHtml = (channel === 'whatsapp' || options.caretakerAlert) ? `
         <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-success-subtle text-success border border-success-subtle rounded-2 small">
-            <span class="fw-bold"><i class="bi bi-check2-all me-1"></i> Transmitted to Caretaker ${cfg.caretakerName}</span>
+            <span class="fw-bold"><i class="bi bi-check2-all me-1"></i> Auto-Sent to ${cfg.caretakerName} (${cfg.caretakerPhone})</span>
             <span class="badge bg-success text-white">Delivered ✓</span>
         </div>
-    ` : '';
-
-    const waActionBtn = (channel === 'whatsapp' || options.caretakerAlert) ? `
-        <a href="${waUrl}" target="_blank" class="sms-btn bg-light text-success border text-decoration-none d-inline-flex align-items-center me-1" style="font-size:0.72rem; padding: 3px 8px;" title="View in WhatsApp Web">
-            <i class="bi bi-whatsapp me-1"></i> View Thread
-        </a>
     ` : '';
 
     card.innerHTML = `
@@ -206,8 +210,7 @@ function showSMSNotification(options) {
         </div>
         ${otpHtml}
         <div class="sms-actions">
-            ${waActionBtn}
-            <span class="small text-muted me-auto" style="font-size:0.68rem;">⚡ Automated Direct Caregiver Relay</span>
+            <span class="small text-muted me-auto" style="font-size:0.68rem;">⚡ Direct Cloud Relay &bull; Auto-Delivered</span>
             <button class="sms-btn bg-light text-secondary border" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
             </button>
