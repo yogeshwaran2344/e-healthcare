@@ -5,13 +5,16 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
 from ..database import get_db
-from ..models import User, Consultation, Prescription, MedicalReport, BlockchainBlock, ConsentRecord
+from ..models import User, Consultation, Prescription, MedicalReport, BlockchainBlock, ConsentRecord, EmergencyAccessAudit
 from ..auth import get_current_user
 from ..ml.blockchain_engine import (
     create_block,
     verify_blockchain_integrity,
     generate_consent_token,
-    compute_sha256
+    compute_sha256,
+    verify_single_record_integrity,
+    canonicalize_medical_record,
+    sign_block
 )
 
 router = APIRouter(prefix="/api/blockchain", tags=["Blockchain Health Records"])
@@ -149,6 +152,104 @@ def verify_ledger(
 
     result = verify_blockchain_integrity(chain_list)
     return result
+
+@router.get("/verify-record/{record_type}/{record_id}")
+def verify_medical_record_integrity(
+    record_type: str,
+    record_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Verifies the cryptographic integrity of an active medical record against its
+    immutable on-chain SHA-256 fingerprint and Merkle tree root.
+    Demonstrates tamper-evident detection without storing cleartext PHI on-chain.
+    """
+    rec_type_upper = record_type.upper()
+    block = db.query(BlockchainBlock).filter(
+        BlockchainBlock.record_type == rec_type_upper,
+        BlockchainBlock.record_id == str(record_id)
+    ).first()
+
+    if not block:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No blockchain integrity anchor found for record {record_type}:{record_id}"
+        )
+
+    # Authorization check: only patient or authorized doctor
+    if current_user.role == "patient" and block.patient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to record verification")
+
+    # Fetch active database record to test for tampering
+    active_data = None
+    if rec_type_upper == "CONSULTATION":
+        c = db.query(Consultation).filter(Consultation.id == int(record_id)).first()
+        if c:
+            active_data = {
+                "consultation_id": c.id,
+                "predicted_disease": c.predicted_disease or "Clinical Consultation",
+                "triage_level": c.triage_level or "Doctor Consultation",
+                "severity": c.severity or "Moderate",
+                "symptoms": c.symptoms_list,
+                "created_at": c.created_at.isoformat()
+            }
+    elif rec_type_upper == "PRESCRIPTION":
+        p = db.query(Prescription).filter(Prescription.id == int(record_id)).first()
+        if p:
+            active_data = {
+                "prescription_id": p.id,
+                "consultation_id": p.consultation_id,
+                "doctor_id": p.doctor_id,
+                "diagnosis": p.diagnosis,
+                "medicines_json": p.medicines_json,
+                "instructions": p.general_advice or "",
+                "created_at": p.created_at.isoformat()
+            }
+    elif rec_type_upper in ("REPORT", "LAB_REPORT", "MEDICAL_REPORT"):
+        r = db.query(MedicalReport).filter(MedicalReport.id == int(record_id)).first()
+        if r:
+            active_data = {
+                "report_id": r.id,
+                "patient_id": r.patient_id,
+                "report_type": r.report_type,
+                "original_filename": r.original_filename,
+                "findings": r.extracted_findings or "",
+                "uploaded_at": r.uploaded_at.isoformat()
+            }
+
+    if not active_data:
+        try:
+            stored_payload = json.loads(block.data_payload)
+            active_data = stored_payload
+        except Exception:
+            active_data = {"record_id": str(record_id), "record_type": rec_type_upper}
+
+    is_match, current_hash, current_merkle = verify_single_record_integrity(
+        anchored_data_hash=block.data_hash,
+        anchored_merkle_root=block.merkle_root,
+        record_type=rec_type_upper,
+        current_record_dict=active_data
+    )
+
+    sig_valid = (sign_block(block.block_hash) == block.validator_signature)
+    status_label = "VERIFIED_AUTHENTIC" if (is_match and sig_valid) else "TAMPERING_DETECTED"
+
+    return {
+        "record_type": rec_type_upper,
+        "record_id": str(record_id),
+        "status": status_label,
+        "is_authentic": bool(is_match and sig_valid),
+        "tampering_detected": not bool(is_match and sig_valid),
+        "block_index": block.block_index,
+        "anchored_timestamp": block.timestamp.isoformat() if hasattr(block.timestamp, "isoformat") else str(block.timestamp),
+        "anchored_sha256_hash": block.data_hash,
+        "recomputed_sha256_hash": current_hash,
+        "merkle_root": block.merkle_root,
+        "recomputed_merkle_root": current_merkle,
+        "validator_signature_valid": bool(sig_valid),
+        "storage_architecture": "Zero-PHI Off-Chain Secure Storage (Cryptographic Hash Anchoring)"
+    }
 
 @router.get("/consents")
 def get_consents(
@@ -476,6 +577,29 @@ def get_access_history(
             "block_hash": bg.block_hash[:16] + "..."
         })
 
+    # Add EmergencyAccessAudit events (emergency passport scans, emergency views)
+    audits = (
+        db.query(EmergencyAccessAudit)
+        .filter(EmergencyAccessAudit.patient_id == current_user.id)
+        .order_by(EmergencyAccessAudit.accessed_at.desc())
+        .all()
+    )
+    for a in audits:
+        history.append({
+            "id": f"audit-{a.id}",
+            "date": a.accessed_at.strftime("%b %d, %Y %H:%M") if hasattr(a.accessed_at, "strftime") else str(a.accessed_at),
+            "accessor": a.accessor_name,
+            "organization": "Emergency Responder Network" if a.is_emergency else "Healthcare Clinic",
+            "role": (a.accessor_role or "Staff").replace("_", " ").title(),
+            "purpose": a.purpose or ("Emergency Triage Access" if a.is_emergency else "Clinical Record Access"),
+            "data_scope": (a.context_scope or a.information_type or "Emergency Passport").replace("_", " ").title(),
+            "status": "⚠ Emergency Access" if a.is_emergency else "✓ Allowed",
+            "status_badge": "bg-danger text-white" if a.is_emergency else "bg-info text-white",
+            "is_emergency": a.is_emergency,
+            "can_revoke": False,
+            "token_preview": a.access_channel or "Direct Audit"
+        })
+
     # Add active and historical consent accesses
     for c in consents:
         try:
@@ -616,6 +740,22 @@ def execute_break_glass_access(
     db.add(block)
     db.commit()
     db.refresh(block)
+
+    # Log to EmergencyAccessAudit for centralized administrative compliance audit
+    audit_entry = EmergencyAccessAudit(
+        accessor_id=current_user.id,
+        accessor_role=current_user.role or "doctor",
+        accessor_name=doctor_name,
+        patient_id=patient_id,
+        accessed_at=datetime.utcnow(),
+        purpose=f"Break-Glass Override: {justification}",
+        information_type="emergency_critical_records",
+        is_emergency=True,
+        access_channel="break_glass_portal",
+        context_scope=f"BLOCK_INDEX_{block.block_index}"
+    )
+    db.add(audit_entry)
+    db.commit()
 
     # Fetch patient critical record to return immediately
     patient = db.query(User).filter(User.id == patient_id).first()

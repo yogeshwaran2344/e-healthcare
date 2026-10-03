@@ -52,6 +52,8 @@ def submit_recovery_checkin(
 
     return checkin
 
+from ..consent_service import enforce_patient_consent_or_emergency
+
 @router.get("/{consultation_id}", response_model=List[RecoveryCheckInOut])
 def get_recovery_timeline(
     consultation_id: int,
@@ -59,6 +61,18 @@ def get_recovery_timeline(
     db: Session = Depends(get_db)
 ):
     """Retrieve longitudinal recovery check-in timeline for a consultation."""
+    consultation = db.query(Consultation).filter(Consultation.id == consultation_id).first()
+    if not consultation:
+        raise HTTPException(status_code=404, detail="Consultation record not found.")
+
+    if current_user.role == "patient" and consultation.patient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to patient recovery timeline.")
+
+    if current_user.role == "doctor" and consultation.patient_id != current_user.id:
+        enforce_patient_consent_or_emergency(
+            db, consultation.patient_id, current_user, "diagnoses", purpose=f"Viewing recovery check-in timeline for consultation #{consultation_id}"
+        )
+
     checkins = db.query(RecoveryCheckIn).filter(
         RecoveryCheckIn.consultation_id == consultation_id
     ).order_by(RecoveryCheckIn.day_number.asc()).all()

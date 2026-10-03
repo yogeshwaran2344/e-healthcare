@@ -100,15 +100,33 @@ async def upload_medical_report(
         uploaded_at=report.uploaded_at
     )
 
+from ..consent_service import enforce_patient_consent_or_emergency
+
 @router.get("/{report_id}/file")
 def get_report_file(
     report_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Serve the uploaded medical scan or lab report image/document."""
+    """Serve the uploaded medical scan or lab report image/document with strict access control."""
     report = db.query(MedicalReport).filter(MedicalReport.id == report_id).first()
     if not report or not os.path.exists(report.file_path):
         raise HTTPException(status_code=404, detail="Medical report file not found.")
+
+    # Prevent path traversal
+    real_path = os.path.realpath(report.file_path)
+    real_upload = os.path.realpath(UPLOAD_DIR)
+    if not real_path.startswith(real_upload):
+        raise HTTPException(status_code=403, detail="Illegal file path access.")
+
+    # Authorization & Consent Check
+    if current_user.role == "patient" and report.patient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized access to patient report.")
+
+    if current_user.role == "doctor" and report.patient_id != current_user.id:
+        enforce_patient_consent_or_emergency(
+            db, report.patient_id, current_user, "labs", purpose=f"Viewing lab report #{report_id} document"
+        )
 
     ext = os.path.splitext(report.file_path)[1].lower()
     media_type = "application/pdf" if ext == ".pdf" else f"image/{ext.replace('.', '')}"

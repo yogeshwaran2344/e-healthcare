@@ -207,6 +207,8 @@ def list_consultations(
 
     return [format_consultation_out(c, db) for c in consultations]
 
+from ..consent_service import enforce_patient_consent_or_emergency
+
 @router.get("/{consultation_id}", response_model=ConsultationOut)
 def get_consultation(
     consultation_id: int,
@@ -219,5 +221,12 @@ def get_consultation(
 
     if current_user.role == "patient" and consultation.patient_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied.")
+
+    if current_user.role == "doctor" and consultation.patient_id != current_user.id:
+        # Check if doctor is the directly assigned doctor
+        if consultation.doctor_id != current_user.id:
+            enforce_patient_consent_or_emergency(
+                db, consultation.patient_id, current_user, "diagnoses", purpose=f"Clinical review of consultation #{consultation_id}"
+            )
 
     return format_consultation_out(consultation, db)

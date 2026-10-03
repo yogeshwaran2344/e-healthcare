@@ -56,6 +56,8 @@ def get_user_devices(
         for d in devices
     ]
 
+from ..consent_service import enforce_patient_consent_or_emergency
+
 @router.get("/vitals/latest")
 def get_latest_vitals(
     patient_id: Optional[int] = None,
@@ -64,9 +66,13 @@ def get_latest_vitals(
 ):
     """
     Fetches latest vital telemetry readings (BP, Glucose, SpO2, Heart Rate / ECG, Temperature).
-    Doctors can pass patient_id to monitor remote patients.
+    Doctors can pass patient_id to monitor remote patients with active patient consent or emergency override.
     """
-    target_id = patient_id if (patient_id and current_user.role == "doctor") else current_user.id
+    if patient_id and current_user.role == "doctor" and patient_id != current_user.id:
+        enforce_patient_consent_or_emergency(
+            db, patient_id, current_user, "vitals", purpose=f"Remote vital telemetry monitoring for patient #{patient_id}"
+        )
+    target_id = patient_id if (patient_id and current_user.role in ("doctor", "admin")) else current_user.id
 
     # Retrieve devices for target
     devices = db.query(IoTDevice).filter(IoTDevice.patient_id == target_id).all()

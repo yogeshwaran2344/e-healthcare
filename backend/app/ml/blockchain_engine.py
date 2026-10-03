@@ -8,6 +8,7 @@ Patentable Mechanism:
   with doctors, health insurers, and clinical research trials.
 """
 
+import os
 import hashlib
 import hmac
 import json
@@ -15,11 +16,26 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 
-LEDGER_SECRET_KEY = b"healthcare_blockchain_private_key_2026_patent"
+LEDGER_SECRET_KEY = os.getenv("LEDGER_SECRET_KEY", "healthcare_blockchain_private_key_2026_patent").encode("utf-8")
 
 def compute_sha256(data: str) -> str:
     """Computes standard SHA-256 hex digest."""
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+def canonicalize_medical_record(record_type: str, data_dict: Dict[str, Any]) -> str:
+    """
+    Transforms active medical records into a canonical, deterministic JSON string
+    for hashing. Excludes transient or internal database attributes.
+    """
+    cleaned = {}
+    for k, v in data_dict.items():
+        if k in ("validator_signature", "block_hash", "previous_hash"):
+            continue
+        if isinstance(v, (dict, list)):
+            cleaned[k] = v
+        elif v is not None:
+            cleaned[k] = str(v).strip()
+    return json.dumps(cleaned, sort_keys=True)
 
 def compute_merkle_root(elements: List[str]) -> str:
     """
@@ -51,18 +67,46 @@ def create_block(
     record_type: str,
     record_id: str,
     data_dict: Dict[str, Any],
-    previous_hash: str
+    previous_hash: str,
+    store_full_payload: bool = False
 ) -> Dict[str, Any]:
     """
-    Constructs an immutable cryptographic block.
+    Constructs an immutable cryptographic block for tamper-evident verification.
+    PRIVACY-PRESERVING ARCHITECTURE:
+    - Sensitive medical data is hashed into `data_hash` and `merkle_root`.
+    - Only minimal non-PHI verification metadata is stored on the ledger.
+    - Full medical records remain strictly in the secure database.
     """
     ts = datetime.utcnow()
-    payload_str = json.dumps(data_dict, sort_keys=True)
-    data_hash = compute_sha256(payload_str)
+    canonical_str = canonicalize_medical_record(record_type, data_dict)
+    data_hash = compute_sha256(canonical_str)
     
-    # Calculate Merkle Root across payload attributes
-    merkle_leaves = [f"{k}:{v}" for k, v in sorted(data_dict.items())]
+    # Calculate Merkle Root across canonical attributes
+    merkle_leaves = [f"{k}:{data_dict[k]}" for k in sorted(data_dict.keys())]
     merkle_root = compute_merkle_root(merkle_leaves)
+    
+    # Construct on-chain ledger payload (zero cleartext PHI)
+    if store_full_payload or record_type in ("GENESIS", "CONSENT_GRANT", "CONSENT_REVOKE", "CONSENT_EXTEND"):
+        onchain_payload = {
+            "record_ref": str(record_id),
+            "record_type": record_type,
+            "patient_id": patient_id,
+            "event": record_type.lower(),
+            "timestamp": ts.isoformat(),
+            "integrity_hash": data_hash
+        }
+    else:
+        onchain_payload = {
+            "record_ref": str(record_id),
+            "record_type": record_type,
+            "schema_version": "2.0-zero-phi",
+            "integrity_hash": data_hash,
+            "merkle_root": merkle_root,
+            "anchored_at": ts.isoformat(),
+            "storage_policy": "OFF_CHAIN_SECURE_STORAGE"
+        }
+    payload_str = json.dumps(onchain_payload, sort_keys=True)
+    payload_storage_hash = compute_sha256(payload_str)
     
     # Compute Block Hash
     header = f"{block_index}|{ts.isoformat()}|{patient_id}|{record_type}|{record_id}|{previous_hash}|{merkle_root}|{data_hash}"
@@ -73,7 +117,6 @@ def create_block(
         "block_index": block_index,
         "timestamp": ts,
         "patient_id": patient_id,
-
         "record_type": record_type,
         "record_id": str(record_id),
         "data_payload": payload_str,
@@ -84,6 +127,24 @@ def create_block(
         "validator_signature": signature,
         "is_verified": True
     }
+
+def verify_single_record_integrity(
+    anchored_data_hash: str,
+    anchored_merkle_root: str,
+    record_type: str,
+    current_record_dict: Dict[str, Any]
+) -> Tuple[bool, str, str]:
+    """
+    Verifies if an active database record matches its recorded on-chain integrity value.
+    Returns: (is_match, current_hash, current_merkle)
+    """
+    canonical_str = canonicalize_medical_record(record_type, current_record_dict)
+    current_hash = compute_sha256(canonical_str)
+    merkle_leaves = [f"{k}:{current_record_dict[k]}" for k in sorted(current_record_dict.keys())]
+    current_merkle = compute_merkle_root(merkle_leaves)
+
+    is_match = (current_hash == anchored_data_hash) and (current_merkle == anchored_merkle_root)
+    return is_match, current_hash, current_merkle
 
 def verify_blockchain_integrity(chain: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -104,9 +165,21 @@ def verify_blockchain_integrity(chain: List[Dict[str, Any]]) -> Dict[str, Any]:
     for i in range(len(chain)):
         curr = chain[i]
         
-        # Check payload hash
-        recalculated_data_hash = compute_sha256(curr["data_payload"])
-        if recalculated_data_hash != curr["data_hash"]:
+        # Check payload integrity
+        payload_valid = False
+        try:
+            p_obj = json.loads(curr["data_payload"])
+            if isinstance(p_obj, dict) and "integrity_hash" in p_obj:
+                payload_valid = (p_obj["integrity_hash"] == curr["data_hash"])
+        except Exception:
+            pass
+
+        if not payload_valid:
+            recalculated_data_hash = compute_sha256(curr["data_payload"])
+            if recalculated_data_hash == curr["data_hash"]:
+                payload_valid = True
+
+        if not payload_valid:
             return {
                 "is_valid": False,
                 "total_blocks": len(chain),

@@ -30,6 +30,12 @@ def format_user_out(user: User) -> UserOut:
 
 @router.post("/register", response_model=Token)
 def register(req: UserRegister, db: Session = Depends(get_db)):
+    if not req.password or len(req.password.strip()) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters long."
+        )
+
     existing = db.query(User).filter(User.email == req.email.lower()).first()
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email already exists.")
