@@ -1556,21 +1556,98 @@ async function submitRecoveryCheckin(e) {
     }
 }
 
-// Helper: Programmatic Tab Switching
-function switchToTab(tabId) {
-    const btn = document.querySelector(`[data-bs-target="#${tabId}"]`);
-    if (btn) {
-        btn.click();
-        bootstrap.Tab.getOrCreateInstance(btn).show();
-        try {
-            history.replaceState(null, null, `#${tabId}`);
-        } catch (_) {}
-        const navEl = document.getElementById('patientTabs');
-        if (navEl) {
-            navEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+// Bulletproof Portal Module & Tab Switcher
+function activateTab(tabId, scroll = true) {
+    if (!tabId) return;
+    let cleanId = tabId.replace(/^#/, '').trim();
+    if (!cleanId.startsWith('tab-') && document.getElementById(`tab-${cleanId}`)) {
+        cleanId = `tab-${cleanId}`;
+    }
+    if (cleanId === 'tab-navigation') cleanId = 'tab-navigation-pane';
+
+    // 1. Hide all top-level tab panes in #patientTabContent
+    const allPanes = document.querySelectorAll('#patientTabContent > .tab-pane');
+    allPanes.forEach(pane => {
+        pane.classList.remove('show', 'active');
+        pane.style.display = 'none';
+    });
+
+    // 2. Locate and activate the requested tab pane
+    const targetPane = document.getElementById(cleanId);
+    if (targetPane) {
+        targetPane.classList.add('show', 'active');
+        targetPane.style.display = 'block';
+    } else {
+        console.warn(`Tab pane with id "${cleanId}" not found.`);
+        return;
+    }
+
+    // 3. Update pill button states in #patientTabs
+    const navButtons = document.querySelectorAll('#patientTabs .nav-link');
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        const onclickAttr = btn.getAttribute('onclick') || '';
+        const dataTarget = btn.getAttribute('data-bs-target') || '';
+        if (
+            btn.id === `${cleanId}-btn` ||
+            btn.id === cleanId ||
+            onclickAttr.includes(`'${cleanId}'`) ||
+            onclickAttr.includes(`"${cleanId}"`) ||
+            dataTarget === `#${cleanId}`
+        ) {
+            btn.classList.add('active');
         }
+    });
+
+    // 4. Also notify Bootstrap if instance exists
+    try {
+        const targetBtn = document.getElementById(`${cleanId}-btn`) || document.querySelector(`[data-bs-target="#${cleanId}"]`);
+        if (targetBtn && window.bootstrap && bootstrap.Tab) {
+            bootstrap.Tab.getOrCreateInstance(targetBtn).show();
+        }
+    } catch (_) {}
+
+    // 5. Update URL hash without jitter
+    try {
+        history.replaceState(null, null, `#${cleanId}`);
+    } catch (_) {}
+
+    // 6. Smoothly scroll down so user immediately sees the tab content
+    if (scroll && targetPane) {
+        const yOffset = -20;
+        const y = targetPane.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+
+    // 7. Invoke specific data loaders to ensure fresh content
+    try {
+        if (cleanId === 'tab-profile') {
+            if (typeof loadProfileData === 'function') loadProfileData().catch(() => {});
+        } else if (cleanId === 'tab-iot') {
+            if (typeof loadIoTTab === 'function') loadIoTTab().catch(() => {});
+        } else if (cleanId === 'tab-blockchain') {
+            if (typeof loadBlockchainTab === 'function') loadBlockchainTab().catch(() => {});
+        } else if (cleanId === 'tab-predictive') {
+            if (typeof loadPredictiveTab === 'function') loadPredictiveTab().catch(() => {});
+        } else if (cleanId === 'tab-emergency') {
+            if (typeof loadLiveEmergencyPassport === 'function') loadLiveEmergencyPassport().catch(() => {});
+            if (typeof fetchAndRenderPassport === 'function') fetchAndRenderPassport('PUBLIC_BASIC').catch(() => {});
+        } else if (cleanId === 'tab-access-audit') {
+            if (typeof loadPatientEmergencyAudit === 'function') loadPatientEmergencyAudit().catch(() => {});
+            if (typeof loadAccessHistoryTab === 'function') loadAccessHistoryTab().catch(() => {});
+        } else if (cleanId === 'tab-recovery') {
+            if (typeof loadDigitalHealthTimeline === 'function') loadDigitalHealthTimeline().catch(() => {});
+        } else if (cleanId === 'tab-community') {
+            if (typeof loadCommunityTab === 'function') loadCommunityTab().catch(() => {});
+        }
+    } catch (err) {
+        console.warn(`Tab data loader error for ${cleanId}:`, err);
     }
 }
+
+window.activateTab = activateTab;
+window.switchToTab = activateTab;
+
 
 // ===================================================================
 // 1. AI PREDICTIVE CARE & CHRONIC DETERIORATION ALERTS CONTROLLER
@@ -2466,7 +2543,7 @@ function startPassportCountdownTimer(validityMinutes) {
         if (secondsLeft <= 0) {
             clearInterval(passportCountdownInterval);
             countdownEl.innerHTML = `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Emergency Window Expired</span>`;
-            if (noteEl) noteEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-shield-lock me-1"></i>🔐 Access automatically revoked after emergency window.</span>`;
+            if (noteEl) noteEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-shield-lock me-1"></i>Access automatically revoked after emergency window.</span>`;
             return;
         }
         const m = Math.floor(secondsLeft / 60);
