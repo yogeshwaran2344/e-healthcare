@@ -29,8 +29,18 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
     2. Twilio WhatsApp API (if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set)
     3. Fallback Cloud Relay Gateway
     """
-    clean_phone = "".join(filter(str.isdigit, recipient_phone))
+    import logging
+    logger = logging.getLogger("whatsapp_delivery")
     
+    clean_digits = "".join(filter(str.isdigit, recipient_phone))
+    # Normalize Indian 10-digit mobile numbers
+    if len(clean_digits) == 10:
+        clean_phone = "91" + clean_digits
+    elif len(clean_digits) == 11 and clean_digits.startswith("0"):
+        clean_phone = "91" + clean_digits[1:]
+    else:
+        clean_phone = clean_digits
+
     # 1. Meta WhatsApp Business Cloud API
     meta_token = os.getenv("WHATSAPP_API_TOKEN")
     meta_phone_id = os.getenv("WHATSAPP_PHONE_ID")
@@ -48,16 +58,24 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
                 "text": {"body": text}
             }
             req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=5) as response:
+            with urllib.request.urlopen(req, timeout=8) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
-                return {"live_sent": True, "provider": "Meta WhatsApp Cloud API", "response": res_data}
+                return {"live_sent": True, "provider": "Meta WhatsApp Cloud API", "response": res_data, "phone": clean_phone}
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="ignore")
+            logger.error(f"Meta WhatsApp API Error ({e.code}): {err_body}")
+            return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": f"HTTP {e.code}: {err_body}", "phone": clean_phone}
         except Exception as e:
-            pass
+            logger.error(f"Meta WhatsApp Exception: {e}")
+            return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": str(e), "phone": clean_phone}
 
     # 2. Twilio WhatsApp API
     twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
     twilio_auth = os.getenv("TWILIO_AUTH_TOKEN")
     twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+    if not twilio_from.startswith("whatsapp:"):
+        twilio_from = f"whatsapp:{twilio_from}"
+
     if twilio_sid and twilio_auth:
         try:
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
@@ -73,13 +91,18 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
                 "Content-Type": "application/x-www-form-urlencoded"
             }
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=5) as response:
+            with urllib.request.urlopen(req, timeout=8) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
-                return {"live_sent": True, "provider": "Twilio WhatsApp", "response": res_data}
+                return {"live_sent": True, "provider": "Twilio WhatsApp API", "response": res_data, "phone": clean_phone}
+        except urllib.error.HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="ignore")
+            logger.error(f"Twilio API Error ({e.code}): {err_body}")
+            return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": f"HTTP {e.code}: {err_body}", "phone": clean_phone}
         except Exception as e:
-            pass
+            logger.error(f"Twilio Exception: {e}")
+            return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": str(e), "phone": clean_phone}
 
-    return {"live_sent": False, "provider": "Direct Cloud Gateway Relay"}
+    return {"live_sent": False, "provider": "Direct Cloud Gateway Relay (Demo Mode)", "phone": clean_phone}
 
 from ..database import get_db
 from ..models import (
@@ -720,16 +743,22 @@ def evaluate_caregiver_alert(
     # Automated Direct WhatsApp & SMS Transmission Engine
     delivery_id = f"WA-AUTO-{compute_sha256(f'{current_user.id}:{caretaker_phone}:{datetime.utcnow().isoformat()}')[:12].upper()}"
     now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    msg_body = f"🚨 E-HEALTHCARE ALERT: {result.get('primary_trigger', 'Vital Anomaly')} for patient {patient_name}. {result.get('caregiver_message', '')}"
+
+    live_res = send_live_whatsapp_message(caretaker_phone, msg_body)
 
     result["automated_whatsapp_dispatch"] = {
-        "status": "DELIVERED",
+        "status": "DELIVERED" if live_res.get("live_sent") else "RELAYED",
+        "live_sent": live_res.get("live_sent", False),
         "delivery_id": delivery_id,
         "recipient_name": caretaker_name,
-        "recipient_phone": caretaker_phone,
-        "channel": "WhatsApp Business Cloud Automated Relay",
+        "recipient_phone": live_res.get("phone", caretaker_phone),
+        "provider": live_res.get("provider", "Cloud Relay Gateway"),
+        "error_details": live_res.get("error"),
+        "channel": f"WhatsApp ({live_res.get('provider', 'Cloud Gateway')})",
         "delivered_at": now_iso,
         "is_automatic": True,
-        "message_body": f"🚨 E-HEALTHCARE AUTOMATED ALERT: {result.get('primary_trigger', 'Vital Anomaly')} for patient {patient_name}. {result.get('caregiver_message', '')}"
+        "message_body": msg_body
     }
 
     result["automated_sms_dispatch"] = {
@@ -756,14 +785,19 @@ def dispatch_automated_whatsapp(
     message = payload.get("message", "Vitals recorded.")
     delivery_id = f"WA-DIRECT-{compute_sha256(f'{current_user.id}:{recipient_phone}:{datetime.utcnow().isoformat()}')[:12].upper()}"
 
+    live_res = send_live_whatsapp_message(recipient_phone, f"🚨 {alert_title}: {message}")
+
     return {
-        "status": "DELIVERED",
+        "status": "DELIVERED" if live_res.get("live_sent") else "RELAYED",
+        "live_sent": live_res.get("live_sent", False),
         "delivery_id": delivery_id,
         "recipient_name": recipient_name,
-        "recipient_phone": recipient_phone,
-        "channel": "WhatsApp Automated Gateway",
+        "recipient_phone": live_res.get("phone", recipient_phone),
+        "provider": live_res.get("provider", "Cloud Gateway"),
+        "error_details": live_res.get("error"),
+        "channel": f"WhatsApp ({live_res.get('provider', 'Gateway')})",
         "delivered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({recipient_phone})."
+        "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({live_res.get('phone', recipient_phone)})."
     }
 
 # ========================================================
