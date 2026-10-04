@@ -4330,11 +4330,12 @@ loadDigitalHealthTimeline = async function() {
 
 async function testLiveWhatsAppPing() {
     const cfg = getContactSettings();
-    const phone = document.getElementById('profCaretakerPhone')?.value || cfg.caretakerPhone || "+918618912755";
+    const phoneInput = document.getElementById('profCaretakerPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('modalCaretakerPhone')?.value;
+    const phone = phoneInput || cfg.caretakerPhone || "+918618912755";
     
     showSMSNotification({
-        title: "TRANSMITTING LIVE WHATSAPP PING...",
-        message: `Contacting Twilio carrier gateway for ${phone}...`,
+        title: "TRANSMITTING LIVE WHATSAPP...",
+        message: `Sending real-time WhatsApp message to ${phone} via Twilio API...`,
         channel: "whatsapp",
         duration: 4000
     });
@@ -4342,16 +4343,16 @@ async function testLiveWhatsAppPing() {
     try {
         const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', { phone });
         if (res.success) {
-            alert(`✅ LIVE WHATSAPP MESSAGE SENT!\n\nTarget Phone: ${res.target_phone}\nProvider: ${res.provider}\n\nCheck your WhatsApp inbox on ${res.target_phone} right now!`);
+            alert(`✅ LIVE WHATSAPP SENT!\n\nDelivered to: ${res.target_phone}\nGateway: ${res.provider}\nStatus: Message successfully queued and transmitted.\n\nOpen WhatsApp on ${res.target_phone} now!`);
             showSMSNotification({
                 title: "✅ LIVE WHATSAPP DELIVERED",
-                message: `Live message confirmed delivered to ${res.target_phone} via ${res.provider}.`,
+                message: `Live WhatsApp message successfully delivered to ${res.target_phone} via ${res.provider}.`,
                 channel: "whatsapp",
                 duration: 10000
             });
         } else {
             const envCheck = res.twilio_env_check || {};
-            alert(`⚠️ Live Dispatch Diagnostic Report:\n\nTarget Phone: ${res.target_phone}\nProvider: ${res.provider}\nError / Carrier Status: ${res.error_details || 'Carrier refused'}\n\nServer Credentials Check:\n- TWILIO_ACCOUNT_SID configured on Render: ${envCheck.TWILIO_ACCOUNT_SID_SET ? 'YES' : 'NO'}\n- TWILIO_AUTH_TOKEN configured on Render: ${envCheck.TWILIO_AUTH_TOKEN_SET ? 'YES' : 'NO'}\n- TWILIO_WHATSAPP_FROM: ${envCheck.TWILIO_WHATSAPP_FROM || 'Not set'}`);
+            alert(`⚠️ Live WhatsApp Diagnostic:\n\nTarget: ${res.target_phone}\nProvider: ${res.provider}\nCarrier Message: ${res.error_details || 'Check Twilio credentials or Sandbox connection.'}\n\nEnvironment Status:\n- TWILIO_ACCOUNT_SID: ${envCheck.TWILIO_ACCOUNT_SID_SET ? 'Active' : 'Missing'}\n- TWILIO_AUTH_TOKEN: ${envCheck.TWILIO_AUTH_TOKEN_SET ? 'Active' : 'Missing'}\n- TWILIO_WHATSAPP_FROM: ${envCheck.TWILIO_WHATSAPP_FROM || 'Not set'}`);
         }
     } catch (err) {
         alert("Carrier test request failed: " + err.message);

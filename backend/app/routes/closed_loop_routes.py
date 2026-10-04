@@ -15,12 +15,20 @@ Handles:
 import os
 import json
 import base64
+import hashlib
+import logging
 import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("whatsapp_delivery")
+
+def compute_sha256(data: str) -> str:
+    """Computes standard SHA-256 hex digest for audit and delivery tracking."""
+    return hashlib.sha256(str(data).encode("utf-8")).hexdigest()
 
 def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any]:
     """
@@ -29,10 +37,7 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
     2. Twilio WhatsApp API (if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set)
     3. Fallback Cloud Relay Gateway
     """
-    import logging
-    logger = logging.getLogger("whatsapp_delivery")
-    
-    clean_digits = "".join(filter(str.isdigit, recipient_phone))
+    clean_digits = "".join(filter(str.isdigit, str(recipient_phone)))
     # Normalize Indian 10-digit mobile numbers
     if len(clean_digits) == 10:
         clean_phone = "91" + clean_digits
@@ -42,8 +47,8 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
         clean_phone = clean_digits
 
     # 1. Meta WhatsApp Business Cloud API
-    meta_token = os.getenv("WHATSAPP_API_TOKEN", "").strip()
-    meta_phone_id = os.getenv("WHATSAPP_PHONE_ID", "").strip()
+    meta_token = os.getenv("WHATSAPP_API_TOKEN", "").strip().strip('"').strip("'")
+    meta_phone_id = os.getenv("WHATSAPP_PHONE_ID", "").strip().strip('"').strip("'")
     if meta_token and meta_phone_id:
         try:
             url = f"https://graph.facebook.com/v18.0/{meta_phone_id}/messages"
@@ -58,7 +63,7 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
                 "text": {"body": text}
             }
             req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=8) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 return {"live_sent": True, "provider": "Meta WhatsApp Cloud API", "response": res_data, "phone": clean_phone}
         except urllib.error.HTTPError as e:
@@ -70,37 +75,53 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
             return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": str(e), "phone": clean_phone}
 
     # 2. Twilio WhatsApp API
-    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
-    twilio_auth = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
-    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "").strip() or "whatsapp:+17372508034"
-    # Clean formatting
-    twilio_from_clean = "".join(filter(lambda c: c.isdigit() or c == '+', twilio_from))
-    if not twilio_from_clean.startswith('+'):
-        twilio_from_clean = f"+{twilio_from_clean}"
-    twilio_from_formatted = f"whatsapp:{twilio_from_clean}"
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip().strip('"').strip("'")
+    twilio_auth = os.getenv("TWILIO_AUTH_TOKEN", "").strip().strip('"').strip("'")
+    twilio_from_raw = os.getenv("TWILIO_WHATSAPP_FROM", "").strip().strip('"').strip("'") or "+17372508034"
+    
+    # Clean from formatting
+    twilio_from_digits = "".join(filter(str.isdigit, twilio_from_raw))
+    if not twilio_from_digits:
+        twilio_from_digits = "17372508034"
+    twilio_from_formatted = f"whatsapp:+{twilio_from_digits}"
 
     if twilio_sid and twilio_auth:
         try:
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
-            data = urllib.parse.urlencode({
+            post_fields = {
                 "From": twilio_from_formatted,
                 "To": f"whatsapp:+{clean_phone}",
                 "Body": text
-            }).encode("utf-8")
+            }
+            data = urllib.parse.urlencode(post_fields).encode("utf-8")
             auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
             b64_auth = base64.b64encode(auth_str).decode("ascii")
             headers = {
                 "Authorization": f"Basic {b64_auth}",
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "E-Healthcare-Platform/2026"
             }
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=8) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                return {"live_sent": True, "provider": "Twilio WhatsApp API", "response": res_data, "phone": clean_phone}
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = response.read().decode("utf-8")
+                res_data = json.loads(res_body)
+                return {
+                    "live_sent": True,
+                    "provider": "Twilio WhatsApp API",
+                    "sid": res_data.get("sid"),
+                    "status": res_data.get("status"),
+                    "response": res_data,
+                    "phone": clean_phone
+                }
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
             logger.error(f"Twilio API Error ({e.code}): {err_body}")
-            return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": f"HTTP {e.code}: {err_body}", "phone": clean_phone}
+            try:
+                parsed_err = json.loads(err_body)
+                err_msg = f"HTTP {e.code} ({parsed_err.get('message', err_body)}) [Twilio Code: {parsed_err.get('code', 'N/A')}]"
+            except Exception:
+                err_msg = f"HTTP {e.code}: {err_body}"
+            return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": err_msg, "phone": clean_phone}
         except Exception as e:
             logger.error(f"Twilio Exception: {e}")
             return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": str(e), "phone": clean_phone}
