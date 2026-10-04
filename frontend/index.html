@@ -152,26 +152,49 @@
                                     <i class="bi bi-person-fill"></i>
                                 </div>
                                 <div>
-                                    <h5 class="fw-bold mb-0" id="previewPassportHolderName">Rahul Verma</h5>
+                                    <h5 class="fw-bold mb-0 text-dark" id="previewPassportHolderName">Yogesh</h5>
                                     <small class="text-muted">Universal Health ID: <code class="text-primary">HID-2026-98104</code></small>
-                                    <div class="mt-1">
-                                        <span class="badge bg-danger-subtle text-danger me-1" id="previewPassportBlood">Blood: O+</span>
-                                        <span class="badge bg-success-subtle text-success">Passport: Active</span>
+                                    <div class="mt-1 d-flex gap-1 flex-wrap">
+                                        <span class="badge bg-danger-subtle text-danger" id="previewPassportBlood">Blood: B+</span>
+                                        <span class="badge bg-success-subtle text-success" id="previewPassportStatus">Health: Optimal</span>
+                                        <span class="badge bg-primary-subtle text-primary">Passport: Active</span>
                                     </div>
                                 </div>
                             </div>
                             
+                            <!-- Real-time Health Telemetry -->
+                            <div class="p-2 mb-3 bg-light rounded-3 border d-flex justify-content-around text-center">
+                                <div>
+                                    <small class="text-muted d-block" style="font-size: 0.7rem; font-weight: 700;">BLOOD PRESSURE</small>
+                                    <strong class="text-danger small" id="previewPassportBp">120/80 mmHg</strong>
+                                </div>
+                                <div class="border-start ps-3">
+                                    <small class="text-muted d-block" style="font-size: 0.7rem; font-weight: 700;">HEART RATE</small>
+                                    <strong class="text-success small" id="previewPassportHr">76 bpm</strong>
+                                </div>
+                                <div class="border-start ps-3">
+                                    <small class="text-muted d-block" style="font-size: 0.7rem; font-weight: 700;">SPO2 OXYGEN</small>
+                                    <strong class="text-primary small" id="previewPassportSpo2">98%</strong>
+                                </div>
+                            </div>
+
                             <div class="row g-2 mb-3">
-                                <div class="col-6">
+                                <div class="col-12 mb-1">
                                     <div class="p-2 border rounded-3 bg-light">
-                                        <small class="text-muted d-block" style="font-size: 0.75rem;">ALLERGIES</small>
-                                        <strong class="text-danger small" id="previewPassportAllergies">Penicillin, Sulfa</strong>
+                                        <small class="text-muted d-block" style="font-size: 0.72rem; font-weight: 700;">PRE-EXISTING CONDITIONS / CLINICAL STATUS</small>
+                                        <strong class="text-dark small" id="previewPassportConditions">None Logged / Healthy Baseline</strong>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="p-2 border rounded-3 bg-light">
-                                        <small class="text-muted d-block" style="font-size: 0.75rem;">MEDICATIONS</small>
-                                        <strong class="text-dark small" id="previewPassportMeds">Amlodipine 5mg, Metformin</strong>
+                                    <div class="p-2 border rounded-3 bg-light h-100">
+                                        <small class="text-muted d-block" style="font-size: 0.72rem; font-weight: 700;">ALLERGIES</small>
+                                        <strong class="text-danger small" id="previewPassportAllergies">No Known Allergies</strong>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 border rounded-3 bg-light h-100">
+                                        <small class="text-muted d-block" style="font-size: 0.72rem; font-weight: 700;">MEDICATIONS</small>
+                                        <strong class="text-dark small" id="previewPassportMeds">None Active</strong>
                                     </div>
                                 </div>
                             </div>
@@ -1234,20 +1257,45 @@
             }
         }
 
-        function hydrateIndexProfileData() {
+        async function hydrateIndexProfileData() {
             let savedProf = null;
             try {
                 const cached = localStorage.getItem('ehealth_saved_profile');
                 if (cached) savedProf = JSON.parse(cached);
             } catch (_) {}
-            const user = API.getUser() || {};
-            const name = savedProf?.full_name || user?.full_name || 'Rahul Verma';
-            const blood = savedProf?.blood_group || user?.blood_group || 'O+';
-            const allergies = savedProf?.drug_allergies || 'Penicillin, Sulfa';
-            const meds = savedProf?.current_medications || 'Amlodipine 5mg, Metformin';
-            const age = savedProf?.age || user?.age || 48;
+
+            let vitals = null;
+            try {
+                const vitalsCached = localStorage.getItem('ehealth_latest_vitals');
+                if (vitalsCached) vitals = JSON.parse(vitalsCached);
+            } catch (_) {}
+
+            let user = API.getUser() || {};
+            try {
+                if (API.getToken()) {
+                    const freshUser = await API.get('/api/profile');
+                    if (freshUser) user = freshUser;
+                }
+            } catch (_) {}
+
+            const name = savedProf?.full_name || user?.full_name || 'Yogesh';
+            const blood = savedProf?.blood_group || user?.blood_group || 'B+';
+            const rawAllergies = (savedProf?.drug_allergies !== undefined ? savedProf?.drug_allergies : user?.drug_allergies);
+            const allergies = (rawAllergies && rawAllergies.trim() && rawAllergies !== 'None') ? rawAllergies : 'No Known Drug Allergies';
+            
+            const rawMeds = (savedProf?.current_medications !== undefined ? savedProf?.current_medications : user?.current_medications);
+            const meds = (rawMeds && rawMeds.trim() && rawMeds !== 'None') ? rawMeds : 'No Active Medications';
+
+            const rawConditions = (savedProf?.pre_existing_conditions !== undefined ? savedProf?.pre_existing_conditions : user?.pre_existing_conditions);
+            const conditions = (rawConditions && rawConditions.trim() && rawConditions !== 'None') ? rawConditions : 'Optimal Baseline (No Chronic Illness)';
+
+            const age = savedProf?.age || user?.age || 24;
             const gender = savedProf?.gender || user?.gender || 'Male';
-            const dob = savedProf?.date_of_birth || user?.date_of_birth || '15 Jun 1978';
+            const dob = savedProf?.date_of_birth || user?.date_of_birth || '14 May 2002';
+
+            const bp = vitals?.bp || '120/80 mmHg';
+            const hr = vitals?.hr ? `${vitals.hr} bpm` : '76 bpm';
+            const spo2 = vitals?.spo2 ? `${vitals.spo2}%` : '98%';
 
             const pNameEl = document.getElementById('previewPassportHolderName');
             if (pNameEl) pNameEl.textContent = name;
@@ -1257,6 +1305,14 @@
             if (pAllergiesEl) pAllergiesEl.textContent = allergies;
             const pMedsEl = document.getElementById('previewPassportMeds');
             if (pMedsEl) pMedsEl.textContent = meds;
+            const pCondEl = document.getElementById('previewPassportConditions');
+            if (pCondEl) pCondEl.textContent = conditions;
+            const pBpEl = document.getElementById('previewPassportBp');
+            if (pBpEl) pBpEl.textContent = bp;
+            const pHrEl = document.getElementById('previewPassportHr');
+            if (pHrEl) pHrEl.textContent = hr;
+            const pSpo2El = document.getElementById('previewPassportSpo2');
+            if (pSpo2El) pSpo2El.textContent = spo2;
 
             const eNameEl = document.getElementById('previewEmergencyHolderName');
             if (eNameEl) eNameEl.textContent = name;
