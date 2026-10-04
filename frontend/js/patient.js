@@ -3349,12 +3349,18 @@ async function submitManualVitals(e) {
 
     try {
         const cfg = getContactSettings();
+        const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
+        const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
+        const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
         const vitals = { hr, spo2, bp_sys: bpSys, bp_dia: bpDia, temp };
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', {
             vitals,
             missed_doses_count: 0,
             caretaker_name: cfg.caretakerName,
-            caretaker_phone: cfg.caretakerPhone
+            caretaker_phone: cfg.caretakerPhone,
+            twilio_sid: sid,
+            twilio_auth: auth,
+            twilio_from: fromNum
         });
         updateCaregiverAlertUI(res);
 
@@ -4509,17 +4515,12 @@ async function testLiveWhatsAppPing() {
     
     const rawDigits = defaultPhone.replace(/[^0-9]/g, '');
     const cleanPhoneDigits = rawDigits.length === 10 ? ('91' + rawDigits) : rawDigits;
-    const alertBody = `🚨 E-HEALTHCARE ALERT: Live Telemetry Verification\n\nPatient Rahul Verma connected to Smart Healthcare Navigator.\nTime: ${new Date().toLocaleTimeString()}\nPortal: https://e-healthcare-6rbc.onrender.com`;
-    const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhoneDigits}&text=${encodeURIComponent(alertBody)}`;
-
-    // Automatically launch WhatsApp with the pre-filled emergency alert
-    window.open(waUrl, '_blank');
 
     showSMSNotification({
-        title: "LIVE WHATSAPP DISPATCHED",
-        message: `Real-time WhatsApp message launched for +${cleanPhoneDigits}.`,
+        title: "⚡ AUTOMATED WHATSAPP DISPATCHING...",
+        message: `Transmitting real-time automated medical alert to +${cleanPhoneDigits} via Twilio Carrier Gateway...`,
         channel: "whatsapp",
-        duration: 8000
+        duration: 5000
     });
 
     try {
@@ -4534,11 +4535,25 @@ async function testLiveWhatsAppPing() {
         });
         if (res.success) {
             showSMSNotification({
-                title: "✅ CARRIER WHATSAPP TRANSMITTED",
-                message: `Automated carrier delivery confirmed to +${res.target_phone} via ${res.provider}.`,
+                title: "✅ AUTOMATED WHATSAPP DELIVERED",
+                message: `Automated alert message successfully delivered to +${res.target_phone} via ${res.provider}. Ref: ${res.raw_response?.sid || 'Live Carrier Dispatch'}.`,
+                channel: "whatsapp",
+                duration: 12000
+            });
+        } else {
+            showSMSNotification({
+                title: "⚠️ TWILIO CARRIER STATUS",
+                message: res.error_details || "Automated carrier dispatch attempted.",
                 channel: "whatsapp",
                 duration: 10000
             });
         }
-    } catch (_) {}
+    } catch (err) {
+        showSMSNotification({
+            title: "⚠️ DISPATCH ERROR",
+            message: err.message || "Failed to reach backend.",
+            channel: "whatsapp",
+            duration: 8000
+        });
+    }
 }
