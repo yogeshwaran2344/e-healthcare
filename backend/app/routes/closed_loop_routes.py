@@ -83,53 +83,61 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
     twilio_from_digits = "".join(filter(str.isdigit, twilio_from_raw))
     if not twilio_from_digits:
         twilio_from_digits = "17372508034"
-    twilio_from_formatted = f"whatsapp:+{twilio_from_digits}"
+    
+    candidate_senders = [f"whatsapp:+{twilio_from_digits}"]
+    # Standard Twilio sandbox fallback if not already the primary
+    if twilio_from_digits != "14155238886":
+        candidate_senders.append("whatsapp:+14155238886")
 
     if twilio_sid and twilio_auth:
-        try:
-            url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
-            post_fields = {
-                "From": twilio_from_formatted,
-                "To": f"whatsapp:+{clean_phone}",
-                "Body": text
-            }
-            data = urllib.parse.urlencode(post_fields).encode("utf-8")
-            auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
-            b64_auth = base64.b64encode(auth_str).decode("ascii")
-            headers = {
-                "Authorization": f"Basic {b64_auth}",
-                "Content-Type": "application/x-www-form-urlencoded",
-                "User-Agent": "E-Healthcare-Platform/2026"
-            }
-            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=10) as response:
-                res_body = response.read().decode("utf-8")
-                res_data = json.loads(res_body)
-                return {
-                    "live_sent": True,
-                    "provider": "Twilio WhatsApp API",
-                    "sid": res_data.get("sid"),
-                    "status": res_data.get("status"),
-                    "response": res_data,
-                    "phone": clean_phone
-                }
-        except urllib.error.HTTPError as e:
-            err_body = e.read().decode("utf-8", errors="ignore")
-            logger.error(f"Twilio API Error ({e.code}): {err_body}")
+        last_error = ""
+        auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
+        b64_auth = base64.b64encode(auth_str).decode("ascii")
+        headers = {
+            "Authorization": f"Basic {b64_auth}",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "E-Healthcare-Platform/2026"
+        }
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
+
+        for sender_num in candidate_senders:
             try:
-                parsed_err = json.loads(err_body)
-                err_msg = f"HTTP {e.code} ({parsed_err.get('message', err_body)}) [Twilio Code: {parsed_err.get('code', 'N/A')}]"
-            except Exception:
-                err_msg = f"HTTP {e.code}: {err_body}"
-            return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": err_msg, "phone": clean_phone}
-        except Exception as e:
-            logger.error(f"Twilio Exception: {e}")
-            return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": str(e), "phone": clean_phone}
+                post_fields = {
+                    "From": sender_num,
+                    "To": f"whatsapp:+{clean_phone}",
+                    "Body": text
+                }
+                data = urllib.parse.urlencode(post_fields).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    res_body = response.read().decode("utf-8")
+                    res_data = json.loads(res_body)
+                    return {
+                        "live_sent": True,
+                        "provider": f"Twilio WhatsApp API ({sender_num})",
+                        "sid": res_data.get("sid"),
+                        "status": res_data.get("status"),
+                        "response": res_data,
+                        "phone": clean_phone
+                    }
+            except urllib.error.HTTPError as e:
+                err_body = e.read().decode("utf-8", errors="ignore")
+                logger.error(f"Twilio API Error ({e.code}) from {sender_num}: {err_body}")
+                try:
+                    parsed_err = json.loads(err_body)
+                    last_error = f"HTTP {e.code} ({parsed_err.get('message', err_body)}) [Twilio Code: {parsed_err.get('code', 'N/A')}] (Sender: {sender_num})"
+                except Exception:
+                    last_error = f"HTTP {e.code}: {err_body} (Sender: {sender_num})"
+            except Exception as e:
+                logger.error(f"Twilio Exception from {sender_num}: {e}")
+                last_error = f"{str(e)} (Sender: {sender_num})"
+
+        return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": last_error, "phone": clean_phone}
 
     return {
         "live_sent": False,
         "provider": "Direct Cloud Gateway Relay (Demo Mode)",
-        "error": "TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not detected in backend environment.",
+        "error": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are not set in the backend environment. Configure them in .env or Render Environment Variables to send real WhatsApp messages.",
         "phone": clean_phone
     }
 

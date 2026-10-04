@@ -1,6 +1,15 @@
 // Common API Helper for E-Healthcare Platform
 const API = {
-    BASE_URL: '',
+    BASE_URL: (() => {
+        try {
+            const loc = window.location;
+            // When run via VS Code Live Server (5500, 5501), dev servers (3000, 5000), or file protocol, point to FastAPI backend on port 8000
+            if (loc.port === '5500' || loc.port === '5501' || loc.port === '3000' || loc.port === '5000' || loc.protocol === 'file:') {
+                return 'http://127.0.0.1:8000';
+            }
+        } catch (_) {}
+        return '';
+    })(),
 
     getToken() {
         return localStorage.getItem('ehealth_token');

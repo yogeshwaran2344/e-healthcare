@@ -42,11 +42,11 @@ function getContactSettings() {
         try { return JSON.parse(saved); } catch (e) {}
     }
     return {
-        patientPhone: (currentProfile && currentProfile.phone) || "+91 98765 43210",
-        patientWhatsapp: "+91 98765 43210",
-        caretakerName: "Sarah Doe",
-        caretakerPhone: "+91 98111 22233",
-        caretakerRelation: "Daughter / Primary Guardian",
+        patientPhone: (currentProfile && currentProfile.phone) || "+91 86189 12755",
+        patientWhatsapp: "+91 86189 12755",
+        caretakerName: "Primary Caregiver",
+        caretakerPhone: "+91 86189 12755",
+        caretakerRelation: "Emergency Contact / Guardian",
         dualAlert: true
     };
 }
@@ -4326,7 +4326,10 @@ loadDigitalHealthTimeline = async function() {
 async function testLiveWhatsAppPing() {
     const cfg = getContactSettings();
     const phoneInput = document.getElementById('profCaretakerPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('modalCaretakerPhone')?.value;
-    const phone = phoneInput || cfg.caretakerPhone || "+918618912755";
+    const defaultPhone = (phoneInput || cfg.caretakerPhone || "+918618912755").trim();
+    
+    const phone = prompt("📲 Send Live WhatsApp Alert Ping to phone number:", defaultPhone);
+    if (!phone) return;
     
     showSMSNotification({
         title: "TRANSMITTING LIVE WHATSAPP...",
@@ -4338,7 +4341,7 @@ async function testLiveWhatsAppPing() {
     try {
         const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', { phone });
         if (res.success) {
-            alert(`✅ LIVE WHATSAPP SENT!\n\nDelivered to: ${res.target_phone}\nGateway: ${res.provider}\nStatus: Message successfully queued and transmitted.\n\nOpen WhatsApp on ${res.target_phone} now!`);
+            alert(`✅ LIVE WHATSAPP SENT!\n\nDelivered to: ${res.target_phone}\nGateway: ${res.provider}\nTwilio SID: ${res.raw_response?.sid || 'Sent'}\nStatus: Message successfully transmitted.\n\nCheck WhatsApp on ${res.target_phone} now!`);
             showSMSNotification({
                 title: "✅ LIVE WHATSAPP DELIVERED",
                 message: `Live WhatsApp message successfully delivered to ${res.target_phone} via ${res.provider}.`,
@@ -4347,9 +4350,11 @@ async function testLiveWhatsAppPing() {
             });
         } else {
             const envCheck = res.twilio_env_check || {};
-            alert(`⚠️ Live WhatsApp Diagnostic:\n\nTarget: ${res.target_phone}\nProvider: ${res.provider}\nCarrier Message: ${res.error_details || 'Check Twilio credentials or Sandbox connection.'}\n\nEnvironment Status:\n- TWILIO_ACCOUNT_SID: ${envCheck.TWILIO_ACCOUNT_SID_SET ? 'Active' : 'Missing'}\n- TWILIO_AUTH_TOKEN: ${envCheck.TWILIO_AUTH_TOKEN_SET ? 'Active' : 'Missing'}\n- TWILIO_WHATSAPP_FROM: ${envCheck.TWILIO_WHATSAPP_FROM || 'Not set'}`);
+            const sidStatus = envCheck.TWILIO_ACCOUNT_SID_SET ? '✅ Active' : '❌ Missing';
+            const authStatus = envCheck.TWILIO_AUTH_TOKEN_SET ? '✅ Active' : '❌ Missing';
+            alert(`⚠️ Live WhatsApp Diagnostic:\n\nTarget: ${res.target_phone}\nProvider: ${res.provider}\nCarrier Message:\n${res.error_details || 'Check Twilio credentials or Sandbox connection.'}\n\nEnvironment Status:\n- TWILIO_ACCOUNT_SID: ${sidStatus}\n- TWILIO_AUTH_TOKEN: ${authStatus}\n- TWILIO_WHATSAPP_FROM: ${envCheck.TWILIO_WHATSAPP_FROM || 'Not set'}`);
         }
     } catch (err) {
-        alert("Carrier test request failed: " + err.message);
+        alert("Carrier test request failed:\n\n" + (err.message || String(err)) + "\n\nTip: Ensure FastAPI backend is running on http://127.0.0.1:8000.");
     }
 }
