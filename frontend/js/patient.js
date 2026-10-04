@@ -443,6 +443,64 @@ let symptomsByCategory = {};
 let activeCategory = 'All';
 let answeredQuestionIds = [];
 
+const SYMPTOM_SYNONYMS = {
+    "chest pain": ["sharp_chest_pain", "chest_tightness", "pain_radiating_to_arm_jaw"],
+    "chest": ["sharp_chest_pain", "chest_tightness", "heaviness_pressure_in_chest"],
+    "body pain": ["body_pain_fatigue", "body_muscle_aches", "general_weakness"],
+    "body ache": ["body_pain_fatigue", "body_muscle_aches"],
+    "body aches": ["body_pain_fatigue", "body_muscle_aches"],
+    "muscle pain": ["body_muscle_aches", "body_pain_fatigue"],
+    "headache": ["headache", "severe_headache", "sudden_thunderclap_headache"],
+    "fever": ["fever", "high_fever", "mild_fever"],
+    "cough": ["cough_general", "dry_cough", "productive_cough_phlegm"],
+    "cold": ["common_cold_runny_nose", "runny_nose", "sneezing"],
+    "sneezing": ["common_cold_runny_nose", "sneezing"],
+    "sore throat": ["sore_throat_irritation", "sore_throat"],
+    "throat pain": ["sore_throat_irritation", "sore_throat"],
+    "fatigue": ["body_pain_fatigue", "fatigue", "general_weakness"],
+    "tired": ["body_pain_fatigue", "fatigue"],
+    "tiredness": ["body_pain_fatigue", "fatigue"],
+    "stomach pain": ["abdominal_pain", "stomach_upset_loose_motion", "epigastric_burning_pain", "indigestion_gas_acidity"],
+    "stomach ache": ["abdominal_pain", "stomach_upset_loose_motion", "epigastric_burning_pain"],
+    "belly pain": ["abdominal_pain", "stomach_upset_loose_motion"],
+    "loose motion": ["stomach_upset_loose_motion", "diarrhea"],
+    "loose motions": ["stomach_upset_loose_motion", "diarrhea"],
+    "diarrhea": ["stomach_upset_loose_motion", "diarrhea"],
+    "vomiting": ["vomiting", "nausea"],
+    "nausea": ["nausea", "vomiting"],
+    "gas": ["indigestion_gas_acidity", "bloating_abdominal_distension"],
+    "acidity": ["indigestion_gas_acidity", "epigastric_burning_pain", "acidity_heartburn"],
+    "heartburn": ["indigestion_gas_acidity", "acidity_heartburn", "epigastric_burning_pain"],
+    "breathless": ["breathlessness_shortness_of_breath", "chest_tightness"],
+    "breathlessness": ["breathlessness_shortness_of_breath", "chest_tightness"],
+    "shortness of breath": ["breathlessness_shortness_of_breath", "chest_tightness"],
+    "hair fall": ["hair_fall_excessive", "hair_thinning_scalp", "patchy_hair_loss_alopecia"],
+    "hair loss": ["hair_fall_excessive", "hair_thinning_scalp", "patchy_hair_loss_alopecia"],
+    "hair shedding": ["hair_fall_excessive", "hair_thinning_scalp"],
+    "dandruff": ["dandruff_scalp_flaking", "scalp_itching_irritation"],
+    "itchy scalp": ["dandruff_scalp_flaking", "scalp_itching_irritation"],
+    "acne": ["facial_acne_pimples", "cystic_hormonal_acne", "blackheads_whiteheads"],
+    "pimples": ["facial_acne_pimples", "cystic_hormonal_acne"],
+    "pimple": ["facial_acne_pimples", "cystic_hormonal_acne"],
+    "breakouts": ["facial_acne_pimples", "cystic_hormonal_acne"],
+    "period pain": ["severe_period_cramps", "lower_pelvic_ovarian_pain"],
+    "period cramps": ["severe_period_cramps", "lower_pelvic_ovarian_pain"],
+    "cramps": ["severe_period_cramps", "abdominal_pain"],
+    "periods": ["irregular_missed_periods", "severe_period_cramps", "heavy_menstrual_bleeding", "pcos_pcod_symptoms"],
+    "irregular periods": ["irregular_missed_periods", "pcos_pcod_symptoms"],
+    "missed period": ["irregular_missed_periods", "pcos_pcod_symptoms"],
+    "pcos": ["pcos_pcod_symptoms", "irregular_missed_periods", "cystic_hormonal_acne", "hair_thinning_scalp"],
+    "pcod": ["pcos_pcod_symptoms", "irregular_missed_periods"],
+    "bp": ["sharp_chest_pain", "palpitations_rapid_heartbeat", "dizziness_lightheadedness"],
+    "high bp": ["sharp_chest_pain", "palpitations_rapid_heartbeat", "dizziness_lightheadedness"],
+    "heart pain": ["sharp_chest_pain", "pain_radiating_to_arm_jaw", "palpitations_rapid_heartbeat"],
+    "joint pain": ["joint_pain_swelling", "morning_joint_stiffness", "body_muscle_aches"],
+    "rash": ["skin_rash", "hives_urticaria", "itching_pruritus", "skin_redness"],
+    "itching": ["itching_pruritus", "skin_rash", "scalp_itching_irritation", "vaginal_itching_burning"],
+    "burning urine": ["dysuria_burning_urination", "urinary_frequency"],
+    "urine pain": ["dysuria_burning_urination", "urinary_frequency"]
+};
+
 async function loadSymptoms() {
     try {
         const res = await API.get('/api/closed-loop/symptoms-catalog');
@@ -458,6 +516,9 @@ async function loadSymptoms() {
                 });
             });
         }
+
+        // Dynamically build category filter buttons
+        renderCategoryFilterButtons();
         renderSymptomChips(allSymptoms);
     } catch (err) {
         console.error("Error loading categorized symptoms, falling back:", err);
@@ -471,26 +532,56 @@ async function loadSymptoms() {
     }
 }
 
+function renderCategoryFilterButtons() {
+    const container = document.getElementById('symptomCategoryFilters');
+    if (!container) return;
+
+    const categories = ['All', ...Object.keys(symptomsByCategory)];
+    container.innerHTML = categories.map(cat => {
+        const isActive = activeCategory === cat;
+        const displayName = cat === 'All' ? `All (${allSymptoms.length}+)` : cat;
+        return `
+            <button class="btn btn-sm ${isActive ? 'btn-primary active' : 'btn-outline-secondary'} py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('${cat}')">
+                ${displayName}
+            </button>
+        `;
+    }).join('');
+}
+
 function filterByCategory(cat) {
     activeCategory = cat;
-    document.querySelectorAll('.category-filter-btn').forEach(btn => {
-        if (btn.textContent.includes(cat) || (cat === 'All' && btn.textContent.includes('All'))) {
-            btn.className = "btn btn-sm btn-primary py-1 px-2 rounded-pill category-filter-btn active";
-        } else {
-            btn.className = "btn btn-sm btn-outline-secondary py-1 px-2 rounded-pill category-filter-btn";
-        }
-    });
+    renderCategoryFilterButtons();
     filterSymptoms();
 }
 
-function renderSymptomChips(list) {
+function renderSymptomChips(list, isSearchResult = false) {
     const container = document.getElementById('symptomsList');
     if (!list || list.length === 0) {
-        container.innerHTML = '<div class="text-muted small text-center py-2">No symptoms match your search.</div>';
+        container.innerHTML = `
+            <div class="text-muted small text-center py-3">
+                <i class="bi bi-search text-secondary d-block fs-4 mb-1"></i>
+                No symptoms match your search. Try typing simple words like "chest pain", "body pain", "fever", "hair fall", or "acne".
+            </div>
+        `;
         return;
     }
 
-    container.innerHTML = list.map(s => {
+    let headerHtml = '';
+    if (isSearchResult && list.length > 1) {
+        const unselectedMatching = list.filter(s => !selectedSymptoms.has(s.key));
+        if (unselectedMatching.length > 0) {
+            headerHtml = `
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                    <span class="small text-muted fw-semibold">Found ${list.length} matching symptoms</span>
+                    <button class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" onclick="selectAllMatchingSymptoms(${JSON.stringify(list.map(s => s.key)).replace(/"/g, '&quot;')})">
+                        <i class="bi bi-check-all me-1"></i> Select All (${list.length})
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    const chipsHtml = list.map(s => {
         const isSelected = selectedSymptoms.has(s.key);
         return `
             <div class="symptom-chip ${isSelected ? 'selected' : ''}" onclick="toggleSymptom('${s.key}')">
@@ -499,6 +590,15 @@ function renderSymptomChips(list) {
             </div>
         `;
     }).join('');
+
+    container.innerHTML = headerHtml + `<div class="d-flex flex-wrap gap-2 py-1">${chipsHtml}</div>`;
+}
+
+function selectAllMatchingSymptoms(keys) {
+    if (!Array.isArray(keys)) return;
+    keys.forEach(k => selectedSymptoms.add(k));
+    updateSelectedCount();
+    filterSymptoms();
 }
 
 function toggleSymptom(key) {
@@ -523,17 +623,73 @@ function clearSelectedSymptoms() {
 }
 
 function filterSymptoms() {
-    const query = document.getElementById('symptomSearchInput').value.toLowerCase().trim();
-    let filtered = allSymptoms;
+    let rawQuery = document.getElementById('symptomSearchInput').value.toLowerCase().trim();
     
-    if (activeCategory !== 'All') {
-        filtered = filtered.filter(s => s.category === activeCategory);
+    if (!rawQuery) {
+        let filtered = allSymptoms;
+        if (activeCategory !== 'All') {
+            filtered = filtered.filter(s => s.category === activeCategory);
+        }
+        renderSymptomChips(filtered, false);
+        return;
     }
-    
-    if (query) {
-        filtered = filtered.filter(s => s.label.toLowerCase().includes(query) || s.key.includes(query));
-    }
-    renderSymptomChips(filtered);
+
+    // Clean conversational filler phrases (e.g. "n all", "and all", "i have", "suffering from")
+    let cleaned = rawQuery
+        .replace(/\b(n all|and all|and everything|etc|i have|having|got|suffering from|a bit of|very|also|severe)\b/gi, ' ')
+        .replace(/[;,+/]/g, ' ')
+        .trim();
+
+    // Split query by commas or conjunctions into sub-phrases
+    const subPhrases = cleaned.split(/\b(?:and|n|with|or|,)\b/).map(p => p.trim()).filter(p => p.length > 0);
+    const individualWords = cleaned.split(/\s+/).filter(w => w.length > 2);
+
+    const matchedKeys = new Set();
+    const scoredList = [];
+
+    allSymptoms.forEach(s => {
+        const sLabel = s.label.toLowerCase();
+        const sKey = s.key.toLowerCase();
+        let score = 0;
+
+        // 1. Direct subphrase matching
+        for (const phrase of subPhrases) {
+            if (sLabel.includes(phrase) || sKey.includes(phrase.replace(/\s+/g, '_'))) {
+                score += 50;
+            }
+            // Check synonyms dictionary
+            for (const [synKey, targetKeys] of Object.entries(SYMPTOM_SYNONYMS)) {
+                if (phrase.includes(synKey) || synKey.includes(phrase)) {
+                    if (targetKeys.includes(s.key)) {
+                        score += 80;
+                    }
+                }
+            }
+        }
+
+        // 2. Word-level token overlap
+        for (const word of individualWords) {
+            if (sLabel.includes(word) || sKey.includes(word)) {
+                score += 10;
+            }
+            // Check if word triggers synonym keys
+            for (const [synKey, targetKeys] of Object.entries(SYMPTOM_SYNONYMS)) {
+                if (synKey.split(' ').includes(word) && targetKeys.includes(s.key)) {
+                    score += 25;
+                }
+            }
+        }
+
+        if (score > 0) {
+            matchedKeys.add(s.key);
+            scoredList.push({ symptom: s, score: score });
+        }
+    });
+
+    scoredList.sort((a, b) => b.score - a.score);
+    const filtered = scoredList.map(item => item.symptom);
+
+    renderSymptomChips(filtered, true);
 }
 
 // Wizard Navigation Functions
@@ -934,7 +1090,7 @@ function displayStep4Results(res) {
     const reasonsList = document.getElementById('triageReasonsList');
     if (res.triage.triage_reasons && res.triage.triage_reasons.length > 0) {
         reasonsList.innerHTML = `<strong class="d-block text-danger mb-1">Triage Trigger Factors:</strong>` + 
-            res.triage.triage_reasons.map(r => `<div>â€¢ ${r}</div>`).join('');
+            res.triage.triage_reasons.map(r => `<div>• ${r}</div>`).join('');
     } else {
         reasonsList.innerHTML = `<div class="text-muted">Standard clinical pathway. No acute emergency red-flags triggered.</div>`;
     }
@@ -953,7 +1109,7 @@ function displayStep4Results(res) {
                 <div class="decision-map-bar d-flex justify-content-between align-items-center p-2 rounded bg-light border">
                     <div>
                         <strong class="text-dark d-block">${f.feature}</strong>
-                        <small class="text-muted">${f.category} â€¢ ${f.effect}</small>
+                        <small class="text-muted">${f.category} • ${f.effect}</small>
                     </div>
                     <span class="attribution-bar-pos">+${f.weight}</span>
                 </div>
@@ -965,7 +1121,7 @@ function displayStep4Results(res) {
                 <div class="decision-map-bar d-flex justify-content-between align-items-center p-2 rounded bg-light border">
                     <div>
                         <strong class="text-dark d-block">${f.feature}</strong>
-                        <small class="text-muted">${f.category} â€¢ ${f.effect}</small>
+                        <small class="text-muted">${f.category} • ${f.effect}</small>
                     </div>
                     <span class="attribution-bar-neg">${f.weight}</span>
                 </div>
@@ -990,7 +1146,7 @@ function displayStep4Results(res) {
     const tableBody = document.getElementById('minimumTestsTableBody');
     if (minTestSet && tableBody) {
         document.getElementById('residualUncertaintyBadge').textContent = `Residual Uncertainty: ~${minTestSet.expected_residual_uncertainty_pct}%`;
-        document.getElementById('minTestTotalCost').textContent = `â‚¹${minTestSet.total_estimated_cost_inr}`;
+        document.getElementById('minTestTotalCost').textContent = `₹${minTestSet.total_estimated_cost_inr}`;
         document.getElementById('radiationSafetyBadge').textContent = minTestSet.radiation_burden_profile.split('(')[0].trim();
 
         tableBody.innerHTML = (minTestSet.minimum_test_set || []).map(t => `
@@ -1004,7 +1160,7 @@ function displayStep4Results(res) {
                         ${t.priority_tier === 1 ? 'MANDATORY' : 'RECOMMENDED'}
                     </span>
                 </td>
-                <td class="fw-semibold">â‚¹${t.cost_inr}</td>
+                <td class="fw-semibold">₹${t.cost_inr}</td>
                 <td>
                     <span class="badge ${t.radiation_risk === 'None' ? 'bg-success text-white' : 'bg-warning text-dark'}">
                         ${t.radiation_risk}
@@ -1084,7 +1240,7 @@ async function loadDoctorsDropdown() {
         const select = document.getElementById('step4DoctorSelect');
         select.innerHTML = '<option value="">Choose a Doctor...</option>' + doctors.map(d => `
             <option value="${d.user_id}">
-                ${d.full_name} (${d.specialization}) â€” ${d.hospital_affiliation}
+                ${d.full_name} (${d.specialization}) — ${d.hospital_affiliation}
             </option>
         `).join('');
     } catch (err) {
@@ -1490,13 +1646,13 @@ function printPrescriptionDoc() {
                     <div>
                         <div class="hospital-title">APEX MULTISPECIALTY HOSPITAL</div>
                         <div class="hospital-sub">Department of Pulmonary Medicine &amp; Clinical Critical Care</div>
-                        <div class="hospital-sub">NABH Accredited â€¢ Reg No: APEX-HC/2026/IND-4921</div>
+                        <div class="hospital-sub">NABH Accredited • Reg No: APEX-HC/2026/IND-4921</div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 700; color: #1e3a8a; font-size: 14px;">${doctorName}</div>
                         <div style="font-size: 11px; color: #64748b;">${doctorSpec}</div>
                         <div style="font-size: 10px; color: #94a3b8;">Medical Council Reg: #KMC-74892</div>
-                        <span class="meta-badge">âœ“ Blockchain Integrity Verified</span>
+                        <span class="meta-badge">✓ Blockchain Integrity Verified</span>
                     </div>
                 </div>
 
@@ -1524,7 +1680,7 @@ function printPrescriptionDoc() {
                     <div class="diagnosis-val">${diagnosis}</div>
                 </div>
 
-                <div class="rx-symbol">â„ž Prescribed Medicines</div>
+                <div class="rx-symbol">℞ Prescribed Medicines</div>
 
                 <table>
                     <thead>
@@ -1554,7 +1710,7 @@ function printPrescriptionDoc() {
                         <div>
                             <div style="font-weight: 700; font-size: 11px; color: #1e293b;">Digital Rx Cryptographic Hash</div>
                             <div style="font-family: monospace; font-size: 9px; color: #64748b;">SHA256: 8f3a9d21c0...7b41e9</div>
-                            <div style="font-size: 9px; color: #10b981; font-weight: 600;">âœ“ Digitally Signed &amp; Safe for Pharmacy Dispensation</div>
+                            <div style="font-size: 9px; color: #10b981; font-weight: 600;">✓ Digitally Signed &amp; Safe for Pharmacy Dispensation</div>
                         </div>
                     </div>
                     <div class="sig-block">
@@ -2005,7 +2161,7 @@ async function simulateIoTReading(deviceType, triggerEmergency) {
     try {
         const res = await API.post(`/api/iot/simulate-stream?device_type=${deviceType}&trigger_emergency=${triggerEmergency}`);
         if (res.is_critical) {
-            alert(`âš ï¸ EMERGENCY ALERT: ${res.alert_message}`);
+            alert(`⚠️ EMERGENCY ALERT: ${res.alert_message}`);
         } else {
             alert(`Telemetry Synced: ${res.metric_type} = ${res.primary_value} ${res.unit} (${res.alert_severity})`);
         }
@@ -2067,7 +2223,7 @@ async function loadBlockchainTab() {
             container.innerHTML = ledgerRes.chain.map(b => `
                 <div class="block-card p-3 rounded-3 shadow-sm border ${b.record_type === 'GENESIS' ? 'genesis' : ''}">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="badge ${b.record_type === 'GENESIS' ? 'bg-success' : 'bg-primary'} fs-6">Block #${b.block_index} â€¢ ${b.record_type}</span>
+                        <span class="badge ${b.record_type === 'GENESIS' ? 'bg-success' : 'bg-primary'} fs-6">Block #${b.block_index} • ${b.record_type}</span>
                         <small class="text-muted"><i class="bi bi-clock me-1"></i>${new Date(b.timestamp).toLocaleString()}</small>
                     </div>
                     <div class="small mb-1">
@@ -2594,7 +2750,7 @@ async function loadDigitalHealthTimeline() {
                         <h6 class="fw-bold text-dark mb-0">${e.title}</h6>
                         <small class="text-muted"><i class="bi bi-clock me-1"></i>${new Date(e.recorded_at).toLocaleDateString()} ${new Date(e.recorded_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</small>
                     </div>
-                    <div class="badge bg-light text-dark border small my-1">${e.event_type.replace(/_/g, ' ')} â€¢ ${e.severity_level || 'Normal'}</div>
+                    <div class="badge bg-light text-dark border small my-1">${e.event_type.replace(/_/g, ' ')} • ${e.severity_level || 'Normal'}</div>
                     <p class="text-secondary small mb-1">${e.description}</p>
                     ${metricsHtml}
                 </div>
@@ -2620,20 +2776,20 @@ function renderLivePassportFields(p) {
         v.heart_rate || v.hr,
         v.spo2 ? ('SpO2 ' + v.spo2) : null,
         v.glucose
-    ].filter(Boolean).join(' Â· ') || 'Not recorded';
-    const physician = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' Â· ') || 'Not recorded';
+    ].filter(Boolean).join(' · ') || 'Not recorded';
+    const physician = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' · ') || 'Not recorded';
     return `
         <div class="row g-2">
-            <div class="col-md-4"><span class="text-muted d-block">Identity</span><strong>${p.patient_name || p.full_name || 'â€”'}</strong><div class="text-muted">${p.age || 'â€”'} Â· ${p.gender || 'â€”'}</div></div>
-            <div class="col-md-2"><span class="text-muted d-block">Blood group</span><span class="badge bg-danger fs-6">${p.blood_group || 'â€”'}</span></div>
-            <div class="col-md-6"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${p.severe_drug_allergies || p.drug_allergies || 'â€”'}</strong></div>
-            <div class="col-md-6"><span class="text-muted d-block">Critical conditions</span>${p.pre_existing_conditions || 'â€”'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Medications</span>${p.current_medications || 'â€”'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Emergency contact</span>${p.emergency_contact || p.emergency_contact_phone || 'â€”'}</div>
+            <div class="col-md-4"><span class="text-muted d-block">Identity</span><strong>${p.patient_name || p.full_name || '—'}</strong><div class="text-muted">${p.age || '—'} · ${p.gender || '—'}</div></div>
+            <div class="col-md-2"><span class="text-muted d-block">Blood group</span><span class="badge bg-danger fs-6">${p.blood_group || '—'}</span></div>
+            <div class="col-md-6"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${p.severe_drug_allergies || p.drug_allergies || '—'}</strong></div>
+            <div class="col-md-6"><span class="text-muted d-block">Critical conditions</span>${p.pre_existing_conditions || '—'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Medications</span>${p.current_medications || '—'}</div>
+            <div class="col-md-6"><span class="text-muted d-block">Emergency contact</span>${p.emergency_contact || p.emergency_contact_phone || '—'}</div>
             <div class="col-md-6"><span class="text-muted d-block">Physician</span>${physician}</div>
             <div class="col-12"><span class="text-muted d-block">Latest vitals</span>${vitals}</div>
         </div>
-        <div class="small text-muted mt-2"><i class="bi bi-lock me-1"></i>Read-only live view Â· generated ${p.timestamp || ''}</div>
+        <div class="small text-muted mt-2"><i class="bi bi-lock me-1"></i>Read-only live view · generated ${p.timestamp || ''}</div>
     `;
 }
 
@@ -2660,11 +2816,11 @@ async function loadPatientEmergencyAudit() {
         }
         tbody.innerHTML = events.map(ev => `
             <tr>
-                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : 'â€”'}</td>
-                <td class="small">${ev.accessor_name || 'â€”'}</td>
-                <td class="small">${ev.accessor_role || 'â€”'}</td>
-                <td class="small">${ev.purpose || 'â€”'}</td>
-                <td class="small">${ev.information_type || 'â€”'}</td>
+                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '—'}</td>
+                <td class="small">${ev.accessor_name || '—'}</td>
+                <td class="small">${ev.accessor_role || '—'}</td>
+                <td class="small">${ev.purpose || '—'}</td>
+                <td class="small">${ev.information_type || '—'}</td>
                 <td>${ev.is_emergency ? '<span class="badge bg-danger">Emergency</span>' : '<span class="badge bg-secondary">Routine</span>'}</td>
             </tr>
         `).join('');
@@ -2838,7 +2994,7 @@ async function importVitalsFromReports() {
         preview.innerHTML = `
             <div class="alert alert-success py-2 px-3 rounded-3 mb-0 small">
                 <i class="bi bi-check-circle-fill me-1"></i> Successfully imported from <strong>${latest.file_name}</strong> (Turnaround: ${new Date(latest.uploaded_at).toLocaleDateString()}):
-                <div class="mt-1">BP: ${extracted.blood_pressure} â€¢ HR: ${extracted.heart_rate} â€¢ SpO2: ${extracted.spo2} â€¢ Glucose: ${extracted.glucose}</div>
+                <div class="mt-1">BP: ${extracted.blood_pressure} • HR: ${extracted.heart_rate} • SpO2: ${extracted.spo2} • Glucose: ${extracted.glucose}</div>
             </div>
         `;
     } catch (err) {
@@ -3329,7 +3485,7 @@ async function revokeAccess(id, consentId) {
         if (consentId) {
             await API.post(`/api/blockchain/revoke-consent/${consentId}`);
         }
-        alert("âœ“ Access Revoked! An immutable revocation block has been recorded on your patient ledger.");
+        alert("✓ Access Revoked! An immutable revocation block has been recorded on your patient ledger.");
         await loadAccessHistoryTab();
         // Update dashboard metric
         const permEl = document.getElementById('dashMetricPermissions');
@@ -3946,7 +4102,7 @@ function handleDoctorConsentResponse(granted) {
 
     if (granted) {
         const duration = document.getElementById('reqConsentDuration').value;
-        alert(`âœ“ Access Granted to Dr. Sarah Sharma for ${duration} hours!\nA decentralized cryptographic bearer token has been generated and logged to your blockchain ledger.`);
+        alert(`✓ Access Granted to Dr. Sarah Sharma for ${duration} hours!\nA decentralized cryptographic bearer token has been generated and logged to your blockchain ledger.`);
         loadAccessHistoryTab();
     } else {
         alert("Access Request Declined. No medical records were shared with Dr. Sarah Sharma.");
@@ -4043,7 +4199,7 @@ loadDigitalHealthTimeline = async function() {
                         <div class="ps-3 border-start ms-2 mt-1">
                             <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('blood_test')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">â”œâ”€â”€ Sep 28: Blood Test (Metabolic & Troponin)</strong>
+                                    <strong class="text-dark">├── Sep 28: Blood Test (Metabolic & Troponin)</strong>
                                     <small class="text-muted d-block ps-4">Apex Diagnostic Laboratory &bull; Fasting Glucose 94 mg/dL</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
@@ -4051,7 +4207,7 @@ loadDigitalHealthTimeline = async function() {
 
                             <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('consultation')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">â”œâ”€â”€ Sep 21: Doctor Consultation (Dr. Kumar)</strong>
+                                    <strong class="text-dark">├── Sep 21: Doctor Consultation (Dr. Kumar)</strong>
                                     <small class="text-muted d-block ps-4">Apollo Super-Specialty &bull; Cardiovascular Evaluation</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
@@ -4059,7 +4215,7 @@ loadDigitalHealthTimeline = async function() {
 
                             <div class="py-2 px-2 bg-white rounded border mb-2 d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('prescription')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">â”œâ”€â”€ Aug 15: Prescription (Cardioprotective Regimen)</strong>
+                                    <strong class="text-dark">├── Aug 15: Prescription (Cardioprotective Regimen)</strong>
                                     <small class="text-muted d-block ps-4">MedPlus Central &bull; Metformin, Lisinopril, Aspirin</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>
@@ -4067,7 +4223,7 @@ loadDigitalHealthTimeline = async function() {
 
                             <div class="py-2 px-2 bg-white rounded border d-flex justify-content-between align-items-center cursor-pointer shadow-sm hover-shadow" onclick="showTimelineEntryModal('vaccine')" style="cursor: pointer;">
                                 <div>
-                                    <strong class="text-dark">â””â”€â”€ Jul 02: Vaccination (COVID-19 mRNA Booster)</strong>
+                                    <strong class="text-dark">└── Jul 02: Vaccination (COVID-19 mRNA Booster)</strong>
                                     <small class="text-muted d-block ps-4">Apex Immunization Center &bull; Batch BNT-8821</small>
                                 </div>
                                 <span class="badge bg-success"><i class="bi bi-patch-check-fill me-1"></i> Verified</span>

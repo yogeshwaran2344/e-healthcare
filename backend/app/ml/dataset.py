@@ -587,5 +587,28 @@ DISEASES_DB = {
         "severity": "Low to Moderate",
         "urgency_score": 40,
         "advice": "Mefenamic acid or prescribed NSAIDs at symptom onset, warm heating pad, and pelvic ultrasound to rule out underlying endometriosis or adenomyosis."
+    },
+    "Acute Viral Syndrome & Generalized Myalgia": {
+        "symptoms": [
+            "body_pain_fatigue", "body_muscle_aches", "fatigue", "general_weakness",
+            "mild_fever", "fever", "headache"
+        ],
+        "mandatory_tests": ["Complete Blood Count (CBC)"],
+        "recommended_tests": ["C-Reactive Protein (CRP) & ESR"],
+        "specialist": "General Physician",
+        "severity": "Low to Moderate",
+        "urgency_score": 35,
+        "advice": "Adequate rest, electrolyte hydration, paracetamol for myalgia/fever. Seek re-evaluation if fever spikes >102°F or persists beyond 3 days."
+    },
+    "Tension-Type Headache & Physical Strain": {
+        "symptoms": [
+            "headache", "severe_headache", "stiff_neck", "fatigue", "general_weakness"
+        ],
+        "mandatory_tests": [],
+        "recommended_tests": [],
+        "specialist": "General Physician / Neurologist",
+        "severity": "Low",
+        "urgency_score": 25,
+        "advice": "Ergonomic posture correction, stress reduction, adequate hydration and sleep, mild analgesic if needed."
     }
 }

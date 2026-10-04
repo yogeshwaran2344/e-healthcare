@@ -17,9 +17,14 @@ SYMPTOM_CLUSTERS = {
     "sputum": ["sputum", "phlegm", "mucus", "productive", "yellow", "green"],
     "breathlessness": ["breath", "breathlessness", "dyspnea", "shortness", "wheezing", "stridor"],
     "headache": ["headache", "migraine", "throbbing", "head", "cranial"],
+    "body_pain": ["body", "muscle", "aches", "ache", "myalgia", "fatigue", "tired", "weakness", "malaise"],
     "abdominal": ["abdominal", "stomach", "belly", "tummy", "epigastric", "cramps"],
     "jaundice": ["jaundice", "yellowing", "yellow", "sclera", "icterus"],
-    "vomiting": ["vomit", "vomiting", "emesis", "nausea", "queasy"]
+    "vomiting": ["vomit", "vomiting", "emesis", "nausea", "queasy"],
+    "hair_scalp": ["hair", "scalp", "fall", "shedding", "thinning", "dandruff", "alopecia", "flaking", "folliculitis"],
+    "acne_skin": ["acne", "pimples", "pimple", "breakout", "blackhead", "whitehead", "comedone", "sebum", "skin", "rash", "spots"],
+    "gynac_period": ["period", "periods", "menstrual", "cramps", "dysmenorrhea", "bleeding", "pcos", "pcod", "ovarian", "pelvic", "vaginal", "discharge"],
+    "urinary": ["urine", "urination", "dysuria", "burning", "frequency", "kidney", "flank", "hematuria"]
 }
 
 def match_symptom_token(input_s: str, target_s: str) -> float:
