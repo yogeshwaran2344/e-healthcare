@@ -229,18 +229,13 @@ function showSMSNotification(options) {
     }
 }
 
-// Global browser window.alert override to replace popups with phone-sized SMS OTP cards
+// Native browser alert
 const _nativeAlert = window.alert;
 window.alert = function(msg) {
     if (typeof msg !== 'string') {
         try { msg = JSON.stringify(msg); } catch (e) { msg = String(msg); }
     }
-    window.showSMSNotification({
-        title: "CONFIRMED NOTIFICATION",
-        message: msg,
-        channel: "sms",
-        duration: 7000
-    });
+    _nativeAlert(msg);
 };
 
 window.addEventListener('DOMContentLoaded', async () => {
