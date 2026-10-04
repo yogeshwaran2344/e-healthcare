@@ -42,8 +42,8 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
         clean_phone = clean_digits
 
     # 1. Meta WhatsApp Business Cloud API
-    meta_token = os.getenv("WHATSAPP_API_TOKEN")
-    meta_phone_id = os.getenv("WHATSAPP_PHONE_ID")
+    meta_token = os.getenv("WHATSAPP_API_TOKEN", "").strip()
+    meta_phone_id = os.getenv("WHATSAPP_PHONE_ID", "").strip()
     if meta_token and meta_phone_id:
         try:
             url = f"https://graph.facebook.com/v18.0/{meta_phone_id}/messages"
@@ -70,9 +70,9 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
             return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": str(e), "phone": clean_phone}
 
     # 2. Twilio WhatsApp API
-    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
-    twilio_auth = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+    twilio_auth = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "").strip() or "whatsapp:+17372508034"
     # Clean formatting
     twilio_from_clean = "".join(filter(lambda c: c.isdigit() or c == '+', twilio_from))
     if not twilio_from_clean.startswith('+'):
@@ -105,7 +105,12 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
             logger.error(f"Twilio Exception: {e}")
             return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": str(e), "phone": clean_phone}
 
-    return {"live_sent": False, "provider": "Direct Cloud Gateway Relay (Demo Mode)", "phone": clean_phone}
+    return {
+        "live_sent": False,
+        "provider": "Direct Cloud Gateway Relay (Demo Mode)",
+        "error": "TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN not detected in backend environment.",
+        "phone": clean_phone
+    }
 
 from ..database import get_db
 from ..models import (
@@ -801,6 +806,36 @@ def dispatch_automated_whatsapp(
         "channel": f"WhatsApp ({live_res.get('provider', 'Gateway')})",
         "delivered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({live_res.get('phone', recipient_phone)})."
+    }
+
+@router.post("/caregiver/test-live-whatsapp")
+def test_live_whatsapp_carrier(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Diagnostic testing endpoint: tests live carrier transmission and returns exact server credentials status & API responses.
+    """
+    target_phone = payload.get("phone", "+918618912755")
+    test_msg = f"🔔 E-HEALTHCARE LIVE VERIFICATION: WhatsApp gateway connection confirmed for patient {current_user.full_name or 'Rahul Verma'}. Time: {datetime.utcnow().strftime('%H:%M:%S UTC')}."
+    
+    twilio_sid_set = bool(os.getenv("TWILIO_ACCOUNT_SID"))
+    twilio_auth_set = bool(os.getenv("TWILIO_AUTH_TOKEN"))
+    twilio_from_val = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+
+    res = send_live_whatsapp_message(target_phone, test_msg)
+    
+    return {
+        "success": res.get("live_sent", False),
+        "provider": res.get("provider"),
+        "target_phone": res.get("phone", target_phone),
+        "error_details": res.get("error"),
+        "twilio_env_check": {
+            "TWILIO_ACCOUNT_SID_SET": twilio_sid_set,
+            "TWILIO_AUTH_TOKEN_SET": twilio_auth_set,
+            "TWILIO_WHATSAPP_FROM": twilio_from_val
+        },
+        "raw_response": res.get("response")
     }
 
 # ========================================================
