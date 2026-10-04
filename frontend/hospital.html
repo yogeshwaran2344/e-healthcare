@@ -12,13 +12,19 @@
 <body class="bg-light">
 
     <!-- Hospital Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark" href="/">
-                <span class="brand-icon bg-dark text-white"><i class="bi bi-building"></i></span>
-                <span>AI Health Navigator</span>
-                <span class="badge bg-dark-subtle text-dark border border-dark-subtle ms-2 fs-6">Hospital & Lab Portal</span>
-            </a>
+    <nav class="navbar navbar-expand navbar-custom sticky-top">
+        <div class="container-fluid px-3 px-md-4">
+            <div class="d-flex align-items-center">
+                <!-- 3-Lines Hamburger Menu Button -->
+                <button class="btn btn-dark btn-sm me-3 sidebar-toggle-btn shadow-sm" id="hospitalSidebarToggleBtn" onclick="toggleHospitalSidebar()" type="button" title="Open Hospital Features Menu (3 lines)">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-dark mb-0" href="/">
+                    <span class="brand-icon bg-dark text-white"><i class="bi bi-building"></i></span>
+                    <span class="d-none d-sm-inline">AI Health Navigator</span>
+                    <span class="badge bg-dark-subtle text-dark border border-dark-subtle ms-1 fs-6">Hospital & Lab Portal</span>
+                </a>
+            </div>
             <div class="ms-auto d-flex align-items-center gap-2">
                 <span class="badge bg-success-subtle text-success border border-success-subtle d-none d-md-inline">
                     <i class="bi bi-patch-check-fill"></i> Apex Multi-Specialty Trauma Center (NABH Accredited)
@@ -29,6 +35,56 @@
             </div>
         </div>
     </nav>
+
+    <!-- LEFT-HAND SLIDE-OUT OFFCANVAS DRAWER (Hospital Features Menu) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="hospitalSidebarOffcanvas" aria-labelledby="hospitalSidebarOffcanvasLabel" style="width: 300px; z-index: 1060;">
+        <div class="offcanvas-header bg-dark text-white py-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="brand-icon bg-white text-dark" style="width: 32px; height: 32px; font-size: 1rem;"><i class="bi bi-building"></i></span>
+                <h6 class="offcanvas-title fw-bold mb-0" id="hospitalSidebarOffcanvasLabel">Hospital Features</h6>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-2 bg-light">
+            <div class="sidebar-nav-list">
+                <ul class="nav nav-pills flex-column gap-1" id="hospitalSidebarTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link active" id="btn-hosp-upload" onclick="activateHospitalTab('hosp-upload')" type="button">
+                            <i class="bi bi-file-earmark-arrow-up-fill text-primary"></i>
+                            <span class="tab-label">1. Issue & Sign Records</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">Lab</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-hosp-intake" onclick="activateHospitalTab('hosp-intake')" type="button">
+                            <i class="bi bi-person-plus-fill text-success"></i>
+                            <span class="tab-label">2. Patient Intake</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-hosp-consent" onclick="activateHospitalTab('hosp-consent')" type="button">
+                            <i class="bi bi-key-fill text-warning"></i>
+                            <span class="tab-label">3. Request Consent</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-hosp-audit" onclick="activateHospitalTab('hosp-audit'); loadHospitalAudit();" type="button">
+                            <i class="bi bi-boxes text-info"></i>
+                            <span class="tab-label">4. Ledger Audit</span>
+                            <span class="badge bg-info-subtle text-info ms-auto">Chain</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-hosp-em-audit" onclick="activateHospitalTab('hosp-em-audit'); loadEmergencyAccessAudit();" type="button">
+                            <i class="bi bi-journal-text text-danger"></i>
+                            <span class="tab-label">5. Emergency Access Audit</span>
+                            <span class="badge bg-danger-subtle text-danger ms-auto">ER</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Container -->
     <div class="container py-4">
@@ -50,35 +106,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-4 border d-flex flex-wrap gap-2" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#hosp-upload">
-                    <i class="bi bi-file-earmark-arrow-up-fill text-primary me-1"></i> 1. Issue & Sign Medical Records
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#hosp-intake">
-                    <i class="bi bi-person-plus-fill text-success me-1"></i> 2. Patient Intake & Lookup
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#hosp-consent">
-                    <i class="bi bi-key-fill text-warning me-1"></i> 3. Request Patient Consent
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#hosp-audit" onclick="loadHospitalAudit()">
-                    <i class="bi bi-boxes text-info me-1"></i> 4. Institutional Ledger Audit
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#hosp-em-audit" onclick="loadEmergencyAccessAudit()">
-                    <i class="bi bi-journal-text text-danger me-1"></i> 5. Emergency Access Audit
-                </button>
-            </li>
-        </ul>
 
         <div class="tab-content">
 

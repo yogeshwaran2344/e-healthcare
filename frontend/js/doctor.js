@@ -4,6 +4,52 @@ let allConsultations = [];
 let currentDoctor = null;
 let activeConsultation = null;
 
+function toggleDoctorSidebar() {
+    const el = document.getElementById('doctorSidebarOffcanvas');
+    if (!el) return;
+    if (window.bootstrap && bootstrap.Offcanvas) {
+        const offcanvas = bootstrap.Offcanvas.getOrCreateInstance(el);
+        offcanvas.toggle();
+    } else {
+        el.classList.toggle('show');
+    }
+}
+
+function activateDoctorTab(tabId) {
+    if (!tabId) return;
+    const cleanId = tabId.replace(/^#/, '').trim();
+    
+    // 1. Hide all tab panes in .tab-content
+    const allPanes = document.querySelectorAll('.tab-content > .tab-pane');
+    allPanes.forEach(pane => {
+        pane.classList.remove('show', 'active');
+        pane.style.display = 'none';
+    });
+
+    // 2. Show the target pane
+    const targetPane = document.getElementById(cleanId);
+    if (targetPane) {
+        targetPane.classList.add('show', 'active');
+        targetPane.style.display = 'block';
+    }
+
+    // 3. Update active states in sidebar
+    const sidebarButtons = document.querySelectorAll('#doctorSidebarTabs .sidebar-tab-btn');
+    sidebarButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.id === `btn-${cleanId}` || (btn.getAttribute('onclick') || '').includes(cleanId)) {
+            btn.classList.add('active');
+        }
+    });
+
+    // 4. Close offcanvas
+    const offcanvasEl = document.getElementById('doctorSidebarOffcanvas');
+    if (offcanvasEl && window.bootstrap && bootstrap.Offcanvas) {
+        const instance = bootstrap.Offcanvas.getInstance(offcanvasEl);
+        if (instance) instance.hide();
+    }
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
     currentDoctor = API.getUser();
     if (!currentDoctor) {

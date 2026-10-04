@@ -12,13 +12,19 @@
 <body class="bg-light">
 
     <!-- Doctor Top Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary" href="/">
-                <span class="brand-icon"><i class="bi bi-hospital-fill"></i></span>
-                <span>AI Health Navigator</span>
-                <span class="badge bg-info-subtle text-info border border-info-subtle ms-2 fs-6">Clinician Portal</span>
-            </a>
+    <nav class="navbar navbar-expand navbar-custom sticky-top">
+        <div class="container-fluid px-3 px-md-4">
+            <div class="d-flex align-items-center">
+                <!-- 3-Lines Hamburger Menu Button -->
+                <button class="btn btn-primary btn-sm me-3 sidebar-toggle-btn shadow-sm" id="doctorSidebarToggleBtn" onclick="toggleDoctorSidebar()" type="button" title="Open Clinician Features Menu (3 lines)">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-primary mb-0" href="/">
+                    <span class="brand-icon"><i class="bi bi-hospital-fill"></i></span>
+                    <span class="d-none d-sm-inline">AI Health Navigator</span>
+                    <span class="badge bg-info-subtle text-info border border-info-subtle ms-1 fs-6">Clinician Portal</span>
+                </a>
+            </div>
             <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
                 <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#docBreakGlassModal">
                     <i class="bi bi-shield-slash-fill me-1"></i> 🚨 Break-Glass Override
@@ -41,6 +47,70 @@
             </div>
         </div>
     </nav>
+
+    <!-- LEFT-HAND SLIDE-OUT OFFCANVAS DRAWER (Doctor Features Menu) -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="doctorSidebarOffcanvas" aria-labelledby="doctorSidebarOffcanvasLabel" style="width: 300px; z-index: 1060;">
+        <div class="offcanvas-header bg-primary text-white py-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="brand-icon bg-white text-primary" style="width: 32px; height: 32px; font-size: 1rem;"><i class="bi bi-hospital-fill"></i></span>
+                <h6 class="offcanvas-title fw-bold mb-0" id="doctorSidebarOffcanvasLabel">Clinician Features</h6>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body p-2 bg-light">
+            <div class="sidebar-nav-list">
+                <ul class="nav nav-pills flex-column gap-1" id="doctorSidebarTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link active" id="btn-doc-handovers" onclick="activateDoctorTab('doc-handovers')" type="button">
+                            <i class="bi bi-file-medical-fill text-primary"></i>
+                            <span class="tab-label">1. SBAR Handovers</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">Queue</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-doc-telemetry" onclick="activateDoctorTab('doc-telemetry'); loadDoctorTelemetry();" type="button">
+                            <i class="bi bi-smartwatch text-info"></i>
+                            <span class="tab-label">2. IoT Vitals Telemetry</span>
+                            <span class="badge bg-info-subtle text-info ms-auto">Live</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-doc-er" onclick="activateDoctorTab('doc-er'); loadDoctorERFeed();" type="button">
+                            <i class="bi bi-hospital text-danger"></i>
+                            <span class="tab-label">3. Inbound ER Board</span>
+                            <span class="badge bg-danger-subtle text-danger ms-auto">ER</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-doc-queue" onclick="activateDoctorTab('doc-queue'); loadDoctorQueue();" type="button">
+                            <i class="bi bi-ticket-perforated-fill text-warning"></i>
+                            <span class="tab-label">4. OPD Queue Console</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-doc-blockchain" onclick="activateDoctorTab('doc-blockchain'); loadDoctorBlockchain();" type="button">
+                            <i class="bi bi-shield-lock-fill text-success"></i>
+                            <span class="tab-label">5. Blockchain Verifier</span>
+                            <span class="badge bg-success-subtle text-success ms-auto">Audit</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-doc-disagreements" onclick="activateDoctorTab('doc-disagreements'); loadDoctorDisagreements();" type="button">
+                            <i class="bi bi-arrows-angle-expand text-warning"></i>
+                            <span class="tab-label">6. AI Disagreements</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="sidebar-tab-btn nav-link" id="btn-doc-calibration" onclick="activateDoctorTab('doc-calibration'); loadDoctorCalibration();" type="button">
+                            <i class="bi bi-arrow-repeat text-primary"></i>
+                            <span class="tab-label">7. AI Calibration Loop</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">Learn</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="container py-4">
@@ -86,45 +156,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Doctor Navigation Tabs -->
-        <ul class="nav nav-pills bg-white p-2 rounded-4 shadow-sm mb-4 border d-flex flex-wrap gap-2" id="doctorTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-handovers">
-                    <i class="bi bi-file-medical-fill text-primary me-1"></i> 1. Clinical Handovers (SBAR)
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-telemetry" onclick="loadDoctorTelemetry()">
-                    <i class="bi bi-smartwatch text-info me-1"></i> 2. IoT Telemetry & Vitals Monitor
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-er" onclick="loadDoctorERFeed()">
-                    <i class="bi bi-hospital text-danger me-1"></i> 3. Inbound ER & Ambulance Board
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-queue" onclick="loadDoctorQueue()">
-                    <i class="bi bi-ticket-perforated-fill text-warning me-1"></i> 4. Live OPD Queue Console
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-blockchain" onclick="loadDoctorBlockchain()">
-                    <i class="bi bi-shield-lock-fill text-success me-1"></i> 5. Blockchain Audit Verifier
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-disagreements" onclick="loadDoctorDisagreements()">
-                    <i class="bi bi-arrows-angle-expand text-warning me-1"></i> 6. Clinician Disagreements
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-semibold py-2 px-3" data-bs-toggle="pill" data-bs-target="#doc-calibration" onclick="loadDoctorCalibration()">
-                    <i class="bi bi-arrow-repeat text-primary me-1"></i> 7. AI Calibration & Outcome Loop
-                </button>
-            </li>
-        </ul>
 
         <div class="tab-content">
             <!-- TAB 1: SBAR CLINICAL HANDOVERS (Existing) -->
