@@ -72,15 +72,18 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
     # 2. Twilio WhatsApp API
     twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
     twilio_auth = os.getenv("TWILIO_AUTH_TOKEN")
-    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
-    if not twilio_from.startswith("whatsapp:"):
-        twilio_from = f"whatsapp:{twilio_from}"
+    twilio_from = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+    # Clean formatting
+    twilio_from_clean = "".join(filter(lambda c: c.isdigit() or c == '+', twilio_from))
+    if not twilio_from_clean.startswith('+'):
+        twilio_from_clean = f"+{twilio_from_clean}"
+    twilio_from_formatted = f"whatsapp:{twilio_from_clean}"
 
     if twilio_sid and twilio_auth:
         try:
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             data = urllib.parse.urlencode({
-                "From": twilio_from,
+                "From": twilio_from_formatted,
                 "To": f"whatsapp:+{clean_phone}",
                 "Body": text
             }).encode("utf-8")
