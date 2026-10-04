@@ -930,9 +930,9 @@ def evaluate_caregiver_alert(
     """
     vitals = payload.get("vitals", {})
     missed_doses = int(payload.get("missed_doses_count", 0))
-    patient_name = current_user.full_name or "Rahul Verma"
-    caretaker_name = payload.get("caretaker_name", "Sarah Doe")
-    caretaker_phone = payload.get("caretaker_phone", "+91 98111 22233")
+    patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
+    caretaker_name = (payload.get("caretaker_name") or "Primary Caregiver").strip()
+    caretaker_phone = (payload.get("caretaker_phone") or "+918618912755").strip()
 
     result = evaluate_contextual_caregiver_alert(
         vitals=vitals,
@@ -1111,9 +1111,10 @@ def test_live_whatsapp_carrier(
     custom_from = payload.get("twilio_from", "").strip()
     custom_content_sid = payload.get("content_sid", "").strip()
 
+    patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
     test_msg = (
         f"🚨 EMERGENCY MEDICAL ALERT: Critical Vitals Telemetry Triggered\n\n"
-        f"Patient: {current_user.full_name or 'Rahul Verma'}\n"
+        f"Patient: {patient_name}\n"
         f"• Blood Pressure: 160/95 mmHg (Hypertensive Stage 2 Crisis)\n"
         f"• Heart Rate: 110 bpm (Tachycardia Alert)\n"
         f"• Oxygen SpO2: 94% (Suboptimal)\n\n"

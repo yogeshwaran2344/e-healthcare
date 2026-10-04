@@ -152,10 +152,10 @@
                                     <i class="bi bi-person-fill"></i>
                                 </div>
                                 <div>
-                                    <h5 class="fw-bold mb-0">John Doe</h5>
+                                    <h5 class="fw-bold mb-0" id="previewPassportHolderName">Rahul Verma</h5>
                                     <small class="text-muted">Universal Health ID: <code class="text-primary">HID-2026-98104</code></small>
                                     <div class="mt-1">
-                                        <span class="badge bg-danger-subtle text-danger me-1">Blood: O+</span>
+                                        <span class="badge bg-danger-subtle text-danger me-1" id="previewPassportBlood">Blood: O+</span>
                                         <span class="badge bg-success-subtle text-success">Passport: Active</span>
                                     </div>
                                 </div>
@@ -165,13 +165,13 @@
                                 <div class="col-6">
                                     <div class="p-2 border rounded-3 bg-light">
                                         <small class="text-muted d-block" style="font-size: 0.75rem;">ALLERGIES</small>
-                                        <strong class="text-danger small">Penicillin, Sulfa</strong>
+                                        <strong class="text-danger small" id="previewPassportAllergies">Penicillin, Sulfa</strong>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="p-2 border rounded-3 bg-light">
                                         <small class="text-muted d-block" style="font-size: 0.75rem;">MEDICATIONS</small>
-                                        <strong class="text-dark small">Metformin, Lisinopril</strong>
+                                        <strong class="text-dark small" id="previewPassportMeds">Amlodipine 5mg, Metformin</strong>
                                     </div>
                                 </div>
                             </div>
@@ -273,11 +273,11 @@
                             <!-- Patient Baseline Header -->
                             <div class="d-flex justify-content-between align-items-start border-bottom pb-3 mb-3">
                                 <div>
-                                    <h4 class="fw-bold mb-0">John Doe</h4>
-                                    <span class="text-muted small">Age: 35 | Gender: Male | DOB: 14 May 1991</span>
+                                    <h4 class="fw-bold mb-0" id="previewEmergencyHolderName">Rahul Verma</h4>
+                                    <span class="text-muted small" id="previewEmergencyHolderMeta">Age: 48 | Gender: Male | DOB: 15 Jun 1978</span>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-danger fs-6 px-3 py-2">Blood Group: O+</span>
+                                    <span class="badge bg-danger fs-6 px-3 py-2" id="previewEmergencyBlood">Blood Group: O+</span>
                                     <small class="d-block text-success mt-1"><i class="bi bi-check-circle-fill"></i> Verified by Apex Hospital</small>
                                 </div>
                             </div>
@@ -1234,6 +1234,38 @@
             }
         }
 
+        function hydrateIndexProfileData() {
+            let savedProf = null;
+            try {
+                const cached = localStorage.getItem('ehealth_saved_profile');
+                if (cached) savedProf = JSON.parse(cached);
+            } catch (_) {}
+            const user = API.getUser() || {};
+            const name = savedProf?.full_name || user?.full_name || 'Rahul Verma';
+            const blood = savedProf?.blood_group || user?.blood_group || 'O+';
+            const allergies = savedProf?.drug_allergies || 'Penicillin, Sulfa';
+            const meds = savedProf?.current_medications || 'Amlodipine 5mg, Metformin';
+            const age = savedProf?.age || user?.age || 48;
+            const gender = savedProf?.gender || user?.gender || 'Male';
+            const dob = savedProf?.date_of_birth || user?.date_of_birth || '15 Jun 1978';
+
+            const pNameEl = document.getElementById('previewPassportHolderName');
+            if (pNameEl) pNameEl.textContent = name;
+            const pBloodEl = document.getElementById('previewPassportBlood');
+            if (pBloodEl) pBloodEl.textContent = `Blood: ${blood}`;
+            const pAllergiesEl = document.getElementById('previewPassportAllergies');
+            if (pAllergiesEl) pAllergiesEl.textContent = allergies;
+            const pMedsEl = document.getElementById('previewPassportMeds');
+            if (pMedsEl) pMedsEl.textContent = meds;
+
+            const eNameEl = document.getElementById('previewEmergencyHolderName');
+            if (eNameEl) eNameEl.textContent = name;
+            const eMetaEl = document.getElementById('previewEmergencyHolderMeta');
+            if (eMetaEl) eMetaEl.textContent = `Age: ${age} | Gender: ${gender} | DOB: ${dob}`;
+            const eBloodEl = document.getElementById('previewEmergencyBlood');
+            if (eBloodEl) eBloodEl.textContent = `Blood Group: ${blood}`;
+        }
+
         // Initialize page
         window.addEventListener('DOMContentLoaded', () => {
             const user = API.getUser();
@@ -1245,6 +1277,7 @@
                     <button onclick="API.logout()" class="btn btn-outline-secondary btn-sm"><i class="bi bi-box-arrow-right"></i> Logout</button>
                 `;
             }
+            hydrateIndexProfileData();
             setEmergencyRole('first');
             loadDoctors();
         });

@@ -3353,9 +3353,11 @@ async function submitManualVitals(e) {
         const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
         const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
         const vitals = { hr, spo2, bp_sys: bpSys, bp_dia: bpDia, temp };
+        const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', {
             vitals,
             missed_doses_count: 0,
+            patient_name: pName,
             caretaker_name: cfg.caretakerName,
             caretaker_phone: cfg.caretakerPhone,
             twilio_sid: sid,
@@ -4527,8 +4529,10 @@ async function testLiveWhatsAppPing() {
         const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
         const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
         const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
+        const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
         const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', {
             phone: cleanPhoneDigits,
+            patient_name: pName,
             twilio_sid: sid,
             twilio_auth: auth,
             twilio_from: fromNum
