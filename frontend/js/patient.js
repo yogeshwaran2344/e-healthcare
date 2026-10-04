@@ -274,7 +274,7 @@ function showSMSNotification(options) {
     const cleanCaretakerPhone = (cfg.caretakerPhone || '+918618912755').replace(/[^0-9]/g, '');
     const cleanPtPhone = (cfg.patientWhatsapp || cfg.patientPhone || '+918618912755').replace(/[^0-9]/g, '');
     const waPhoneDigits = cleanCaretakerPhone.length === 10 ? ('91' + cleanCaretakerPhone) : cleanCaretakerPhone;
-    const waEncodedMsg = encodeURIComponent(`🚨 E-HEALTHCARE ALERT: ${title}\n\n${msg}${otp ? '\n\n🔐 Security OTP: ' + otp : ''}\n\n🏥 Patient Portal: https://e-healthcare-6rbc.onrender.com`);
+    const waEncodedMsg = encodeURIComponent(`🚨 EMERGENCY MEDICAL CARE ALERT: ${title}\n\n${msg}${otp ? '\n\n🔐 Verification OTP: ' + otp : ''}\n\n⚠️ Immediate Clinical Action: Check patient condition, ensure rest, and administer emergency assistance if needed.`);
     const waDirectUrl = `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${waEncodedMsg}`;
 
     // Directly trigger backend automated WhatsApp relay in the background

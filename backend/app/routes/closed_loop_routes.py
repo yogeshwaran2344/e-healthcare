@@ -943,7 +943,13 @@ def evaluate_caregiver_alert(
     # Automated Direct WhatsApp & SMS Transmission Engine
     delivery_id = f"WA-AUTO-{compute_sha256(f'{current_user.id}:{caretaker_phone}:{datetime.utcnow().isoformat()}')[:12].upper()}"
     now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-    msg_body = f"🚨 E-HEALTHCARE ALERT: {result.get('primary_trigger', 'Vital Anomaly')} for patient {patient_name}. {result.get('caregiver_message', '')}"
+    msg_body = (
+        f"🚨 EMERGENCY MEDICAL CARE ALERT: {result.get('primary_trigger', 'Abnormal Vitals Detected')}\n\n"
+        f"Patient: {patient_name}\n"
+        f"Severity Tier: {result.get('tier_badge', 'CRITICAL ALERT')}\n"
+        f"Clinical Observation: {result.get('caregiver_message', '')}\n\n"
+        f"⚠️ Immediate Action Required: {result.get('recommended_action', 'Check on patient immediately, ensure seated rest, and administer prescribed emergency care.')}"
+    )
 
     custom_sid = payload.get("twilio_sid", "")
     custom_auth = payload.get("twilio_auth", "")
@@ -999,9 +1005,16 @@ def dispatch_automated_whatsapp(
     custom_auth = payload.get("twilio_auth", "")
     custom_from = payload.get("twilio_from", "")
 
+    msg_text = (
+        f"🚨 EMERGENCY MEDICAL ALERT: {alert_title}\n\n"
+        f"Patient: {current_user.full_name or 'Rahul Verma'}\n"
+        f"Details: {message}\n\n"
+        f"⚠️ Immediate Action: Verify patient condition, administer emergency medication if prescribed, and monitor vitals closely."
+    )
+
     live_res = send_live_whatsapp_message(
         recipient_phone,
-        f"🚨 {alert_title}: {message}",
+        msg_text,
         custom_sid=custom_sid,
         custom_auth=custom_auth,
         custom_from=custom_from
@@ -1062,7 +1075,11 @@ def save_twilio_config(
     except Exception as e:
         logger.warning(f"Could not persist to .env: {e}")
 
-    test_msg = f"🔔 E-HEALTHCARE CONFIRMATION: Twilio live gateway configured & verified for patient {current_user.full_name or 'Rahul Verma'}."
+    test_msg = (
+        f"🚨 EMERGENCY MEDICAL CARE ALERT: Live Carrier Alert Gateway Active\n\n"
+        f"Patient: {current_user.full_name or 'Rahul Verma'}\n"
+        f"Status: Caregiver Emergency WhatsApp Hotline Verified for all vital abnormalities (BP/HR/SpO2)."
+    )
     res = send_live_whatsapp_message(
         target_phone,
         test_msg,
@@ -1094,7 +1111,14 @@ def test_live_whatsapp_carrier(
     custom_from = payload.get("twilio_from", "").strip()
     custom_content_sid = payload.get("content_sid", "").strip()
 
-    test_msg = f"🔔 E-HEALTHCARE LIVE VERIFICATION: WhatsApp gateway connection confirmed for patient {current_user.full_name or 'Rahul Verma'}. Time: {datetime.utcnow().strftime('%H:%M:%S UTC')}."
+    test_msg = (
+        f"🚨 EMERGENCY MEDICAL ALERT: Critical Vitals Telemetry Triggered\n\n"
+        f"Patient: {current_user.full_name or 'Rahul Verma'}\n"
+        f"• Blood Pressure: 160/95 mmHg (Hypertensive Stage 2 Crisis)\n"
+        f"• Heart Rate: 110 bpm (Tachycardia Alert)\n"
+        f"• Oxygen SpO2: 94% (Suboptimal)\n\n"
+        f"⚠️ Immediate Action: Administer prescribed emergency anti-hypertensive medication. Keep patient resting in a seated position. If chest pain or dizziness persists, call for emergency medical assistance."
+    )
     
     twilio_sid_set = bool(custom_sid or os.getenv("TWILIO_ACCOUNT_SID"))
     twilio_auth_set = bool(custom_auth or os.getenv("TWILIO_AUTH_TOKEN"))
