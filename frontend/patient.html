@@ -4270,13 +4270,61 @@
 
                         </div>
 
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+
+                            <h6 class="fw-bold small text-success mb-2 d-flex align-items-center justify-content-between">
+
+                                <span><i class="bi bi-whatsapp me-1"></i> Twilio WhatsApp Carrier Live Gateway</span>
+
+                                <span class="badge bg-success-subtle text-success small">Real-Time</span>
+
+                            </h6>
+
+                            <p class="text-muted small mb-2" style="font-size:0.75rem;">
+
+                                Connect your Twilio Sandbox to automatically send vital spike alerts &amp; SOS notifications directly to your mobile phone.
+
+                            </p>
+
+                            <div class="mb-2">
+
+                                <label class="form-label small fw-semibold">Twilio Account SID</label>
+
+                                <input type="text" id="modalTwilioSid" class="form-control form-control-sm font-monospace" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+
+                            </div>
+
+                            <div class="mb-2">
+
+                                <label class="form-label small fw-semibold">Twilio Auth Token</label>
+
+                                <input type="password" id="modalTwilioAuth" class="form-control form-control-sm font-monospace" placeholder="Your 32-character Twilio Auth Token">
+
+                            </div>
+
+                            <div class="mb-2">
+
+                                <label class="form-label small fw-semibold">Twilio WhatsApp Sender</label>
+
+                                <input type="text" id="modalTwilioFrom" class="form-control form-control-sm font-monospace" value="whatsapp:+17372508034" placeholder="whatsapp:+17372508034">
+
+                            </div>
+
+                            <button type="button" class="btn btn-outline-success btn-sm w-100 mt-1" onclick="saveAndTestTwilioGateway()">
+
+                                <i class="bi bi-send-check-fill me-1"></i> Test &amp; Verify Twilio Gateway Connection
+
+                            </button>
+
+                        </div>
+
                         <div class="d-flex justify-content-end gap-2 pt-2 border-top">
 
                             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
 
                             <button type="submit" class="btn btn-success btn-sm fw-semibold px-3">
 
-                                <i class="bi bi-check2-circle me-1"></i> Save &amp; Dispatch Test SMS
+                                <i class="bi bi-check2-circle me-1"></i> Save All Settings
 
                             </button>
 

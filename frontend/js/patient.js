@@ -66,27 +66,115 @@ function initContactSettings() {
 
 function openContactSettingsModal() {
     const cfg = getContactSettings();
-    document.getElementById('modalPatientPhone').value = cfg.patientPhone || cfg.patientWhatsapp || '';
-    document.getElementById('modalCaretakerName').value = cfg.caretakerName || '';
-    document.getElementById('modalCaretakerPhone').value = cfg.caretakerPhone || '';
-    document.getElementById('modalCaretakerRelation').value = cfg.caretakerRelation || 'Daughter / Primary Guardian';
+    document.getElementById('modalPatientPhone').value = cfg.patientPhone || cfg.patientWhatsapp || '+91 86189 12755';
+    document.getElementById('modalCaretakerName').value = cfg.caretakerName || 'Primary Caregiver';
+    document.getElementById('modalCaretakerPhone').value = cfg.caretakerPhone || '+91 86189 12755';
+    document.getElementById('modalCaretakerRelation').value = cfg.caretakerRelation || 'Emergency Contact / Guardian';
     document.getElementById('modalCaretakerDualAlert').checked = cfg.dualAlert !== false;
+    
+    if (document.getElementById('modalTwilioSid')) {
+        document.getElementById('modalTwilioSid').value = localStorage.getItem('ehealth_twilio_sid') || '';
+    }
+    if (document.getElementById('modalTwilioAuth')) {
+        document.getElementById('modalTwilioAuth').value = localStorage.getItem('ehealth_twilio_auth') || '';
+    }
+    if (document.getElementById('modalTwilioFrom')) {
+        document.getElementById('modalTwilioFrom').value = localStorage.getItem('ehealth_twilio_from') || 'whatsapp:+17372508034';
+    }
     bootstrap.Modal.getOrCreateInstance(document.getElementById('contactSettingsModal')).show();
+}
+
+async function saveAndTestTwilioGateway() {
+    const sid = document.getElementById('modalTwilioSid')?.value.trim();
+    const auth = document.getElementById('modalTwilioAuth')?.value.trim();
+    const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
+    const targetPhone = document.getElementById('modalCaretakerPhone')?.value.trim() || document.getElementById('modalPatientPhone')?.value.trim() || '+91 86189 12755';
+
+    if (!sid || !auth) {
+        alert("Please enter both your Twilio Account SID (starts with AC...) and Auth Token to test.");
+        return;
+    }
+
+    localStorage.setItem('ehealth_twilio_sid', sid);
+    localStorage.setItem('ehealth_twilio_auth', auth);
+    localStorage.setItem('ehealth_twilio_from', fromNum);
+
+    showSMSNotification({
+        title: "TESTING TWILIO GATEWAY...",
+        message: `Sending real-time handshake message to ${targetPhone} via Twilio API...`,
+        channel: "whatsapp",
+        duration: 5000
+    });
+
+    try {
+        const res = await API.post('/api/closed-loop/caregiver/save-twilio-config', {
+            account_sid: sid,
+            auth_token: auth,
+            from_number: fromNum,
+            phone: targetPhone
+        });
+
+        if (res.success) {
+            alert(`✅ TWILIO GATEWAY CONNECTED & VERIFIED!
+
+Live verification message dispatched to: ${res.target_phone}
+Provider: ${res.provider}
+
+Check WhatsApp on your phone now!`);
+            showSMSNotification({
+                title: "✅ LIVE WHATSAPP CONNECTED",
+                message: `Twilio gateway active! Messages verified and sending to ${res.target_phone}.`,
+                channel: "whatsapp",
+                duration: 10000
+            });
+        } else {
+            alert(`⚠️ Twilio API Handshake Result:
+
+Target: ${res.target_phone}
+Error: ${res.error_details || 'Could not verify Twilio API.'}
+
+Please check that Account SID and Auth Token are correct.`);
+        }
+    } catch (err) {
+        alert("Verification request failed: " + err.message);
+    }
 }
 
 function saveContactSettings(e) {
     if (e) e.preventDefault();
-    const pPhone = document.getElementById('modalPatientPhone').value.trim() || "+91 98765 43210";
+    const pPhone = document.getElementById('modalPatientPhone').value.trim() || "+91 86189 12755";
+    const cPhone = document.getElementById('modalCaretakerPhone').value.trim() || "+91 86189 12755";
+    const sid = document.getElementById('modalTwilioSid')?.value.trim() || '';
+    const auth = document.getElementById('modalTwilioAuth')?.value.trim() || '';
+    const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
+
+    if (sid) localStorage.setItem('ehealth_twilio_sid', sid);
+    if (auth) localStorage.setItem('ehealth_twilio_auth', auth);
+    if (fromNum) localStorage.setItem('ehealth_twilio_from', fromNum);
+
     const cfg = {
         patientPhone: pPhone,
         patientWhatsapp: pPhone,
-        caretakerName: document.getElementById('modalCaretakerName').value.trim() || "Sarah Doe",
-        caretakerPhone: document.getElementById('modalCaretakerPhone').value.trim() || "+91 98111 22233",
+        caretakerName: document.getElementById('modalCaretakerName').value.trim() || "Primary Caregiver",
+        caretakerPhone: cPhone,
         caretakerRelation: document.getElementById('modalCaretakerRelation').value,
-        dualAlert: document.getElementById('modalCaretakerDualAlert').checked
+        dualAlert: document.getElementById('modalCaretakerDualAlert').checked,
+        twilioSid: sid,
+        twilioAuth: auth,
+        twilioFrom: fromNum
     };
     localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
     initContactSettings();
+
+    // If Twilio credentials were entered, sync to backend
+    if (sid && auth) {
+        API.post('/api/closed-loop/caregiver/save-twilio-config', {
+            account_sid: sid,
+            auth_token: auth,
+            from_number: fromNum,
+            phone: cPhone
+        }).catch(() => {});
+    }
 
     // Sync into profile form if open
     const profPhone = document.getElementById('profPhone');
@@ -106,8 +194,8 @@ function saveContactSettings(e) {
 
     // Trigger verified SMS OTP card
     showSMSNotification({
-        title: "ROUTING VERIFIED & CONNECTED",
-        message: `Alert channels connected! Prescriptions & risk alerts will now be routed directly to ${cfg.patientPhone} and Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
+        title: "ROUTING & TWILIO SAVED",
+        message: `Alert channels configured! Prescriptions & vital spike alerts will now be routed directly to ${cfg.patientPhone} and Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
         channel: "whatsapp",
         otp: Math.floor(100000 + Math.random() * 900000).toString(),
         duration: 8000

@@ -30,11 +30,19 @@ def compute_sha256(data: str) -> str:
     """Computes standard SHA-256 hex digest for audit and delivery tracking."""
     return hashlib.sha256(str(data).encode("utf-8")).hexdigest()
 
-def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any]:
+from ..config import PROJECT_ROOT
+
+def send_live_whatsapp_message(
+    recipient_phone: str,
+    text: str,
+    custom_sid: str = "",
+    custom_auth: str = "",
+    custom_from: str = ""
+) -> Dict[str, Any]:
     """
     Attempts live transmission via:
     1. Meta WhatsApp Business Cloud API (if WHATSAPP_API_TOKEN and WHATSAPP_PHONE_ID are set)
-    2. Twilio WhatsApp API (if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set)
+    2. Twilio WhatsApp API (if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set or provided)
     3. Fallback Cloud Relay Gateway
     """
     clean_digits = "".join(filter(str.isdigit, str(recipient_phone)))
@@ -75,9 +83,9 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
             return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": str(e), "phone": clean_phone}
 
     # 2. Twilio WhatsApp API
-    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip().strip('"').strip("'")
-    twilio_auth = os.getenv("TWILIO_AUTH_TOKEN", "").strip().strip('"').strip("'")
-    twilio_from_raw = os.getenv("TWILIO_WHATSAPP_FROM", "").strip().strip('"').strip("'") or "+17372508034"
+    twilio_sid = (custom_sid or os.getenv("TWILIO_ACCOUNT_SID", "")).strip().strip('"').strip("'")
+    twilio_auth = (custom_auth or os.getenv("TWILIO_AUTH_TOKEN", "")).strip().strip('"').strip("'")
+    twilio_from_raw = (custom_from or os.getenv("TWILIO_WHATSAPP_FROM", "")).strip().strip('"').strip("'") or "+17372508034"
     
     # Clean from formatting
     twilio_from_digits = "".join(filter(str.isdigit, twilio_from_raw))
@@ -137,7 +145,7 @@ def send_live_whatsapp_message(recipient_phone: str, text: str) -> Dict[str, Any
     return {
         "live_sent": False,
         "provider": "Direct Cloud Gateway Relay (Demo Mode)",
-        "error": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are not set in the backend environment. Configure them in .env or Render Environment Variables to send real WhatsApp messages.",
+        "error": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are not set in the backend environment. Configure them in .env or Settings modal to send real WhatsApp messages.",
         "phone": clean_phone
     }
 
@@ -782,7 +790,17 @@ def evaluate_caregiver_alert(
     now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     msg_body = f"🚨 E-HEALTHCARE ALERT: {result.get('primary_trigger', 'Vital Anomaly')} for patient {patient_name}. {result.get('caregiver_message', '')}"
 
-    live_res = send_live_whatsapp_message(caretaker_phone, msg_body)
+    custom_sid = payload.get("twilio_sid", "")
+    custom_auth = payload.get("twilio_auth", "")
+    custom_from = payload.get("twilio_from", "")
+
+    live_res = send_live_whatsapp_message(
+        caretaker_phone,
+        msg_body,
+        custom_sid=custom_sid,
+        custom_auth=custom_auth,
+        custom_from=custom_from
+    )
 
     result["automated_whatsapp_dispatch"] = {
         "status": "DELIVERED" if live_res.get("live_sent") else "RELAYED",
@@ -822,7 +840,17 @@ def dispatch_automated_whatsapp(
     message = payload.get("message", "Vitals recorded.")
     delivery_id = f"WA-DIRECT-{compute_sha256(f'{current_user.id}:{recipient_phone}:{datetime.utcnow().isoformat()}')[:12].upper()}"
 
-    live_res = send_live_whatsapp_message(recipient_phone, f"🚨 {alert_title}: {message}")
+    custom_sid = payload.get("twilio_sid", "")
+    custom_auth = payload.get("twilio_auth", "")
+    custom_from = payload.get("twilio_from", "")
+
+    live_res = send_live_whatsapp_message(
+        recipient_phone,
+        f"🚨 {alert_title}: {message}",
+        custom_sid=custom_sid,
+        custom_auth=custom_auth,
+        custom_from=custom_from
+    )
 
     return {
         "status": "DELIVERED" if live_res.get("live_sent") else "RELAYED",
@@ -837,6 +865,61 @@ def dispatch_automated_whatsapp(
         "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({live_res.get('phone', recipient_phone)})."
     }
 
+@router.post("/caregiver/save-twilio-config")
+def save_twilio_config(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Saves Twilio WhatsApp credentials to the backend runtime and .env file.
+    Immediately dispatches a live verification handshake message to confirm delivery.
+    """
+    sid = payload.get("account_sid", "").strip().strip('"').strip("'")
+    auth = payload.get("auth_token", "").strip().strip('"').strip("'")
+    from_num = payload.get("from_number", "").strip().strip('"').strip("'") or "+17372508034"
+    target_phone = payload.get("phone", "+918618912755").strip()
+
+    if sid:
+        os.environ["TWILIO_ACCOUNT_SID"] = sid
+    if auth:
+        os.environ["TWILIO_AUTH_TOKEN"] = auth
+    if from_num:
+        os.environ["TWILIO_WHATSAPP_FROM"] = from_num
+
+    # Write to project root .env
+    env_file = os.path.join(PROJECT_ROOT, ".env")
+    try:
+        existing_lines = []
+        if os.path.exists(env_file):
+            with open(env_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if not any(line.strip().startswith(k) for k in ["TWILIO_ACCOUNT_SID=", "TWILIO_AUTH_TOKEN=", "TWILIO_WHATSAPP_FROM="]):
+                        existing_lines.append(line)
+        if sid: existing_lines.append(f'TWILIO_ACCOUNT_SID="{sid}"\n')
+        if auth: existing_lines.append(f'TWILIO_AUTH_TOKEN="{auth}"\n')
+        if from_num: existing_lines.append(f'TWILIO_WHATSAPP_FROM="{from_num}"\n')
+        with open(env_file, "w", encoding="utf-8") as f:
+            f.writelines(existing_lines)
+    except Exception as e:
+        logger.warning(f"Could not persist to .env: {e}")
+
+    test_msg = f"🔔 E-HEALTHCARE CONFIRMATION: Twilio live gateway configured & verified for patient {current_user.full_name or 'Rahul Verma'}."
+    res = send_live_whatsapp_message(
+        target_phone,
+        test_msg,
+        custom_sid=sid,
+        custom_auth=auth,
+        custom_from=from_num
+    )
+
+    return {
+        "success": res.get("live_sent", False),
+        "provider": res.get("provider"),
+        "target_phone": res.get("phone", target_phone),
+        "error_details": res.get("error"),
+        "raw_response": res.get("response")
+    }
+
 @router.post("/caregiver/test-live-whatsapp")
 def test_live_whatsapp_carrier(
     payload: Dict[str, Any] = Body(...),
@@ -846,13 +929,23 @@ def test_live_whatsapp_carrier(
     Diagnostic testing endpoint: tests live carrier transmission and returns exact server credentials status & API responses.
     """
     target_phone = payload.get("phone", "+918618912755")
+    custom_sid = payload.get("twilio_sid", "").strip()
+    custom_auth = payload.get("twilio_auth", "").strip()
+    custom_from = payload.get("twilio_from", "").strip()
+
     test_msg = f"🔔 E-HEALTHCARE LIVE VERIFICATION: WhatsApp gateway connection confirmed for patient {current_user.full_name or 'Rahul Verma'}. Time: {datetime.utcnow().strftime('%H:%M:%S UTC')}."
     
-    twilio_sid_set = bool(os.getenv("TWILIO_ACCOUNT_SID"))
-    twilio_auth_set = bool(os.getenv("TWILIO_AUTH_TOKEN"))
-    twilio_from_val = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
+    twilio_sid_set = bool(custom_sid or os.getenv("TWILIO_ACCOUNT_SID"))
+    twilio_auth_set = bool(custom_auth or os.getenv("TWILIO_AUTH_TOKEN"))
+    twilio_from_val = custom_from or os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+17372508034")
 
-    res = send_live_whatsapp_message(target_phone, test_msg)
+    res = send_live_whatsapp_message(
+        target_phone,
+        test_msg,
+        custom_sid=custom_sid,
+        custom_auth=custom_auth,
+        custom_from=custom_from
+    )
     
     return {
         "success": res.get("live_sent", False),
