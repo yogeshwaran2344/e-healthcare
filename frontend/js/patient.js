@@ -276,11 +276,17 @@ function showSMSNotification(options) {
     // Directly trigger backend automated WhatsApp relay in the background
     if (channel === 'whatsapp' || options.caretakerAlert) {
         try {
+            const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
+            const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
+            const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
             API.post('/api/closed-loop/caregiver/dispatch-automated-whatsapp', {
                 recipient_name: cfg.caretakerName,
                 recipient_phone: cfg.caretakerPhone,
                 title: title,
-                message: msg
+                message: msg,
+                twilio_sid: sid,
+                twilio_auth: auth,
+                twilio_from: fromNum
             }).catch(() => {});
         } catch (_) {}
     }
@@ -4504,7 +4510,15 @@ async function testLiveWhatsAppPing() {
     });
 
     try {
-        const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', { phone });
+        const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
+        const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
+        const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
+        const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', {
+            phone,
+            twilio_sid: sid,
+            twilio_auth: auth,
+            twilio_from: fromNum
+        });
         if (res.success) {
             alert(`✅ LIVE WHATSAPP SENT!\n\nDelivered to: ${res.target_phone}\nGateway: ${res.provider}\nTwilio SID: ${res.raw_response?.sid || 'Sent'}\nStatus: Message successfully transmitted.\n\nCheck WhatsApp on ${res.target_phone} now!`);
             showSMSNotification({
