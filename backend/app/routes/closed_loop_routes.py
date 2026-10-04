@@ -32,17 +32,45 @@ def compute_sha256(data: str) -> str:
 
 from ..config import PROJECT_ROOT
 
+def get_twilio_content_templates(twilio_sid: str, twilio_auth: str) -> List[str]:
+    """Auto-discovers active Content Template SIDs (HX...) from Twilio Content API."""
+    sids = []
+    auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
+    b64_auth = base64.b64encode(auth_str).decode("ascii")
+    headers = {
+        "Authorization": f"Basic {b64_auth}",
+        "User-Agent": "E-Healthcare-Platform/2026"
+    }
+    endpoints = [
+        "https://content.twilio.com/v1/Content",
+        "https://content.twilio.com/v2/ContentAndApprovals"
+    ]
+    for url in endpoints:
+        try:
+            req = urllib.request.Request(url, headers=headers, method="GET")
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                contents = res_data.get("contents", [])
+                for item in contents:
+                    sid_val = item.get("sid")
+                    if sid_val and sid_val.startswith("HX") and sid_val not in sids:
+                        sids.append(sid_val)
+        except Exception as e:
+            logger.debug(f"Twilio template discovery at {url}: {e}")
+    return sids
+
 def send_live_whatsapp_message(
     recipient_phone: str,
     text: str,
     custom_sid: str = "",
     custom_auth: str = "",
-    custom_from: str = ""
+    custom_from: str = "",
+    custom_content_sid: str = ""
 ) -> Dict[str, Any]:
     """
     Attempts live transmission via:
     1. Meta WhatsApp Business Cloud API (if WHATSAPP_API_TOKEN and WHATSAPP_PHONE_ID are set)
-    2. Twilio WhatsApp API (if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are set or provided)
+    2. Twilio WhatsApp API (supports Freeform body and Content Template SID fallback for Error 21654)
     3. Fallback Cloud Relay Gateway
     """
     clean_digits = "".join(filter(str.isdigit, str(recipient_phone)))
@@ -86,6 +114,7 @@ def send_live_whatsapp_message(
     twilio_sid = (custom_sid or os.getenv("TWILIO_ACCOUNT_SID", "")).strip().strip('"').strip("'")
     twilio_auth = (custom_auth or os.getenv("TWILIO_AUTH_TOKEN", "")).strip().strip('"').strip("'")
     twilio_from_raw = (custom_from or os.getenv("TWILIO_WHATSAPP_FROM", "")).strip().strip('"').strip("'") or "+17372508034"
+    content_sid_val = (custom_content_sid or os.getenv("TWILIO_CONTENT_SID", "")).strip().strip('"').strip("'")
     
     # Clean from formatting
     twilio_from_digits = "".join(filter(str.isdigit, twilio_from_raw))
@@ -108,6 +137,33 @@ def send_live_whatsapp_message(
         }
         url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
 
+        # Attempt A: If ContentSid is explicitly provided, send via Template
+        if content_sid_val:
+            for sender_num in candidate_senders:
+                try:
+                    post_fields = {
+                        "From": sender_num,
+                        "To": f"whatsapp:+{clean_phone}",
+                        "ContentSid": content_sid_val,
+                        "ContentVariables": json.dumps({"1": "Rahul Verma", "2": text[:100], "3": "Emergency Alert"})
+                    }
+                    data = urllib.parse.urlencode(post_fields).encode("utf-8")
+                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        res_body = response.read().decode("utf-8")
+                        res_data = json.loads(res_body)
+                        return {
+                            "live_sent": True,
+                            "provider": f"Twilio WhatsApp Template ({content_sid_val})",
+                            "sid": res_data.get("sid"),
+                            "status": res_data.get("status"),
+                            "response": res_data,
+                            "phone": clean_phone
+                        }
+                except Exception as e:
+                    last_error = f"Template ({content_sid_val}) failed: {e}"
+
+        # Attempt B: Standard Body message across candidate senders
         for sender_num in candidate_senders:
             try:
                 post_fields = {
@@ -133,7 +189,35 @@ def send_live_whatsapp_message(
                 logger.error(f"Twilio API Error ({e.code}) from {sender_num}: {err_body}")
                 try:
                     parsed_err = json.loads(err_body)
-                    last_error = f"HTTP {e.code} ({parsed_err.get('message', err_body)}) [Twilio Code: {parsed_err.get('code', 'N/A')}] (Sender: {sender_num})"
+                    err_code = parsed_err.get("code")
+                    # If error is 21654 (ContentSid Required), attempt automated template resolution
+                    if str(err_code) == "21654" or "ContentSid" in err_body:
+                        discovered_sids = get_twilio_content_templates(twilio_sid, twilio_auth)
+                        for tmpl_sid in discovered_sids:
+                            try:
+                                t_fields = {
+                                    "From": sender_num,
+                                    "To": f"whatsapp:+{clean_phone}",
+                                    "ContentSid": tmpl_sid,
+                                    "ContentVariables": json.dumps({"1": "Rahul Verma", "2": text[:100], "3": "Critical Alert"})
+                                }
+                                t_data = urllib.parse.urlencode(t_fields).encode("utf-8")
+                                t_req = urllib.request.Request(url, data=t_data, headers=headers, method="POST")
+                                with urllib.request.urlopen(t_req, timeout=10) as t_res:
+                                    t_body = t_res.read().decode("utf-8")
+                                    t_data_res = json.loads(t_body)
+                                    return {
+                                        "live_sent": True,
+                                        "provider": f"Twilio WhatsApp Template ({tmpl_sid})",
+                                        "sid": t_data_res.get("sid"),
+                                        "status": t_data_res.get("status"),
+                                        "response": t_data_res,
+                                        "phone": clean_phone
+                                    }
+                            except Exception as tmpl_e:
+                                logger.warning(f"Failed template attempt {tmpl_sid}: {tmpl_e}")
+                    
+                    last_error = f"HTTP {e.code} ({parsed_err.get('message', err_body)}) [Twilio Code: {err_code}] (Sender: {sender_num})"
                 except Exception:
                     last_error = f"HTTP {e.code}: {err_body} (Sender: {sender_num})"
             except Exception as e:
@@ -877,6 +961,7 @@ def save_twilio_config(
     sid = payload.get("account_sid", "").strip().strip('"').strip("'")
     auth = payload.get("auth_token", "").strip().strip('"').strip("'")
     from_num = payload.get("from_number", "").strip().strip('"').strip("'") or "+17372508034"
+    content_sid = payload.get("content_sid", "").strip().strip('"').strip("'")
     target_phone = payload.get("phone", "+918618912755").strip()
 
     if sid:
@@ -885,6 +970,8 @@ def save_twilio_config(
         os.environ["TWILIO_AUTH_TOKEN"] = auth
     if from_num:
         os.environ["TWILIO_WHATSAPP_FROM"] = from_num
+    if content_sid:
+        os.environ["TWILIO_CONTENT_SID"] = content_sid
 
     # Write to project root .env
     env_file = os.path.join(PROJECT_ROOT, ".env")
@@ -893,11 +980,12 @@ def save_twilio_config(
         if os.path.exists(env_file):
             with open(env_file, "r", encoding="utf-8") as f:
                 for line in f:
-                    if not any(line.strip().startswith(k) for k in ["TWILIO_ACCOUNT_SID=", "TWILIO_AUTH_TOKEN=", "TWILIO_WHATSAPP_FROM="]):
+                    if not any(line.strip().startswith(k) for k in ["TWILIO_ACCOUNT_SID=", "TWILIO_AUTH_TOKEN=", "TWILIO_WHATSAPP_FROM=", "TWILIO_CONTENT_SID="]):
                         existing_lines.append(line)
         if sid: existing_lines.append(f'TWILIO_ACCOUNT_SID="{sid}"\n')
         if auth: existing_lines.append(f'TWILIO_AUTH_TOKEN="{auth}"\n')
         if from_num: existing_lines.append(f'TWILIO_WHATSAPP_FROM="{from_num}"\n')
+        if content_sid: existing_lines.append(f'TWILIO_CONTENT_SID="{content_sid}"\n')
         with open(env_file, "w", encoding="utf-8") as f:
             f.writelines(existing_lines)
     except Exception as e:
@@ -909,7 +997,8 @@ def save_twilio_config(
         test_msg,
         custom_sid=sid,
         custom_auth=auth,
-        custom_from=from_num
+        custom_from=from_num,
+        custom_content_sid=content_sid
     )
 
     return {
@@ -932,6 +1021,7 @@ def test_live_whatsapp_carrier(
     custom_sid = payload.get("twilio_sid", "").strip()
     custom_auth = payload.get("twilio_auth", "").strip()
     custom_from = payload.get("twilio_from", "").strip()
+    custom_content_sid = payload.get("content_sid", "").strip()
 
     test_msg = f"🔔 E-HEALTHCARE LIVE VERIFICATION: WhatsApp gateway connection confirmed for patient {current_user.full_name or 'Rahul Verma'}. Time: {datetime.utcnow().strftime('%H:%M:%S UTC')}."
     
@@ -944,7 +1034,8 @@ def test_live_whatsapp_carrier(
         test_msg,
         custom_sid=custom_sid,
         custom_auth=custom_auth,
-        custom_from=custom_from
+        custom_from=custom_from,
+        custom_content_sid=custom_content_sid
     )
     
     return {

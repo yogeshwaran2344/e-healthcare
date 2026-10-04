@@ -81,6 +81,9 @@ function openContactSettingsModal() {
     if (document.getElementById('modalTwilioFrom')) {
         document.getElementById('modalTwilioFrom').value = localStorage.getItem('ehealth_twilio_from') || 'whatsapp:+17372508034';
     }
+    if (document.getElementById('modalTwilioContentSid')) {
+        document.getElementById('modalTwilioContentSid').value = localStorage.getItem('ehealth_twilio_content_sid') || '';
+    }
     bootstrap.Modal.getOrCreateInstance(document.getElementById('contactSettingsModal')).show();
 }
 
@@ -88,6 +91,7 @@ async function saveAndTestTwilioGateway() {
     const sid = document.getElementById('modalTwilioSid')?.value.trim();
     const auth = document.getElementById('modalTwilioAuth')?.value.trim();
     const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
+    const contentSid = document.getElementById('modalTwilioContentSid')?.value.trim() || '';
     const targetPhone = document.getElementById('modalCaretakerPhone')?.value.trim() || document.getElementById('modalPatientPhone')?.value.trim() || '+91 86189 12755';
 
     if (!sid || !auth) {
@@ -98,6 +102,7 @@ async function saveAndTestTwilioGateway() {
     localStorage.setItem('ehealth_twilio_sid', sid);
     localStorage.setItem('ehealth_twilio_auth', auth);
     localStorage.setItem('ehealth_twilio_from', fromNum);
+    if (contentSid) localStorage.setItem('ehealth_twilio_content_sid', contentSid);
 
     showSMSNotification({
         title: "TESTING TWILIO GATEWAY...",
@@ -111,6 +116,7 @@ async function saveAndTestTwilioGateway() {
             account_sid: sid,
             auth_token: auth,
             from_number: fromNum,
+            content_sid: contentSid,
             phone: targetPhone
         });
 
