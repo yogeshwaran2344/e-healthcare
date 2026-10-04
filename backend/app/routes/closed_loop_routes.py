@@ -226,32 +226,44 @@ def send_live_whatsapp_message(
         # 3. If Twilio requires ContentSid (Error 21654), resolve template and send cleanly
         err_body_str = str(res_body.get("body", ""))
         if "21654" in err_body_str or "ContentSid" in err_body_str:
-            time.sleep(1.0)
+            time.sleep(0.5)
             templates = get_twilio_content_templates(twilio_sid, twilio_auth)
-            target_tmpl = templates[0] if templates else create_twilio_content_template(twilio_sid, twilio_auth)
-            if not target_tmpl:
-                target_tmpl = "HXb5b62575e6e4ff6129ad7c8efe1f983e"
-            
-            res_tmpl = execute_twilio_post({
-                "From": primary_sender,
-                "To": f"whatsapp:+{clean_phone}",
-                "ContentSid": target_tmpl,
-                "ContentVariables": json.dumps({"1": "Rahul Verma", "2": text[:80]})
-            })
-            if res_tmpl.get("success"):
-                res_data = res_tmpl["data"]
-                return {
-                    "live_sent": True,
-                    "provider": f"Twilio WhatsApp Template ({target_tmpl})",
-                    "sid": res_data.get("sid"),
-                    "status": res_data.get("status"),
-                    "response": res_data,
-                    "phone": clean_phone
-                }
+            candidate_templates = list(templates)
+            if "HXb5b62575e6e4ff6129ad7c8efe1f983e" not in candidate_templates:
+                candidate_templates.append("HXb5b62575e6e4ff6129ad7c8efe1f983e")
+            auto_tmpl = create_twilio_content_template(twilio_sid, twilio_auth)
+            if auto_tmpl and auto_tmpl not in candidate_templates:
+                candidate_templates.insert(0, auto_tmpl)
 
-        # 4. Fallback attempt on standard sandbox sender if primary failed
+            for tmpl_id in candidate_templates:
+                # Try different variable combinations
+                var_payloads = [
+                    {"1": "Rahul Verma", "2": text[:60]},
+                    {"1": "12/1", "2": "3pm"},
+                    {"1": text[:30]}
+                ]
+                for var_dict in var_payloads:
+                    res_tmpl = execute_twilio_post({
+                        "From": primary_sender,
+                        "To": f"whatsapp:+{clean_phone}",
+                        "ContentSid": tmpl_id,
+                        "ContentVariables": json.dumps(var_dict)
+                    })
+                    if res_tmpl.get("success"):
+                        res_data = res_tmpl["data"]
+                        return {
+                            "live_sent": True,
+                            "provider": f"Twilio WhatsApp Template ({tmpl_id})",
+                            "sid": res_data.get("sid"),
+                            "status": res_data.get("status"),
+                            "response": res_data,
+                            "phone": clean_phone
+                        }
+                    time.sleep(0.3)
+
+        # 4. Fallback attempt on standard sandbox sender (+14155238886)
         if fallback_sender:
-            time.sleep(1.0)
+            time.sleep(0.5)
             res_fb = execute_twilio_post({
                 "From": fallback_sender,
                 "To": f"whatsapp:+{clean_phone}",
@@ -270,9 +282,18 @@ def send_live_whatsapp_message(
 
         try:
             parsed = json.loads(err_body_str)
-            err_msg = f"HTTP {res_body.get('code', 400)}: {parsed.get('message', err_body_str)}"
+            raw_msg = parsed.get("message", err_body_str)
         except Exception:
-            err_msg = f"HTTP {res_body.get('code', 400)}: {err_body_str}"
+            raw_msg = err_body_str
+
+        if "21654" in raw_msg or "ContentSid" in raw_msg:
+            err_msg = (
+                "HTTP 400: ContentSid Required (24-hr session closed). "
+                "👉 To enable direct WhatsApp messages, send a quick message (e.g. 'Hi' or your Sandbox join phrase) "
+                f"from your WhatsApp (+{clean_phone}) to {primary_sender.replace('whatsapp:', '')}."
+            )
+        else:
+            err_msg = f"HTTP {res_body.get('code', 400)}: {raw_msg}"
 
         return {"live_sent": False, "provider": f"Twilio WhatsApp API ({primary_sender})", "error": err_msg, "phone": clean_phone}
 
