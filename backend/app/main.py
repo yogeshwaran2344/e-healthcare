@@ -28,6 +28,22 @@ from .routes import (
 # Initialize database tables
 Base.metadata.create_all(bind=engine)
 
+def auto_migrate():
+    """Ensures newly added columns are automatically migrated into existing database tables."""
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            # Check users table columns
+            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            col_names = [r[1] for r in res]
+            if "date_of_birth" not in col_names and len(col_names) > 0:
+                conn.execute(text("ALTER TABLE users ADD COLUMN date_of_birth VARCHAR(30)"))
+                conn.commit()
+    except Exception as e:
+        print(f"Auto-migration notice: {e}")
+
+auto_migrate()
+
 app = FastAPI(
     title="AI Personal Health Navigator & Multimodal Triage System",
     description="Adaptive AI health triage, IoT vitals telemetry, blockchain health ledger, predictive care, indoor hospital navigation, emergency response, and community preventive health system.",
