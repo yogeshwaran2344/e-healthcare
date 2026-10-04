@@ -15,6 +15,7 @@ class User(Base):
     
     # Personal Health Profile (Context)
     age = Column(Integer, nullable=True)
+    date_of_birth = Column(String(30), nullable=True)  # e.g., "1998-05-24"
     gender = Column(String(20), nullable=True)
     blood_group = Column(String(10), nullable=True)
     pre_existing_conditions = Column(Text, nullable=True)  # Comma-separated or JSON: "Diabetes Type 2, Hypertension"

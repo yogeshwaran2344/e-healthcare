@@ -10,6 +10,7 @@ class UserRegister(BaseModel):
     role: str = "patient"  # "patient" or "doctor"
     phone: Optional[str] = None
     age: Optional[int] = None
+    date_of_birth: Optional[str] = None
     gender: Optional[str] = None
     blood_group: Optional[str] = None
     pre_existing_conditions: Optional[str] = None
@@ -29,6 +30,7 @@ class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
     age: Optional[int] = None
+    date_of_birth: Optional[str] = None
     gender: Optional[str] = None
     blood_group: Optional[str] = None
     pre_existing_conditions: Optional[str] = None
@@ -42,6 +44,7 @@ class UserOut(BaseModel):
     role: str
     phone: Optional[str] = None
     age: Optional[int] = None
+    date_of_birth: Optional[str] = None
     gender: Optional[str] = None
     blood_group: Optional[str] = None
     pre_existing_conditions: Optional[str] = None

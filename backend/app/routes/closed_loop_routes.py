@@ -142,6 +142,7 @@ def send_live_whatsapp_message(
             return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": str(e), "phone": clean_phone}
 
     # 2. Twilio WhatsApp API
+    import time
     twilio_sid = (custom_sid or os.getenv("TWILIO_ACCOUNT_SID", "")).strip().strip('"').strip("'")
     twilio_auth = (custom_auth or os.getenv("TWILIO_AUTH_TOKEN", "")).strip().strip('"').strip("'")
     twilio_from_raw = (custom_from or os.getenv("TWILIO_WHATSAPP_FROM", "")).strip().strip('"').strip("'") or "+17372508034"
@@ -152,13 +153,10 @@ def send_live_whatsapp_message(
     if not twilio_from_digits:
         twilio_from_digits = "17372508034"
     
-    candidate_senders = [f"whatsapp:+{twilio_from_digits}"]
-    # Standard Twilio sandbox fallback if not already the primary
-    if twilio_from_digits != "14155238886":
-        candidate_senders.append("whatsapp:+14155238886")
+    primary_sender = f"whatsapp:+{twilio_from_digits}"
+    fallback_sender = "whatsapp:+14155238886" if twilio_from_digits != "14155238886" else None
 
     if twilio_sid and twilio_auth:
-        last_error = ""
         auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
         b64_auth = base64.b64encode(auth_str).decode("ascii")
         headers = {
@@ -168,111 +166,115 @@ def send_live_whatsapp_message(
         }
         url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
 
-        # Helper function to attempt template dispatch
-        def try_template_dispatch(tmpl_sid: str) -> Optional[Dict[str, Any]]:
-            var_payloads = [
-                json.dumps({"1": "Rahul Verma", "2": text[:80]}),
-                json.dumps({"1": text[:80], "2": "E-Healthcare"}),
-                json.dumps({"1": text[:100]}),
-                json.dumps({"1": "12/1", "2": "3pm"}) # Fallback appointment template default
-            ]
-            for s_num in candidate_senders:
-                for v_payload in var_payloads:
-                    try:
-                        p_fields = {
-                            "From": s_num,
-                            "To": f"whatsapp:+{clean_phone}",
-                            "ContentSid": tmpl_sid,
-                            "ContentVariables": v_payload
-                        }
-                        p_data = urllib.parse.urlencode(p_fields).encode("utf-8")
-                        req_tmpl = urllib.request.Request(url, data=p_data, headers=headers, method="POST")
-                        with urllib.request.urlopen(req_tmpl, timeout=10) as r_tmpl:
-                            b_tmpl = r_tmpl.read().decode("utf-8")
-                            res_tmpl = json.loads(b_tmpl)
-                            return {
-                                "live_sent": True,
-                                "provider": f"Twilio WhatsApp Template ({tmpl_sid} via {s_num})",
-                                "sid": res_tmpl.get("sid"),
-                                "status": res_tmpl.get("status"),
-                                "response": res_tmpl,
-                                "phone": clean_phone
-                            }
-                    except Exception as ex:
-                        logger.debug(f"Template {tmpl_sid} with {s_num} payload {v_payload} failed: {ex}")
-            return None
-
-        # Attempt A: If ContentSid is explicitly provided, send via Template
-        if content_sid_val:
-            res_explicit = try_template_dispatch(content_sid_val)
-            if res_explicit:
-                return res_explicit
-
-        # Attempt B: Standard Body message across candidate senders
-        for sender_num in candidate_senders:
+        def execute_twilio_post(post_data: dict) -> Dict[str, Any]:
+            """Performs a single HTTP POST to Twilio with automatic 429 rate limit backoff."""
+            data = urllib.parse.urlencode(post_data).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
             try:
-                post_fields = {
-                    "From": sender_num,
-                    "To": f"whatsapp:+{clean_phone}",
-                    "Body": text
-                }
-                data = urllib.parse.urlencode(post_fields).encode("utf-8")
-                req = urllib.request.Request(url, data=data, headers=headers, method="POST")
                 with urllib.request.urlopen(req, timeout=10) as response:
                     res_body = response.read().decode("utf-8")
-                    res_data = json.loads(res_body)
-                    return {
-                        "live_sent": True,
-                        "provider": f"Twilio WhatsApp API ({sender_num})",
-                        "sid": res_data.get("sid"),
-                        "status": res_data.get("status"),
-                        "response": res_data,
-                        "phone": clean_phone
-                    }
+                    return {"success": True, "data": json.loads(res_body)}
             except urllib.error.HTTPError as e:
                 err_body = e.read().decode("utf-8", errors="ignore")
-                logger.error(f"Twilio API Error ({e.code}) from {sender_num}: {err_body}")
-                try:
-                    parsed_err = json.loads(err_body)
-                    err_code = parsed_err.get("code")
-                    # If error is 21654 (ContentSid Required), trigger automated template resolution
-                    if str(err_code) == "21654" or "ContentSid" in err_body:
-                        discovered_sids = get_twilio_content_templates(twilio_sid, twilio_auth)
-                        # If no templates found, automatically create one in Content API
-                        if not discovered_sids:
-                            created_sid = create_twilio_content_template(twilio_sid, twilio_auth)
-                            if created_sid:
-                                discovered_sids.append(created_sid)
-                        
-                        # Built-in Twilio Sandbox appointment template fallback
-                        discovered_sids.append("HXb5b62575e6e4ff6129ad7c8efe1f983e")
-
-                        for tmpl_sid in discovered_sids:
-                            tmpl_res = try_template_dispatch(tmpl_sid)
-                            if tmpl_res:
-                                return tmpl_res
-                    
-                    last_error = f"HTTP {e.code} ({parsed_err.get('message', err_body)}) [Twilio Code: {err_code}] (Sender: {sender_num})"
-                except Exception:
-                    last_error = f"HTTP {e.code}: {err_body} (Sender: {sender_num})"
+                if e.code == 429:
+                    time.sleep(1.5)
+                    try:
+                        with urllib.request.urlopen(req, timeout=10) as retry_res:
+                            return {"success": True, "data": json.loads(retry_res.read().decode("utf-8"))}
+                    except Exception as retry_e:
+                        return {"success": False, "code": 429, "body": str(retry_e)}
+                return {"success": False, "code": e.code, "body": err_body}
             except Exception as e:
-                logger.error(f"Twilio Exception from {sender_num}: {e}")
-                last_error = f"{str(e)} (Sender: {sender_num})"
+                return {"success": False, "code": 500, "body": str(e)}
 
-        # Attempt C: Final fallback to discovered or auto-created templates
-        all_templates = get_twilio_content_templates(twilio_sid, twilio_auth)
-        if not all_templates:
-            c_sid = create_twilio_content_template(twilio_sid, twilio_auth)
-            if c_sid:
-                all_templates.append(c_sid)
-        all_templates.append("HXb5b62575e6e4ff6129ad7c8efe1f983e")
+        # 1. If explicit ContentSid is provided, send with Template
+        if content_sid_val:
+            res = execute_twilio_post({
+                "From": primary_sender,
+                "To": f"whatsapp:+{clean_phone}",
+                "ContentSid": content_sid_val,
+                "ContentVariables": json.dumps({"1": "Rahul Verma", "2": text[:80]})
+            })
+            if res.get("success"):
+                res_data = res["data"]
+                return {
+                    "live_sent": True,
+                    "provider": f"Twilio WhatsApp Template ({content_sid_val})",
+                    "sid": res_data.get("sid"),
+                    "status": res_data.get("status"),
+                    "response": res_data,
+                    "phone": clean_phone
+                }
 
-        for t_sid in all_templates:
-            final_tmpl_res = try_template_dispatch(t_sid)
-            if final_tmpl_res:
-                return final_tmpl_res
+        # 2. Standard Body message on primary sender (+17372508034)
+        res_body = execute_twilio_post({
+            "From": primary_sender,
+            "To": f"whatsapp:+{clean_phone}",
+            "Body": text
+        })
+        if res_body.get("success"):
+            res_data = res_body["data"]
+            return {
+                "live_sent": True,
+                "provider": f"Twilio WhatsApp API ({primary_sender})",
+                "sid": res_data.get("sid"),
+                "status": res_data.get("status"),
+                "response": res_data,
+                "phone": clean_phone
+            }
 
-        return {"live_sent": False, "provider": "Twilio WhatsApp API", "error": last_error, "phone": clean_phone}
+        # 3. If Twilio requires ContentSid (Error 21654), resolve template and send cleanly
+        err_body_str = str(res_body.get("body", ""))
+        if "21654" in err_body_str or "ContentSid" in err_body_str:
+            time.sleep(1.0)
+            templates = get_twilio_content_templates(twilio_sid, twilio_auth)
+            target_tmpl = templates[0] if templates else create_twilio_content_template(twilio_sid, twilio_auth)
+            if not target_tmpl:
+                target_tmpl = "HXb5b62575e6e4ff6129ad7c8efe1f983e"
+            
+            res_tmpl = execute_twilio_post({
+                "From": primary_sender,
+                "To": f"whatsapp:+{clean_phone}",
+                "ContentSid": target_tmpl,
+                "ContentVariables": json.dumps({"1": "Rahul Verma", "2": text[:80]})
+            })
+            if res_tmpl.get("success"):
+                res_data = res_tmpl["data"]
+                return {
+                    "live_sent": True,
+                    "provider": f"Twilio WhatsApp Template ({target_tmpl})",
+                    "sid": res_data.get("sid"),
+                    "status": res_data.get("status"),
+                    "response": res_data,
+                    "phone": clean_phone
+                }
+
+        # 4. Fallback attempt on standard sandbox sender if primary failed
+        if fallback_sender:
+            time.sleep(1.0)
+            res_fb = execute_twilio_post({
+                "From": fallback_sender,
+                "To": f"whatsapp:+{clean_phone}",
+                "Body": text
+            })
+            if res_fb.get("success"):
+                res_data = res_fb["data"]
+                return {
+                    "live_sent": True,
+                    "provider": f"Twilio WhatsApp API ({fallback_sender})",
+                    "sid": res_data.get("sid"),
+                    "status": res_data.get("status"),
+                    "response": res_data,
+                    "phone": clean_phone
+                }
+
+        try:
+            parsed = json.loads(err_body_str)
+            err_msg = f"HTTP {res_body.get('code', 400)}: {parsed.get('message', err_body_str)}"
+        except Exception:
+            err_msg = f"HTTP {res_body.get('code', 400)}: {err_body_str}"
+
+        return {"live_sent": False, "provider": f"Twilio WhatsApp API ({primary_sender})", "error": err_msg, "phone": clean_phone}
 
     return {
         "live_sent": False,
