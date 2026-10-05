@@ -350,14 +350,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     let user = API.getUser();
     const token = API.getToken();
     if (!user || !token || user.role !== 'patient') {
-        try {
-            // Seamless demo patient login so evaluation users are never locked out or bounced
-            const demoRes = await API.login("patient@example.com", "patient123");
-            user = demoRes.user;
-        } catch (err) {
-            console.warn("Auto-login fallback warning:", err);
-            user = { id: 1, full_name: "Rahul Verma", role: "patient" };
-        }
+        window.location.href = '/';
+        return;
     }
 
     const welcomeEl = document.getElementById('userWelcomeText');
@@ -1403,14 +1397,14 @@ async function loadProfileData() {
         }
 
         // Merge remote profile with local cache
-        const pName = user.full_name || localCached?.full_name || 'Rahul Verma';
+        const pName = user.full_name || localCached?.full_name || '';
         const pDob = user.date_of_birth || localCached?.date_of_birth || '';
-        const pGender = user.gender || localCached?.gender || 'Male';
-        const pPhone = user.phone || localCached?.phone || '+91 86189 12755';
-        const pBlood = user.blood_group || localCached?.blood_group || 'O+';
-        const pAllergies = user.drug_allergies !== undefined ? user.drug_allergies : (localCached?.drug_allergies || 'None');
-        const pConditions = user.pre_existing_conditions !== undefined ? user.pre_existing_conditions : (localCached?.pre_existing_conditions || 'Hypertension Stage 1');
-        const pMeds = user.current_medications !== undefined ? user.current_medications : (localCached?.current_medications || 'Amlodipine 5mg');
+        const pGender = user.gender || localCached?.gender || '';
+        const pPhone = user.phone || localCached?.phone || '';
+        const pBlood = user.blood_group || localCached?.blood_group || '';
+        const pAllergies = user.drug_allergies !== undefined ? user.drug_allergies : (localCached?.drug_allergies || '');
+        const pConditions = user.pre_existing_conditions !== undefined ? user.pre_existing_conditions : (localCached?.pre_existing_conditions || '');
+        const pMeds = user.current_medications !== undefined ? user.current_medications : (localCached?.current_medications || '');
 
         if (document.getElementById('profName')) document.getElementById('profName').value = pName;
         if (document.getElementById('profDob')) document.getElementById('profDob').value = pDob;
@@ -1425,7 +1419,7 @@ async function loadProfileData() {
         if (pDob) {
             calculateAgeFromDobInput();
         } else if (document.getElementById('profAge')) {
-            document.getElementById('profAge').value = user.age || localCached?.age || 48;
+            document.getElementById('profAge').value = user.age || localCached?.age || '';
         }
 
         // Load contact routing details
@@ -1434,10 +1428,10 @@ async function loadProfileData() {
         const pCName = document.getElementById('profCaretakerName');
         const pCPhone = document.getElementById('profCaretakerPhone');
         const pCRel = document.getElementById('profCaretakerRelation');
-        if (pWhatsapp) pWhatsapp.value = cfg.patientWhatsapp || pPhone;
-        if (pCName) pCName.value = cfg.caretakerName || 'Primary Caregiver';
-        if (pCPhone) pCPhone.value = cfg.caretakerPhone || '+91 86189 12755';
-        if (pCRel) pCRel.value = cfg.caretakerRelation || 'Emergency Contact / Guardian';
+        if (pWhatsapp) pWhatsapp.value = cfg.patientWhatsapp || pPhone || '';
+        if (pCName) pCName.value = cfg.caretakerName || '';
+        if (pCPhone) pCPhone.value = cfg.caretakerPhone || '';
+        if (pCRel) pCRel.value = cfg.caretakerRelation || '';
 
         const welcomeEl = document.getElementById('userWelcomeText');
         if (welcomeEl && pName) {
@@ -1450,17 +1444,17 @@ async function loadProfileData() {
 
 async function saveProfile(e) {
     if (e && e.preventDefault) e.preventDefault();
-    const phoneVal = document.getElementById('profPhone')?.value.trim() || '+91 86189 12755';
+    const phoneVal = document.getElementById('profPhone')?.value.trim() || '';
     const whatsappVal = document.getElementById('profWhatsapp')?.value.trim() || phoneVal;
-    const cName = document.getElementById('profCaretakerName')?.value.trim() || 'Primary Caregiver';
-    const cPhone = document.getElementById('profCaretakerPhone')?.value.trim() || '+91 86189 12755';
-    const cRel = document.getElementById('profCaretakerRelation')?.value || 'Emergency Contact / Guardian';
+    const cName = document.getElementById('profCaretakerName')?.value.trim() || '';
+    const cPhone = document.getElementById('profCaretakerPhone')?.value.trim() || '';
+    const cRel = document.getElementById('profCaretakerRelation')?.value || '';
     const dobVal = document.getElementById('profDob')?.value.trim() || '';
     const calcAge = calculateAgeFromDobInput();
-    const ageVal = calcAge !== null ? calcAge : (parseInt(document.getElementById('profAge')?.value) || 48);
+    const ageVal = calcAge !== null ? calcAge : (parseInt(document.getElementById('profAge')?.value) || 0);
 
     const payload = {
-        full_name: document.getElementById('profName')?.value.trim() || 'Rahul Verma',
+        full_name: document.getElementById('profName')?.value.trim() || '',
         date_of_birth: dobVal,
         age: ageVal,
         gender: document.getElementById('profGender')?.value || 'Male',

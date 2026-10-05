@@ -45,8 +45,8 @@ def auto_migrate():
 auto_migrate()
 
 app = FastAPI(
-    title="AI Personal Health Navigator & Multimodal Triage System",
-    description="Adaptive AI health triage, IoT vitals telemetry, blockchain health ledger, predictive care, indoor hospital navigation, emergency response, and community preventive health system.",
+    title="NeuroCare | Intelligent Health Passport & Medical Platform",
+    description="Adaptive AI health triage, IoT vitals telemetry, blockchain health ledger, predictive care, indoor hospital navigation, emergency response, and automated reminders.",
     version="3.0.0",
     docs_url=None,
     redoc_url=None,
@@ -85,8 +85,8 @@ app.include_router(closed_loop_router)
 def health_check():
     return {
         "status": "healthy",
-        "service": "AI Personal Health Navigator",
-        "version": "2.0.0"
+        "service": "NeuroCare Health Navigator",
+        "version": "3.0.0"
     }
 
 # Mount frontend directory

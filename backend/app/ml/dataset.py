@@ -1,5 +1,5 @@
 """
-Medical Knowledge Base & Disease-Symptom Dataset for E-Healthcare.
+Medical Knowledge Base & Disease-Symptom Dataset for NeuroCare.
 Includes expanded 75+ categorized symptoms, disease metadata, diagnostic tests catalog
 with cost/information-gain/radiation-risk metadata, and clinical decision parameters.
 """

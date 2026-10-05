@@ -39,7 +39,7 @@ def get_twilio_content_templates(twilio_sid: str, twilio_auth: str) -> List[str]
     b64_auth = base64.b64encode(auth_str).decode("ascii")
     headers = {
         "Authorization": f"Basic {b64_auth}",
-        "User-Agent": "E-Healthcare-Platform/2026"
+        "User-Agent": "NeuroCare-Platform/2026"
     }
     endpoints = [
         "https://content.twilio.com/v1/Content",
@@ -60,20 +60,20 @@ def get_twilio_content_templates(twilio_sid: str, twilio_auth: str) -> List[str]
     return sids
 
 def create_twilio_content_template(twilio_sid: str, twilio_auth: str) -> Optional[str]:
-    """Creates a basic E-Healthcare alert template in Twilio Content API and returns its HX SID."""
+    """Creates a basic NeuroCare alert template in Twilio Content API and returns its HX SID."""
     auth_str = f"{twilio_sid}:{twilio_auth}".encode("ascii")
     b64_auth = base64.b64encode(auth_str).decode("ascii")
     headers = {
         "Authorization": f"Basic {b64_auth}",
         "Content-Type": "application/json",
-        "User-Agent": "E-Healthcare-Platform/2026"
+        "User-Agent": "NeuroCare-Platform/2026"
     }
     body = {
-        "friendly_name": f"e_healthcare_alert_{int(datetime.utcnow().timestamp())}",
+        "friendly_name": f"neurocare_alert_{int(datetime.utcnow().timestamp())}",
         "language": "en",
         "types": {
             "twilio/text": {
-                "body": "🚨 E-HEALTHCARE ALERT for {{1}}: {{2}}"
+                "body": "🚨 NEUROCARE ALERT for {{1}}: {{2}}"
             }
         }
     }
@@ -162,7 +162,7 @@ def send_live_whatsapp_message(
         headers = {
             "Authorization": f"Basic {b64_auth}",
             "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "E-Healthcare-Platform/2026"
+            "User-Agent": "NeuroCare-Platform/2026"
         }
         url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
 
@@ -1083,7 +1083,7 @@ def dispatch_automated_whatsapp(
 
     msg_text = (
         f"🚨 EMERGENCY MEDICAL ALERT: {alert_title}\n\n"
-        f"Patient: {current_user.full_name or 'Rahul Verma'}\n"
+        f"Patient: {current_user.full_name or 'Patient'}\n"
         f"Details: {message}\n\n"
         f"⚠️ Immediate Action: Verify patient condition, administer emergency medication if prescribed, and monitor vitals closely."
     )

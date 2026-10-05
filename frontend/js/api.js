@@ -1,4 +1,4 @@
-// Common API Helper for E-Healthcare Platform
+// Common API Helper for NeuroCare Platform
 const API = {
     BASE_URL: (() => {
         try {

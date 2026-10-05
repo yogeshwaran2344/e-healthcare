@@ -9,7 +9,7 @@ from typing import Dict, Any, List
 def evaluate_contextual_caregiver_alert(
     vitals: Dict[str, Any],
     missed_doses_count: int = 0,
-    patient_name: str = "Rahul Verma"
+    patient_name: str = "Patient"
 ) -> Dict[str, Any]:
     """
     Evaluates patient vital signals and compliance trajectory, formulating tiered escalation alerts:
