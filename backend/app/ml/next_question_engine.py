@@ -9,124 +9,147 @@ from typing import List, Dict, Any, Optional
 from .dataset import DISEASES_DB
 from .uncertainty_engine import calculate_disease_posteriors, compute_entropy_and_uncertainty
 
-# Comprehensive clinical inquiry pool with hypothesis discriminators
+# Comprehensive clinical inquiry pool with hypothesis discriminators & strict domain triggers
 QUESTION_BANK = [
     # 1. Hair & Scalp Loss Pattern
     {
         "id": "q_hair_loss_pattern",
-        "question": "How would you describe the pattern and onset of your hair loss or scalp problem?",
+        "domain_triggers": ["hair", "scalp", "alopecia", "shedding", "thinning", "folliculitis", "greying", "brittle"],
+        "question": "How would you describe the pattern and progression of your hair loss or scalp problem?",
         "options": [
-            "Excessive shedding all over scalp (bunches of hair in brush/shower post-stress/fever)",
-            "Gradual widening of hair parting line or thinning at the crown",
-            "Smooth, round coin-shaped bald patches appearing suddenly",
-            "Greasy yellowish crusts/flakes with intense itching and scalp redness"
+            "Sudden diffuse shedding all over the scalp (handfuls in brush/shower post-stress/fever)",
+            "Gradual widening of parting line or thinning across the crown over months",
+            "Smooth, round coin-shaped bald patches appearing rapidly (patchy loss)",
+            "Greasy yellowish buildup with severe dandruff, scalp itching, and hair breakage"
         ],
         "discriminates": [
             "Telogen Effluvium & Scalp Seborrheic Dermatitis",
-            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
-            "Allergic Dermatitis & Urticaria"
+            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity"
         ],
         "target_symptoms_boost": {
-            "Excessive shedding all over scalp (bunches of hair in brush/shower post-stress/fever)": ["hair_fall_excessive", "dry_brittle_hair"],
-            "Gradual widening of hair parting line or thinning at the crown": ["hair_thinning_scalp", "receding_hairline"],
-            "Smooth, round coin-shaped bald patches appearing suddenly": ["patchy_hair_loss_alopecia"],
-            "Greasy yellowish crusts/flakes with intense itching and scalp redness": ["dandruff_scalp_flaking", "scalp_itching_irritation", "scalp_redness_bumps"]
+            "Sudden diffuse shedding all over the scalp (handfuls in brush/shower post-stress/fever)": ["hair_fall_excessive", "dry_brittle_hair"],
+            "Gradual widening of parting line or thinning across the crown over months": ["hair_thinning_scalp", "receding_hairline"],
+            "Smooth, round coin-shaped bald patches appearing rapidly (patchy loss)": ["patchy_hair_loss_alopecia"],
+            "Greasy yellowish buildup with severe dandruff, scalp itching, and hair breakage": ["dandruff_scalp_flaking", "scalp_itching_irritation", "scalp_redness_bumps"]
         }
     },
-    # 2. Scalp Condition & Sensation
+    # 2. Scalp Condition & Sensations
     {
         "id": "q_scalp_condition_sensation",
+        "domain_triggers": ["scalp", "dandruff", "itching", "folliculitis", "flaking", "bumps", "hair"],
         "question": "Describe your scalp condition and sensations at the hair roots:",
         "options": [
-            "Greasy yellowish flakes with persistent itching, burning, and redness",
-            "Dry white powdery dandruff with dry, frizzy, brittle hair",
-            "Painful tender red bumps or small pimples at hair follicles",
-            "Clean scalp without dandruff, but hair pulls out effortlessly in strands"
+            "Greasy yellowish crusts/flakes with intense itching, burning, and redness",
+            "Dry white powdery dandruff with dry, frizzy, brittle hair strands",
+            "Painful tender red bumps or small pustules at hair follicle bases",
+            "Relatively clean scalp without flakes, but hair pulls out with minimal tension"
         ],
         "discriminates": [
-            "Telogen Effluvium & Scalp Seborrheic Dermatitis",
-            "Acne Vulgaris & Hormonal Sebum Imbalance"
-        ],
-        "target_symptoms_boost": {
-            "Greasy yellowish flakes with persistent itching, burning, and redness": ["dandruff_scalp_flaking", "scalp_itching_irritation"],
-            "Dry white powdery dandruff with dry, frizzy, brittle hair": ["dry_brittle_hair"],
-            "Painful tender red bumps or small pimples at hair follicles": ["scalp_redness_bumps"],
-            "Clean scalp without dandruff, but hair pulls out effortlessly in strands": ["hair_fall_excessive"]
-        }
-    },
-    # 3. Facial Acne & Breakout Morphology
-    {
-        "id": "q_facial_breakout_type",
-        "question": "What type of facial breakouts or blemishes are you predominantly experiencing?",
-        "options": [
-            "Deep, painful red cysts/nodules along jawline, chin, and lower cheeks",
-            "Surface blackheads, whiteheads, and oily grease in forehead and nose (T-zone)",
-            "Facial redness, flushing, and sensitive stinging skin triggered by heat/sun",
-            "Dry peeling skin with stubborn dark marks and post-acne blemishes"
-        ],
-        "discriminates": [
-            "Acne Vulgaris & Hormonal Sebum Imbalance",
-            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
-            "Allergic Dermatitis & Urticaria"
-        ],
-        "target_symptoms_boost": {
-            "Deep, painful red cysts/nodules along jawline, chin, and lower cheeks": ["cystic_hormonal_acne", "facial_acne_pimples"],
-            "Surface blackheads, whiteheads, and oily grease in forehead and nose (T-zone)": ["blackheads_whiteheads", "excessive_oily_skin"],
-            "Facial redness, flushing, and sensitive stinging skin triggered by heat/sun": ["skin_redness_rosacea"],
-            "Dry peeling skin with stubborn dark marks and post-acne blemishes": ["post_acne_scars_spots", "dry_peeling_skin"]
-        }
-    },
-    # 4. Facial Skin Sensitivity & Oil Balance
-    {
-        "id": "q_facial_skin_reaction",
-        "question": "How does your facial skin behave during your daily routine?",
-        "options": [
-            "Becomes excessively shiny and oily within a few hours of washing",
-            "Flushes bright red and stings when applying sunscreen, soap, or cosmetics",
-            "Breakout flares correlate directly with menstrual cycle / period schedule",
-            "Feels uncomfortably dry, tight, and flaky despite moisturizing"
-        ],
-        "discriminates": [
-            "Acne Vulgaris & Hormonal Sebum Imbalance",
-            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
-            "Allergic Dermatitis & Urticaria"
-        ],
-        "target_symptoms_boost": {
-            "Becomes excessively shiny and oily within a few hours of washing": ["excessive_oily_skin", "facial_acne_pimples"],
-            "Flushes bright red and stings when applying sunscreen, soap, or cosmetics": ["skin_redness_rosacea"],
-            "Breakout flares correlate directly with menstrual cycle / period schedule": ["cystic_hormonal_acne", "pcos_pcod_symptoms"],
-            "Feels uncomfortably dry, tight, and flaky despite moisturizing": ["dry_peeling_skin"]
-        }
-    },
-    # 5. Menstrual & PCOS Hormonal Symptoms
-    {
-        "id": "q_menstrual_cycle_pcos",
-        "question": "Describe your menstrual cycle regularity and associated hormonal features:",
-        "options": [
-            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial hair",
-            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period",
-            "Heavy prolonged menstrual bleeding with large clots and exhaustion",
-            "Regular monthly cycles without severe pelvic symptoms"
-        ],
-        "discriminates": [
-            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
-            "Primary Dysmenorrhea & Pelvic Pain",
             "Telogen Effluvium & Scalp Seborrheic Dermatitis"
         ],
         "target_symptoms_boost": {
-            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial hair": ["pcos_pcod_symptoms", "cystic_hormonal_acne", "hair_thinning_scalp"],
-            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period": ["lower_pelvic_ovarian_pain"],
-            "Heavy prolonged menstrual bleeding with large clots and exhaustion": ["general_weakness", "fatigue"]
+            "Greasy yellowish crusts/flakes with intense itching, burning, and redness": ["dandruff_scalp_flaking", "scalp_itching_irritation"],
+            "Dry white powdery dandruff with dry, frizzy, brittle hair strands": ["dry_brittle_hair"],
+            "Painful tender red bumps or small pustules at hair follicle bases": ["scalp_redness_bumps"],
+            "Relatively clean scalp without flakes, but hair pulls out with minimal tension": ["hair_fall_excessive"]
         }
     },
-    # 6. Abdominal Pain & GI Symptoms
+    # 3. Hair Triggers & Medical History
+    {
+        "id": "q_hair_triggers_history",
+        "domain_triggers": ["hair", "scalp", "alopecia", "thinning", "shedding"],
+        "question": "Have you experienced any recent medical, stress, or lifestyle triggers for your hair loss?",
+        "options": [
+            "Recent illness, high fever, COVID-19, major emotional stress, or strict dieting 2-4 months ago",
+            "Strong family history of early hair thinning or receding hairline in parents/siblings",
+            "Frequent chemical treatments, hair dyes, bleach, heat styling, or tight ponytails",
+            "Low dietary protein, iron deficiency anemia, or extreme work fatigue"
+        ],
+        "discriminates": [
+            "Telogen Effluvium & Scalp Seborrheic Dermatitis"
+        ],
+        "target_symptoms_boost": {
+            "Recent illness, high fever, COVID-19, major emotional stress, or strict dieting 2-4 months ago": ["hair_fall_excessive"],
+            "Strong family history of early hair thinning or receding hairline in parents/siblings": ["hair_thinning_scalp", "receding_hairline"],
+            "Frequent chemical treatments, hair dyes, bleach, heat styling, or tight ponytails": ["dry_brittle_hair"],
+            "Low dietary protein, iron deficiency anemia, or extreme work fatigue": ["general_weakness", "fatigue"]
+        }
+    },
+    # 4. Facial Acne & Breakouts
+    {
+        "id": "q_facial_breakout_type",
+        "domain_triggers": ["acne", "face", "facial", "pimple", "cystic", "blackhead", "whitehead", "comedone"],
+        "question": "What type of facial breakouts or blemishes are you predominantly experiencing?",
+        "options": [
+            "Deep, painful red cysts and nodules along jawline, chin, and lower cheeks (hormonal)",
+            "Surface blackheads, whiteheads, and oily grease in forehead and nose (T-zone)",
+            "Small red pimples and pustules triggered after certain cosmetics or sunscreens",
+            "Stubborn post-acne dark marks, hyperpigmentation, and textured acne spots"
+        ],
+        "discriminates": [
+            "Acne Vulgaris & Hormonal Sebum Imbalance",
+            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity"
+        ],
+        "target_symptoms_boost": {
+            "Deep, painful red cysts and nodules along jawline, chin, and lower cheeks (hormonal)": ["cystic_hormonal_acne", "facial_acne_pimples"],
+            "Surface blackheads, whiteheads, and oily grease in forehead and nose (T-zone)": ["blackheads_whiteheads", "excessive_oily_skin"],
+            "Small red pimples and pustules triggered after certain cosmetics or sunscreens": ["facial_acne_pimples"],
+            "Stubborn post-acne dark marks, hyperpigmentation, and textured acne spots": ["post_acne_scars_spots", "dry_peeling_skin"]
+        }
+    },
+    # 5. Facial Skin Sensitivity & Barrier
+    {
+        "id": "q_facial_skin_reaction",
+        "domain_triggers": ["rosacea", "face", "facial", "redness", "peeling", "oily", "grease", "acne"],
+        "question": "How does your facial skin behave during your daily routine and product application?",
+        "options": [
+            "Becomes excessively shiny, greasy, and oily within 2-3 hours of cleansing",
+            "Flushes bright red, stings, and burns with sun exposure, hot drinks, or skincare products",
+            "Breakout flares correlate directly with monthly menstrual period dates",
+            "Feels uncomfortably tight, dry, flaky, and sensitive despite moisturizing"
+        ],
+        "discriminates": [
+            "Acne Vulgaris & Hormonal Sebum Imbalance",
+            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity"
+        ],
+        "target_symptoms_boost": {
+            "Becomes excessively shiny, greasy, and oily within 2-3 hours of cleansing": ["excessive_oily_skin", "facial_acne_pimples"],
+            "Flushes bright red, stings, and burns with sun exposure, hot drinks, or skincare products": ["skin_redness_rosacea"],
+            "Breakout flares correlate directly with monthly menstrual period dates": ["cystic_hormonal_acne", "pcos_pcod_symptoms"],
+            "Feels uncomfortably tight, dry, flaky, and sensitive despite moisturizing": ["dry_peeling_skin"]
+        }
+    },
+    # 6. Menstrual & PCOS Hormonal Symptoms
+    {
+        "id": "q_menstrual_cycle_pcos",
+        "domain_triggers": ["period", "menstrual", "pcos", "pcod", "cramp", "pelvic", "ovarian"],
+        "question": "Describe your menstrual cycle regularity and associated hormonal features:",
+        "options": [
+            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial/body hair",
+            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period",
+            "Heavy prolonged menstrual flow requiring frequent pad changes or passing large clots",
+            "Delayed period by more than 6-8 weeks with lower pelvic heaviness"
+        ],
+        "discriminates": [
+            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
+            "Primary Dysmenorrhea & Pelvic Pain"
+        ],
+        "target_symptoms_boost": {
+            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial/body hair": ["pcos_pcod_symptoms", "cystic_hormonal_acne"],
+            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period": ["lower_pelvic_ovarian_pain"],
+            "Heavy prolonged menstrual flow requiring frequent pad changes or passing large clots": ["general_weakness", "fatigue"],
+            "Delayed period by more than 6-8 weeks with lower pelvic heaviness": ["pcos_pcod_symptoms"]
+        }
+    },
+    # 7. Abdominal Pain & GI Reflux
     {
         "id": "q_abdominal_location",
-        "question": "Where is your abdominal pain or distress primarily focused?",
+        "domain_triggers": ["abdominal", "stomach", "acidity", "epigastric", "reflux", "gerd", "vomiting", "diarrhea", "nausea", "bloating", "indigestion", "flank"],
+        "question": "Where is your digestive discomfort located and when is it most intense?",
         "options": [
-            "Upper center burning / sour acid regurgitation behind breastbone",
-            "Right upper side under rib cage, aggravated after eating fatty meals",
-            "Diffuse cramping all over belly with frequent watery loose stools",
+            "Upper center burning / sour acid regurgitation behind breastbone after meals",
+            "Sharp right upper quadrant pain under rib cage, aggravated after fatty meals",
+            "Diffuse cramping all over belly with frequent watery loose stools and nausea",
             "Lower back / flank side discomfort near the kidney angle"
         ],
         "discriminates": [
@@ -136,18 +159,19 @@ QUESTION_BANK = [
             "Acute Pyelonephritis / Complicated UTI"
         ],
         "target_symptoms_boost": {
-            "Upper center burning / sour acid regurgitation behind breastbone": ["epigastric_burning_pain", "loss_of_appetite"],
-            "Right upper side under rib cage, aggravated after eating fatty meals": ["right_upper_quadrant_pain", "nausea"],
-            "Diffuse cramping all over belly with frequent watery loose stools": ["diarrhea", "vomiting"],
+            "Upper center burning / sour acid regurgitation behind breastbone after meals": ["epigastric_burning_pain", "loss_of_appetite"],
+            "Right upper side under rib cage, aggravated after fatty meals": ["right_upper_quadrant_pain", "nausea"],
+            "Diffuse cramping all over belly with frequent watery loose stools and nausea": ["diarrhea", "vomiting"],
             "Lower back / flank side discomfort near the kidney angle": ["flank_kidney_angle_pain"]
         }
     },
-    # 7. Skin Allergy & Rash
+    # 8. Skin Allergy & Rash
     {
         "id": "q_skin_rash_allergy",
+        "domain_triggers": ["rash", "hives", "itching", "pruritus", "urticaria", "blister", "petechiae"],
         "question": "What are the characteristics of your skin rash or itching?",
         "options": [
-            "Raised itchy red welts / hives (urticaria) that appear and disappear rapidly",
+            "Raised itchy red welts / hives (urticaria) that appear suddenly and shift location",
             "Dry, inflamed red patches with intense scaling and persistent scratching",
             "Fluid-filled blister clusters with raw burning pain",
             "Tiny pinpoint non-blanching red/purple dots (petechiae) with fever"
@@ -157,59 +181,60 @@ QUESTION_BANK = [
             "Acute Dengue Infection with Warning Signs"
         ],
         "target_symptoms_boost": {
-            "Raised itchy red welts / hives (urticaria) that appear and disappear rapidly": ["hives_urticaria", "skin_redness"],
+            "Raised itchy red welts / hives (urticaria) that appear suddenly and shift location": ["hives_urticaria", "skin_redness"],
             "Dry, inflamed red patches with intense scaling and persistent scratching": ["skin_rash", "itching_pruritus"],
             "Fluid-filled blister clusters with raw burning pain": ["blisters"],
             "Tiny pinpoint non-blanching red/purple dots (petechiae) with fever": ["petechiae_purpura", "high_fever"]
         }
     },
-    # 8. Pain Radiation (Cardiac / Renal)
+    # 9. Chest Pain & Cardiac Radiation
     {
         "id": "q_pain_radiation",
-        "question": "Does your chest or back discomfort radiate anywhere else?",
+        "domain_triggers": ["chest", "palpitation", "heart", "angina", "arm_jaw"],
+        "question": "Does your chest discomfort radiate anywhere else?",
         "options": [
-            "Yes, radiates to left arm, neck, or lower jaw with heavy tightness",
+            "Yes, radiates to left arm, neck, or lower jaw with heavy squeezing tightness",
             "Radiates through to upper back between shoulder blades",
-            "Radiates downward towards the groin or flank",
+            "Burning sensation behind breastbone after meals, relieved by antacids",
             "No radiation, strictly localized"
         ],
         "discriminates": [
-            "Acute Coronary Syndrome / Angina (Cardiac Emergency)",
-            "Acute Pyelonephritis / Complicated UTI"
+            "Acute Coronary Syndrome / Angina (Cardiac Emergency)"
         ],
         "target_symptoms_boost": {
-            "Yes, radiates to left arm, neck, or lower jaw with heavy tightness": ["pain_radiating_to_arm_jaw"],
-            "Radiates downward towards the groin or flank": ["flank_kidney_angle_pain"]
+            "Yes, radiates to left arm, neck, or lower jaw with heavy squeezing tightness": ["pain_radiating_to_arm_jaw"]
         }
     },
-    # 9. Breathing Triggers
+    # 10. Respiratory & Breathing Triggers
     {
         "id": "q_breathing_trigger",
-        "question": "When does your shortness of breath or chest tightness worsen?",
+        "domain_triggers": ["cough", "breath", "breathlessness", "wheezing", "dyspnea", "sputum", "phlegm"],
+        "question": "When does your shortness of breath or cough worsen?",
         "options": [
-            "With physical exertion or climbing stairs, relieved by resting",
-            "When lying completely flat on the bed (needs multiple pillows)",
-            "Constant difficulty breathing regardless of position",
-            "Worse only when coughing or taking a deep breath"
+            "Deep chest cough producing thick yellow or rust-colored phlegm",
+            "Dry persistent tickly cough with wheezing and chest tightness on exertion",
+            "Severe breathlessness when lying completely flat on the bed",
+            "Worse only when taking a deep breath or changing posture"
         ],
         "discriminates": [
-            "Acute Coronary Syndrome / Angina (Cardiac Emergency)",
             "Bacterial Pneumonia / Lower Respiratory Infection",
             "COVID-19 / Severe Viral Pneumonitis"
         ],
         "target_symptoms_boost": {
-            "When lying completely flat on the bed (needs multiple pillows)": ["orthopnea_lying_flat_breathless"]
+            "Deep chest cough producing thick yellow or rust-colored phlegm": ["productive_cough_phlegm"],
+            "Severe breathlessness when lying completely flat on the bed": ["orthopnea_lying_flat_breathless"]
         }
     },
-    # 10. Fever Pattern
+    # 11. Fever Pattern
     {
         "id": "q_fever_pattern",
-        "question": "How does your body temperature behave during the day?",
+        "domain_triggers": ["fever", "chills", "sweat", "shivering"],
+        "question": "What is your highest body temperature and how does the fever behave?",
         "options": [
-            "High continuous spike with severe shivering chills and sweats",
-            "Gradually climbs higher day by day (step-ladder fever)",
-            "Mild low-grade fever mainly towards evening",
-            "No measured fever or completely normal temperature"
+            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering",
+            "Gradually rising step-ladder fever day by day with severe fatigue and headache",
+            "Mild low-grade fever (around 99-100°F) mainly in late afternoon/evening",
+            "Intermittent sweating episodes without high thermometer readings"
         ],
         "discriminates": [
             "Acute Dengue Infection with Warning Signs",
@@ -217,19 +242,20 @@ QUESTION_BANK = [
             "Bacterial Pneumonia / Lower Respiratory Infection"
         ],
         "target_symptoms_boost": {
-            "High continuous spike with severe shivering chills and sweats": ["chills"],
-            "Gradually climbs higher day by day (step-ladder fever)": ["high_fever"]
+            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering": ["chills"],
+            "Gradually rising step-ladder fever day by day with severe fatigue and headache": ["high_fever"]
         }
     },
-    # 11. Headache Character
+    # 12. Headache Character
     {
         "id": "q_headache_character",
+        "domain_triggers": ["headache", "migraine", "thunderclap", "vertigo", "photophobia"],
         "question": "How quickly did the severe headache develop and what does it feel like?",
         "options": [
             "Instant sudden 'worst headache of life' like a thunderclap within seconds",
             "Pulsating throbbing ache on one side of head with light/sound sensitivity",
             "Dull constant band-like pressure across both temples and back of neck",
-            "Associated with spinning vertigo and loss of balance"
+            "Headache accompanied by spinning vertigo and loss of balance"
         ],
         "discriminates": [
             "Acute Ischemic Stroke / Cerebrovascular Attack",
@@ -242,9 +268,10 @@ QUESTION_BANK = [
             "Associated with spinning vertigo and loss of balance": ["vertigo_room_spinning"]
         }
     },
-    # 12. Neurological Focal Signs
+    # 13. Neurological Focal Signs
     {
         "id": "q_neurological_focal",
+        "domain_triggers": ["droop", "slurred", "stroke", "weakness", "numbness", "paralysis", "facial_droop"],
         "question": "Have you noticed sudden weakness, facial change, or speech slurring?",
         "options": [
             "Yes, one side of face drooped or arm felt suddenly weak/numb",
@@ -307,8 +334,8 @@ def select_next_best_question(
     patient_context: Optional[Dict[str, Any]] = None
 ) -> Optional[Dict[str, Any]]:
     """
-    Evaluates all unanswered clinical questions in the bank, computes their Information Gain,
-    and returns the ranked best question with uncertainty reduction metrics.
+    Evaluates only clinical questions that match the active symptom domain, computes their Information Gain,
+    and returns the single best question. Stops asking when all relevant domain questions are answered.
     """
     qa_answers = qa_answers or {}
     patient_context = patient_context or {}
@@ -324,19 +351,26 @@ def select_next_best_question(
     current_entropy = entropy_info["shannon_entropy"]
     current_uncertainty = entropy_info["uncertainty_score"]
 
-    # If uncertainty is already low (< 15%), no further questions are mandatory
-    if current_uncertainty <= 15.0:
-        return None
-
     symptoms_joined = " ".join(current_symptoms).lower()
-    top_candidates = [c["disease"] for c in entropy_info["candidate_distribution"][:4]]
+    top_candidates = [c["disease"] for c in entropy_info["candidate_distribution"][:3]]
 
-    # 2. Evaluate Information Gain across eligible questions
+    # 2. Evaluate Information Gain across strictly eligible domain questions
     candidates = []
     for q in QUESTION_BANK:
         if q["id"] in answered_ids_set:
             continue
-            
+
+        # Check domain trigger match with selected symptoms
+        triggers = q.get("domain_triggers", [])
+        has_trigger_match = any(t in symptoms_joined for t in triggers)
+
+        # Check hypothesis overlap with top candidate diseases
+        overlap_count = sum(1 for d in q["discriminates"] if d in top_candidates)
+
+        # STRICT FILTER: DO NOT ask question if it has no symptom domain match AND no top disease overlap
+        if not has_trigger_match:
+            continue
+
         ig = calculate_information_gain_for_question(
             q_data=q,
             current_symptoms=current_symptoms,
@@ -345,43 +379,19 @@ def select_next_best_question(
             patient_context=patient_context
         )
         
-        # Domain Relevance Score:
-        # Boost if the question's target hypotheses overlap with the current top candidates
-        overlap_count = sum(1 for d in q["discriminates"] if d in top_candidates)
-        
-        # Keyword synergy boost based on active symptoms
-        keyword_boost = 0.0
-        q_id = q["id"]
-        if ("hair" in symptoms_joined or "scalp" in symptoms_joined or "dandruff" in symptoms_joined) and ("hair" in q_id or "scalp" in q_id):
-            keyword_boost = 3.0
-        elif ("acne" in symptoms_joined or "face" in symptoms_joined or "facial" in symptoms_joined or "rosacea" in symptoms_joined) and ("breakout" in q_id or "facial" in q_id):
-            keyword_boost = 3.0
-        elif ("period" in symptoms_joined or "menstrual" in symptoms_joined or "pcos" in symptoms_joined) and ("menstrual" in q_id or "pcos" in q_id):
-            keyword_boost = 3.0
-        elif ("abdominal" in symptoms_joined or "stomach" in symptoms_joined or "acidity" in symptoms_joined) and ("abdominal" in q_id):
-            keyword_boost = 3.0
-        elif ("rash" in symptoms_joined or "hives" in symptoms_joined or "itching" in symptoms_joined) and ("rash" in q_id or "skin" in q_id):
-            keyword_boost = 3.0
-        elif ("chest" in symptoms_joined or "palpitation" in symptoms_joined) and ("radiation" in q_id or "breathing" in q_id):
-            keyword_boost = 3.0
-        elif ("cough" in symptoms_joined or "breath" in symptoms_joined) and ("breathing" in q_id):
-            keyword_boost = 3.0
-        elif ("headache" in symptoms_joined or "vertigo" in symptoms_joined) and ("headache" in q_id or "neurological" in q_id):
-            keyword_boost = 3.0
-        elif ("fever" in symptoms_joined) and ("fever" in q_id):
-            keyword_boost = 3.0
-
-        relevance_score = (ig * 2.0) + (overlap_count * 2.5) + keyword_boost
+        keyword_boost = 6.0 if has_trigger_match else 0.0
+        relevance_score = (ig * 3.0) + (overlap_count * 4.0) + keyword_boost
 
         candidates.append({
             "question_data": q,
-            "information_gain": round(max(ig, 0.45 if keyword_boost > 0 else 0.1), 3),
+            "information_gain": round(max(ig, 0.45), 3),
             "relevance_score": round(relevance_score, 3),
-            "expected_uncertainty_reduction_pct": round(min(((max(ig, 0.45 if keyword_boost > 0 else 0.1)) / max(current_entropy, 0.1)) * 100, 75.0), 1),
+            "expected_uncertainty_reduction_pct": round(min(((max(ig, 0.45)) / max(current_entropy, 0.1)) * 100, 75.0), 1),
             "target_hypotheses": q["discriminates"]
         })
 
     if not candidates:
+        # All relevant symptom domain questions have been answered!
         return None
 
     # Sort descending by relevance & information gain
