@@ -12,88 +12,131 @@ from .test_optimization_engine import optimize_minimum_diagnostic_test_set
 
 # Symptom-specific targeted clinical follow-up questions
 SYMPTOM_SPECIFIC_QUESTIONS = {
-    "fever": {
-        "question": "What is your highest measured body temperature, and do you have chills or shivering?",
-        "options": ["Mild fever (around 99-100°F), no chills", "Moderate (101-102°F) with shivering", "High spike (>102.5°F) with intense chills", "Haven't measured thermometer yet"]
+    "hair_loss": {
+        "triggers": ["hair", "scalp", "alopecia", "shedding", "thinning", "greying", "brittle"],
+        "question": "How would you describe the pattern and progression of your hair loss or scalp problem?",
+        "options": [
+            "Sudden diffuse shedding all over the scalp (handfuls in brush/shower post-stress/fever)",
+            "Gradual widening of parting line or thinning across the crown over months",
+            "Smooth, round coin-sized bald patches appearing rapidly (patchy loss)",
+            "Severe flaky dandruff with greasy yellowish buildup, scalp itching, and hair breakage"
+        ]
     },
-    "cough": {
-        "question": "How would you describe your cough?",
-        "options": ["Dry tickly cough, no phlegm", "Wet productive cough with clear/white phlegm", "Deep chest cough with yellow or green phlegm", "Barking cough with shortness of breath"]
+    "scalp_dermatitis": {
+        "triggers": ["scalp", "dandruff", "itching", "folliculitis", "flaking", "bumps"],
+        "question": "Describe your scalp sensations and root condition:",
+        "options": [
+            "Greasy yellowish crusts/flakes with intense itching, burning, and redness",
+            "Dry powdery white dandruff without noticeable redness",
+            "Tender, painful red bumps or small pustules at hair follicle bases",
+            "Relatively normal scalp, but strands detach with minimal tension"
+        ]
     },
-    "chest": {
-        "question": "Describe the chest discomfort:",
-        "options": ["Heavy pressure / squeezing in center of chest", "Sharp pain that worsens when breathing in deeply", "Burning sensation behind breastbone after meals", "Mild muscle tenderness on movement"]
+    "facial_acne": {
+        "triggers": ["acne", "face", "facial", "pimple", "cystic", "blackhead", "whitehead", "comedone"],
+        "question": "What type of facial breakouts or blemishes are you predominantly experiencing?",
+        "options": [
+            "Deep, painful red cystic nodules along jawline, chin, and lower cheeks (hormonal)",
+            "Surface blackheads, whiteheads, and oily shine across forehead and nose (T-zone)",
+            "Small red pustules and pimples that flare up after certain sunscreens or cosmetics",
+            "Stubborn post-acne dark marks, hyperpigmentation, and uneven texture"
+        ]
     },
-    "headache": {
-        "question": "Characterize your headache:",
-        "options": ["Throbbing on one side with light sensitivity", "Dull tight band around the entire head", "Sudden 'thunderclap' severe headache with stiff neck", "Forehead and sinus heaviness with runny nose"]
+    "facial_sensitivity_rosacea": {
+        "triggers": ["rosacea", "face", "facial", "redness", "peeling", "oily", "grease"],
+        "question": "How does your facial skin react to environment, temperature, and skincare products?",
+        "options": [
+            "Becomes excessively oily and greasy within 2-3 hours of cleansing",
+            "Flushes bright red and stings with sun exposure, hot drinks, spicy food, or skincare",
+            "Feels tight, flaky, dry, and sensitive despite regular moisturizing",
+            "Breakout flares correlate directly with monthly menstrual period dates"
+        ]
     },
-    "abdominal": {
-        "question": "Where is the abdominal discomfort most intense?",
-        "options": ["Upper center (stomach / burning acidity)", "Right upper quadrant near ribs", "Lower abdomen with cramps and diarrhea", "Generalized discomfort with nausea"]
+    "period_menstrual": {
+        "triggers": ["period", "menstrual", "pcos", "pcod", "cramp", "pelvic", "ovarian"],
+        "question": "Describe your menstrual cycle regularity and associated hormonal features:",
+        "options": [
+            "Irregular or delayed cycles (>35-50 days) with jawline acne or excess facial hair",
+            "Severe debilitating lower pelvic and ovarian cramps during first 48 hours of period",
+            "Extremely heavy menstrual flow requiring frequent pad changes or passing clots",
+            "Delayed period by more than 6-8 weeks with lower pelvic heaviness"
+        ]
     },
-    "breathlessness": {
-        "question": "When does shortness of breath occur?",
-        "options": ["Only during exertion / climbing stairs", "Even when resting or lying flat in bed", "Sudden acute onset with wheezing", "Accompanied by chest tightness and palpitations"]
+    "gastro_abdominal": {
+        "triggers": ["abdominal", "stomach", "acidity", "epigastric", "reflux", "gerd", "vomiting", "diarrhea", "nausea", "bloating", "indigestion"],
+        "question": "Where is your digestive discomfort located and when is it most intense?",
+        "options": [
+            "Upper center burning / sour acid fluid regurgitation behind breastbone after meals",
+            "Sharp right upper quadrant pain under ribs, worse after fatty foods",
+            "Generalized cramping all over belly with watery loose stools and nausea",
+            "Relieved temporarily after eating, but returns 2-3 hours later or at night"
+        ]
     },
-    "rash": {
-        "question": "Describe the skin eruption:",
-        "options": ["Itchy red patches / dry scaling", "Raised hives that appeared suddenly", "Blisters or pustules with burning sensation", "Tiny red/purple spots (petechiae)"]
+    "skin_rash_allergy": {
+        "triggers": ["rash", "hives", "itching", "pruritus", "urticaria", "blister", "petechiae", "skin"],
+        "question": "Describe the appearance and onset of your skin rash or itching:",
+        "options": [
+            "Raised itchy red welts / hives (urticaria) that appear suddenly and shift location",
+            "Dry, inflamed red patches with intense scaling, roughness, and continuous scratching",
+            "Fluid-filled blister clusters with raw burning pain",
+            "Tiny pinpoint non-blanching red/purple spots (petechiae) with high fever"
+        ]
     },
-    "hair": {
-        "question": "How long have you noticed the hair fall or scalp concern?",
-        "options": ["Sudden diffuse shedding over the past few weeks (post-fever/stress)", "Gradual thinning at crown or widening parting line over months", "Circular smooth coin-sized bald patches developing rapidly", "Severe itchy dandruff with oily yellow flakes"]
+    "chest_cardiac": {
+        "triggers": ["chest", "palpitation", "heart", "angina"],
+        "question": "Describe your chest sensations and any radiation:",
+        "options": [
+            "Heavy squeezing pressure in center of chest radiating to left arm or jaw",
+            "Sharp localized pain that worsens when breathing in deeply or coughing",
+            "Rapid fluttering / pounding palpitations with lightheadedness",
+            "Burning retrosternal chest sensation after eating or lying down"
+        ]
     },
-    "scalp": {
-        "question": "Describe your scalp condition and sensations:",
-        "options": ["Greasy flakes with persistent itching and redness", "Dry white powdery dandruff without redness", "Painful small pimple-like bumps at hair roots", "Normal scalp with sudden shedding"]
+    "cough_respiratory": {
+        "triggers": ["cough", "breath", "breathlessness", "wheezing", "sputum", "phlegm"],
+        "question": "Describe your cough and breathing difficulty:",
+        "options": [
+            "Deep chest cough producing thick yellow or rust-colored phlegm",
+            "Dry persistent tickly cough with wheezing and chest tightness",
+            "Shortness of breath on mild exertion or when lying flat in bed",
+            "Barking dry cough accompanied by throat tickle and runny nose"
+        ]
     },
-    "acne": {
-        "question": "What type of facial breakouts are you predominantly experiencing?",
-        "options": ["Painful deep red cysts along jawline, chin and cheeks (hormonal)", "Surface whiteheads, blackheads and oily T-zone", "Small pustules triggered by cosmetics or sunscreen", "Acne with persistent facial redness and burning"]
+    "headache_neuro": {
+        "triggers": ["headache", "migraine", "thunderclap", "vertigo", "photophobia", "dizziness"],
+        "question": "Characterize your headache onset and sensations:",
+        "options": [
+            "Sudden explosive 'thunderclap' headache reaching maximum agony within seconds",
+            "Pulsating throbbing pain on one side of head with sensitivity to light and sound",
+            "Dull constant tight-band pressure around forehead and back of neck",
+            "Headache accompanied by spinning vertigo, nausea, and unsteady balance"
+        ]
     },
-    "period": {
-        "question": "Describe your menstrual cycle and associated symptoms:",
-        "options": ["Irregular cycles (>35-45 days apart) with facial hair or weight changes", "Regular cycle but debilitating cramps during first 48 hours", "Extremely heavy flow requiring frequent pad changes or passing clots", "Cycle delayed by >2 months with lower pelvic heaviness"]
-    },
-    "menstrual": {
-        "question": "How severe are your menstrual cramps or flow irregularities?",
-        "options": ["Severe cramps radiating to lower back/thighs requiring bed rest", "Heavy bleeding with large clots (>7 days)", "Irregular spotting between cycles", "Mild discomfort manageable with simple heating pad"]
-    },
-    "gynac": {
-        "question": "Describe the primary gynecological or pelvic symptom:",
-        "options": ["Abnormal thick white curd-like or foul-smelling discharge with itching", "Deep pelvic or ovarian aching pain", "Hot flashes, night sweats, sleep disruption and mood shifts", "Cyclic severe breast tenderness and abdominal bloating"]
+    "fever_infection": {
+        "triggers": ["fever", "chills", "sweat"],
+        "question": "What is your highest body temperature and how does the fever behave?",
+        "options": [
+            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering",
+            "Gradually rising step-ladder fever day by day with severe fatigue and headache",
+            "Mild low-grade fever (around 99-100°F) mainly in late afternoon/evening",
+            "Intermittent sweating episodes without high thermometer readings"
+        ]
     }
 }
 
 def generate_adaptive_questions(selected_symptoms: List[str], patient_context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     """
-    Dynamically generates 3-5 clinical follow-up questions based on the selected symptoms
-    and individual patient context (age, history).
+    Dynamically generates clinical follow-up questions tailored directly to the selected symptoms.
+    Targeted symptom inquiries appear first, followed by clinical duration, severity, and prior remedies.
     """
     questions = []
-    
-    # 1. Onset & Duration (Standard Clinical inquiry)
-    questions.append({
-        "id": "duration_days",
-        "question": "How many days have you been experiencing these primary symptoms?",
-        "type": "select",
-        "options": ["1-2 days (acute onset)", "3-5 days (persistent)", "1-2 weeks", "More than 2 weeks (chronic)"]
-    })
-
-    # 2. Pain / Discomfort Intensity (Numeric Rating Scale 1-10)
-    questions.append({
-        "id": "severity_scale",
-        "question": "On a scale from 1 (mild) to 10 (unbearable), how severe is your overall discomfort?",
-        "type": "select",
-        "options": ["1 - 3 (Mild, able to do normal activities)", "4 - 6 (Moderate, interfering with work/sleep)", "7 - 8 (Severe, causing significant distress)", "9 - 10 (Extreme, unbearable agony)"]
-    })
-
-    # 3. Targeted symptom-specific questions
     symptoms_joined = " ".join(selected_symptoms).lower()
     matched_keys = set()
+    
+    # 1. Targeted Symptom-Specific Questions (Prioritized First)
     for key, q_data in SYMPTOM_SPECIFIC_QUESTIONS.items():
-        if key in symptoms_joined and key not in matched_keys:
+        triggers = q_data.get("triggers", [key])
+        if any(t in symptoms_joined for t in triggers) and key not in matched_keys:
             questions.append({
                 "id": f"specific_{key}",
                 "question": q_data["question"],
@@ -101,15 +144,47 @@ def generate_adaptive_questions(selected_symptoms: List[str], patient_context: O
                 "options": q_data["options"]
             })
             matched_keys.add(key)
-            if len(questions) >= 4:
+            if len(questions) >= 3:
                 break
+
+    # 2. Onset & Duration (Standard Clinical inquiry)
+    questions.append({
+        "id": "duration_days",
+        "question": "How many days or weeks have you been experiencing these primary symptoms?",
+        "type": "select",
+        "options": [
+            "1-2 days (acute onset)",
+            "3-7 days (persistent)",
+            "1-3 weeks",
+            "More than a month (chronic / progressive)"
+        ]
+    })
+
+    # 3. Pain / Severity Intensity Rating (Numeric Rating Scale 1-10)
+    questions.append({
+        "id": "severity_scale",
+        "question": "On a scale from 1 (mild) to 10 (unbearable), how severe is your overall discomfort?",
+        "type": "select",
+        "options": [
+            "1 - 3 (Mild, able to do normal daily activities)",
+            "4 - 6 (Moderate, interfering with work, skin comfort, or sleep)",
+            "7 - 8 (Severe, causing significant distress or painful flare)",
+            "9 - 10 (Extreme, unbearable agony or acute distress)"
+        ]
+    })
 
     # 4. Medication & Pre-existing Context
     questions.append({
         "id": "prior_meds_taken",
-        "question": "Have you taken any home remedies or over-the-counter medications for this?",
+        "question": "Have you taken any home remedies, topical applications, or over-the-counter medications for this?",
         "type": "select",
-        "options": ["None yet", "Paracetamol / Acetaminophen (fever/pain)", "Antacids / Digestion tablets", "Painkillers (Ibuprofen / Aspirin)", "Antibiotics or prescribed drugs"]
+        "options": [
+            "None yet",
+            "Topical creams / medicated shampoos / skin serums",
+            "Paracetamol / Painkillers (Ibuprofen / Aspirin)",
+            "Antacids / Digestion tablets",
+            "Prescription antibiotics / hormonal pills"
+        ]
     })
 
     return questions

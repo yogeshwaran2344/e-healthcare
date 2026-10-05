@@ -704,6 +704,9 @@ function toggleSymptom(key) {
     } else {
         selectedSymptoms.add(key);
     }
+    currentAdaptiveQuestions = [];
+    answeredQuestionIds = [];
+    answeredQuestionsLog = [];
     updateSelectedCount();
     filterSymptoms();
 }
@@ -715,6 +718,9 @@ function updateSelectedCount() {
 
 function clearSelectedSymptoms() {
     selectedSymptoms.clear();
+    currentAdaptiveQuestions = [];
+    answeredQuestionIds = [];
+    answeredQuestionsLog = [];
     updateSelectedCount();
     filterSymptoms();
 }
@@ -925,19 +931,17 @@ async function goToStep2() {
     renderAnsweredQuestionsHistory();
     await fetchAndRenderNextQuestion();
 
-    // 3. Load Contextual Questions
+    // 3. Load Contextual Questions tailored to active symptoms
     const container = document.getElementById('questionsContainer');
-    if (!currentAdaptiveQuestions || currentAdaptiveQuestions.length === 0) {
-        container.innerHTML = `<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div><span class="small ms-2">Generating adaptive inquiry questions...</span></div>`;
+    container.innerHTML = `<div class="text-center py-3"><div class="spinner-border text-primary spinner-border-sm" role="status"></div><span class="small ms-2">Analyzing clinical features and generating targeted questions...</span></div>`;
 
-        try {
-            const payload = { symptoms: Array.from(selectedSymptoms) };
-            const res = await API.post('/api/navigator/questions', payload);
-            currentAdaptiveQuestions = res.questions;
-        } catch (err) {
-            container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
-            return;
-        }
+    try {
+        const payload = { symptoms: Array.from(selectedSymptoms) };
+        const res = await API.post('/api/navigator/questions', payload);
+        currentAdaptiveQuestions = res.questions;
+    } catch (err) {
+        container.innerHTML = `<div class="alert alert-danger">Error: ${err.message}</div>`;
+        return;
     }
 
     if (currentAdaptiveQuestions && currentAdaptiveQuestions.length > 0) {
