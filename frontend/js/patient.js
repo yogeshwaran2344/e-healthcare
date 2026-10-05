@@ -817,6 +817,8 @@ function updateStepper(activeStep) {
 let answeredQuestionsLog = [];
 let currentActiveNextQuestion = null;
 
+let editingQuestionId = null;
+
 function renderAnsweredQuestionsHistory() {
     const card = document.getElementById('answeredQuestionsHistoryCard');
     const list = document.getElementById('answeredQuestionsHistoryList');
@@ -835,22 +837,101 @@ function renderAnsweredQuestionsHistory() {
     if (undoBtn) undoBtn.classList.remove('d-none');
     if (countBadge) countBadge.textContent = answeredQuestionsLog.length;
 
-    list.innerHTML = answeredQuestionsLog.map((item, idx) => `
-        <div class="p-2 bg-white rounded-2 border d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div style="flex:1; min-width:240px;">
-                <span class="small fw-bold text-dark d-block">Q${idx + 1}: ${item.question}</span>
-                <span class="badge bg-primary-subtle text-primary border border-primary-subtle mt-1">
-                    <i class="bi bi-check-lg me-1"></i> ${item.answer}
-                </span>
-                ${item.information_gain ? `<span class="badge bg-light text-muted border ms-1">+${item.information_gain} bits IG</span>` : ''}
+    list.innerHTML = answeredQuestionsLog.map((item, idx) => {
+        const isEditing = (editingQuestionId === item.id);
+        const options = item.options || [];
+
+        if (isEditing) {
+            return `
+                <div class="p-3 bg-white rounded-3 border border-primary shadow-sm mb-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-primary">
+                            <i class="bi bi-pencil-square me-1"></i> Edit Question ${idx + 1}: ${escapeHtml(item.question)}
+                        </span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size:0.75rem;" onclick="cancelEditingQuestion()">
+                            <i class="bi bi-x me-1"></i>Cancel
+                        </button>
+                    </div>
+                    <p class="small text-muted mb-2">Choose your updated answer below. All other answered questions (above & below) will remain saved and preserved:</p>
+                    <div class="d-flex flex-column gap-2 mb-2">
+                        ${options.length > 0 ? options.map(opt => {
+                            const isSelected = (opt === item.answer);
+                            return `
+                                <button type="button" class="btn ${isSelected ? 'btn-primary' : 'btn-outline-primary'} btn-sm text-start py-2 px-3 fw-semibold" onclick="applyEditedAnswer('${item.id}', '${escapeHtml(opt).replace(/'/g, "\\'")}')">
+                                    <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-circle'} me-2"></i> ${escapeHtml(opt)}
+                                </button>
+                            `;
+                        }).join('') : `
+                            <div class="input-group input-group-sm">
+                                <input type="text" id="customEditInput_${item.id}" class="form-control" value="${escapeHtml(item.answer)}">
+                                <button class="btn btn-primary" type="button" onclick="applyEditedAnswer('${item.id}', document.getElementById('customEditInput_${item.id}').value)">Save</button>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="p-2 bg-white rounded-2 border d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                <div style="flex:1; min-width:240px;">
+                    <span class="small fw-bold text-dark d-block">Q${idx + 1}: ${escapeHtml(item.question)}</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle mt-1">
+                        <i class="bi bi-check-lg me-1"></i> ${escapeHtml(item.answer)}
+                    </span>
+                    ${item.information_gain ? `<span class="badge bg-light text-muted border ms-1">+${item.information_gain} bits IG</span>` : ''}
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" style="font-size:0.75rem;" onclick="startEditingQuestion('${item.id}')">
+                        <i class="bi bi-pencil-square me-1"></i> Edit Answer
+                    </button>
+                </div>
             </div>
-            <div>
-                <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2 fw-semibold" style="font-size:0.75rem;" onclick="changeAnswerForQuestion('${item.id}')">
-                    <i class="bi bi-pencil-square me-1"></i> Edit Answer
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function startEditingQuestion(qId) {
+    editingQuestionId = qId;
+    renderAnsweredQuestionsHistory();
+}
+
+function cancelEditingQuestion() {
+    editingQuestionId = null;
+    renderAnsweredQuestionsHistory();
+}
+
+async function applyEditedAnswer(qId, newAnswer) {
+    if (!newAnswer) return;
+    const item = answeredQuestionsLog.find(x => x.id === qId);
+    if (item) {
+        item.answer = newAnswer;
+    }
+    answeredQA[qId] = newAnswer;
+    editingQuestionId = null;
+
+    // 1. Re-render answered history with all questions (Q1..Q5) preserved
+    renderAnsweredQuestionsHistory();
+
+    // 2. Re-assess uncertainty dynamically with updated answer set
+    try {
+        const uPayload = {
+            symptoms: Array.from(selectedSymptoms),
+            qa_answers: answeredQA
+        };
+        const uRes = await API.post('/api/closed-loop/uncertainty-assess', uPayload);
+        updateUncertaintyDisplay(uRes);
+    } catch (e) {
+        console.warn("Uncertainty update error:", e);
+    }
+
+    // 3. Keep next question engine updated
+    await fetchAndRenderNextQuestion();
+}
+
+// Keep backward compatibility
+async function changeAnswerForQuestion(qId) {
+    startEditingQuestion(qId);
 }
 
 async function undoLastAnsweredQuestion() {
@@ -878,31 +959,11 @@ async function undoLastAnsweredQuestion() {
     await fetchAndRenderNextQuestion();
 }
 
-async function changeAnswerForQuestion(qId) {
-    const idx = answeredQuestionsLog.findIndex(x => x.id === qId);
-    if (idx === -1) return;
-
-    // Remove from this question onwards so user can branch/re-answer cleanly
-    const removed = answeredQuestionsLog.splice(idx);
-    removed.forEach(r => {
-        delete answeredQA[r.id];
-    });
-    answeredQuestionIds = answeredQuestionsLog.map(x => x.id);
-
-    try {
-        const uPayload = {
-            symptoms: Array.from(selectedSymptoms),
-            qa_answers: answeredQA
-        };
-        const uRes = await API.post('/api/closed-loop/uncertainty-assess', uPayload);
-        updateUncertaintyDisplay(uRes);
-    } catch (e) {
-        console.warn(e);
-    }
-
-    renderAnsweredQuestionsHistory();
-    await fetchAndRenderNextQuestion();
-}
+window.startEditingQuestion = startEditingQuestion;
+window.cancelEditingQuestion = cancelEditingQuestion;
+window.applyEditedAnswer = applyEditedAnswer;
+window.changeAnswerForQuestion = changeAnswerForQuestion;
+window.undoLastAnsweredQuestion = undoLastAnsweredQuestion;
 
 function goToStep1() {
     updateStepper(1);
@@ -1020,21 +1081,30 @@ async function fetchAndRenderNextQuestion() {
     }
 }
 
-async function selectNextQuestionAnswer(qId, answer, questionText = "", rationale = "", infoGain = 0) {
+async function selectNextQuestionAnswer(qId, answer, questionText = "", rationale = "", infoGain = 0, options = null) {
     answeredQA[qId] = answer;
     if (!answeredQuestionIds.includes(qId)) {
         answeredQuestionIds.push(qId);
     }
     
-    // Record in history log for full user visibility and editability
-    answeredQuestionsLog = answeredQuestionsLog.filter(x => x.id !== qId);
-    answeredQuestionsLog.push({
+    const opts = options || (currentActiveNextQuestion && currentActiveNextQuestion.options ? [...currentActiveNextQuestion.options] : []);
+
+    // Record in history log in-place so order is preserved and subsequent questions are never disturbed
+    const existingIdx = answeredQuestionsLog.findIndex(x => x.id === qId);
+    const entry = {
         id: qId,
         question: questionText || (currentActiveNextQuestion ? currentActiveNextQuestion.question : "Clinical Question"),
         answer: answer,
         rationale: rationale,
-        information_gain: infoGain
-    });
+        information_gain: infoGain,
+        options: opts && opts.length > 0 ? opts : (existingIdx !== -1 ? (answeredQuestionsLog[existingIdx].options || []) : [])
+    };
+
+    if (existingIdx !== -1) {
+        answeredQuestionsLog[existingIdx] = entry;
+    } else {
+        answeredQuestionsLog.push(entry);
+    }
     
     renderAnsweredQuestionsHistory();
 
