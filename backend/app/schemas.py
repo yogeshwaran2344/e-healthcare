@@ -61,6 +61,78 @@ class Token(BaseModel):
     token_type: str = "bearer"
     user: UserOut
 
+# Family Member Schemas
+class FamilyMemberCreate(BaseModel):
+    full_name: str
+    relationship: str
+    age: Optional[int] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    blood_group: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    known_allergies: Optional[str] = None
+    chronic_conditions: Optional[str] = None
+    current_medications: Optional[str] = None
+    emergency_hashcode: Optional[str] = None
+    notes: Optional[str] = None
+
+class FamilyMemberUpdate(BaseModel):
+    full_name: Optional[str] = None
+    relationship: Optional[str] = None
+    age: Optional[int] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    blood_group: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    known_allergies: Optional[str] = None
+    chronic_conditions: Optional[str] = None
+    current_medications: Optional[str] = None
+    emergency_hashcode: Optional[str] = None
+    notes: Optional[str] = None
+
+class FamilyMemberOut(BaseModel):
+    id: int
+    user_id: int
+    full_name: str
+    relationship: str
+    age: Optional[int] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    blood_group: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    known_allergies: Optional[str] = None
+    chronic_conditions: Optional[str] = None
+    current_medications: Optional[str] = None
+    emergency_hashcode: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class FamilyMemberEmergencyLookupOut(BaseModel):
+    id: int
+    full_name: str
+    relationship: str
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    blood_group: Optional[str] = None
+    phone: Optional[str] = None
+    whatsapp: Optional[str] = None
+    known_allergies: Optional[str] = None
+    chronic_conditions: Optional[str] = None
+    current_medications: Optional[str] = None
+    emergency_hashcode: str
+    notes: Optional[str] = None
+    primary_guardian_name: str
+    primary_guardian_phone: Optional[str] = None
+    verified_status: str = "CRYPTOGRAPHICALLY_VERIFIED"
+
+
 # Doctor Schemas
 class DoctorOut(BaseModel):
     id: int

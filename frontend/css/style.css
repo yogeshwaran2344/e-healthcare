@@ -1035,4 +1035,49 @@ body.high-contrast-mode .text-primary {
     }
 }
 
+/* Family Members & Emergency Hashcode Registry */
+.family-member-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.family-member-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.08) !important;
+    border-color: #cbd5e1;
+}
+
+.family-avatar-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #0d6efd;
+    background: #e7f1ff;
+    flex-shrink: 0;
+}
+
+.hashcode-badge {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.5px;
+    background: #f1f5f9;
+    border: 1px dashed #cbd5e1;
+    color: #334155;
+    padding: 4px 8px;
+    border-radius: 6px;
+    word-break: break-all;
+}
+
+.emergency-passcard-header {
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    color: white;
+}
+
+
 

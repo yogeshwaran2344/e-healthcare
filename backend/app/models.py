@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, relationship as orm_relationship
 from .database import Base
 
 class User(Base):
@@ -30,6 +30,7 @@ class User(Base):
     doctor_consultations = relationship("Consultation", back_populates="doctor", foreign_keys="Consultation.doctor_id")
     medical_reports = relationship("MedicalReport", back_populates="patient")
     recovery_checkins = relationship("RecoveryCheckIn", back_populates="patient")
+    family_members = relationship("FamilyMember", back_populates="user", cascade="all, delete-orphan")
 
 class DoctorProfile(Base):
     __tablename__ = "doctor_profiles"
@@ -498,5 +499,31 @@ class EmergencyAccessAudit(Base):
 
     accessor = relationship("User", foreign_keys=[accessor_id])
     patient = relationship("User", foreign_keys=[patient_id])
+
+
+class FamilyMember(Base):
+    """Registered family member profile with emergency hashcode and medical baseline"""
+    __tablename__ = "family_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    full_name = Column(String(100), nullable=False)
+    relationship = Column(String(50), nullable=False) # Spouse, Father, Mother, Child, Sibling, Guardian, etc.
+    age = Column(Integer, nullable=True)
+    date_of_birth = Column(String(30), nullable=True)
+    gender = Column(String(20), nullable=True)
+    blood_group = Column(String(10), nullable=True)
+    phone = Column(String(30), nullable=True)
+    whatsapp = Column(String(30), nullable=True)
+    known_allergies = Column(Text, nullable=True)
+    chronic_conditions = Column(Text, nullable=True)
+    current_medications = Column(Text, nullable=True)
+    emergency_hashcode = Column(String(64), unique=True, index=True, nullable=False) # SHA-256 Emergency Hash
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    user = orm_relationship("User", back_populates="family_members")
+
 
 

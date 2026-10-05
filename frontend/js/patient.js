@@ -362,6 +362,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { initContactSettings(); } catch (e) { console.warn("Contact settings init:", e); }
     try { await loadSymptoms(); } catch (e) { console.warn("Symptoms init:", e); }
     try { await loadProfileData(); } catch (e) { console.warn("Profile init:", e); }
+    try { await loadFamilyMembers(); } catch (e) { console.warn("Family members init:", e); }
     try { await loadDoctorsDropdown(); } catch (e) { console.warn("Doctors dropdown init:", e); }
     try { setupSpeechRecognition(); } catch (e) { console.warn("Speech recognition init:", e); }
     try { renderFamilyVaultButtons(); switchFamilyVault('self', true); } catch (e) { console.warn("Family Vault init:", e); }
@@ -2108,6 +2109,7 @@ function activateTab(tabId, scroll = true) {
     try {
         if (cleanId === 'tab-profile') {
             if (typeof loadProfileData === 'function') loadProfileData().catch(() => {});
+            if (typeof loadFamilyMembers === 'function') loadFamilyMembers().catch(() => {});
         } else if (cleanId === 'tab-iot') {
             if (typeof loadIoTTab === 'function') loadIoTTab().catch(() => {});
         } else if (cleanId === 'tab-blockchain') {
@@ -4178,12 +4180,636 @@ function getStoredFamilyMembers() {
     return {};
 }
 
+// =========================================================================
+// 15. FAMILY MEMBERS & EMERGENCY HASHCODE REGISTRY
+// =========================================================================
+
+let currentFamilyMembers = [];
+let currentSelectedEmergencyMember = null;
+
+function calculateFamilyAgeFromDob() {
+    const dobInput = document.getElementById('fMemDob');
+    const ageInput = document.getElementById('fMemAge');
+    if (!dobInput || !dobInput.value) return null;
+    try {
+        const birthDate = new Date(dobInput.value);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        const finalAge = Math.max(0, age);
+        if (ageInput) ageInput.value = finalAge;
+        return finalAge;
+    } catch (_) {
+        return null;
+    }
+}
+
+function generateCryptographicHash(seedStr = '') {
+    const now = Date.now().toString(16);
+    let randBytes = '';
+    if (window.crypto && crypto.getRandomValues) {
+        const arr = new Uint8Array(20);
+        crypto.getRandomValues(arr);
+        randBytes = Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+        randBytes = Math.random().toString(16).substring(2) + Math.random().toString(16).substring(2);
+    }
+    const raw = `NC-FAM-${seedStr}-${now}-${randBytes}`.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    // Produce 64 hex characters
+    let hex = '';
+    for (let i = 0; i < 64; i++) {
+        hex += (raw.charCodeAt(i % raw.length) * (i + 13) % 16).toString(16);
+    }
+    return hex;
+}
+
+function generateFamilyMemberHashInModal() {
+    const name = document.getElementById('fMemName')?.value.trim() || 'user';
+    const blood = document.getElementById('fMemBlood')?.value || 'GEN';
+    const hash = generateCryptographicHash(`${name}-${blood}`);
+    const hashInput = document.getElementById('fMemHashcode');
+    if (hashInput) {
+        hashInput.value = hash;
+        hashInput.classList.add('bg-success-subtle');
+        setTimeout(() => hashInput.classList.remove('bg-success-subtle'), 1000);
+    }
+    return hash;
+}
+
+function copyFamilyHashFromInput() {
+    const hashInput = document.getElementById('fMemHashcode');
+    if (hashInput && hashInput.value) {
+        copyFamilyHash(hashInput.value);
+    }
+}
+
+function copyFamilyHash(hash) {
+    if (!hash) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(hash).then(() => {
+            showToastMessage("Emergency Hashcode copied to clipboard!");
+        }).catch(() => {
+            prompt("Copy Emergency Hashcode:", hash);
+        });
+    } else {
+        prompt("Copy Emergency Hashcode:", hash);
+    }
+}
+
+function showToastMessage(msg) {
+    if (typeof showSMSNotification === 'function') {
+        showSMSNotification({
+            title: "EMERGENCY REGISTRY",
+            message: msg,
+            channel: "sms",
+            duration: 3000
+        });
+    } else {
+        alert(msg);
+    }
+}
+
+async function loadFamilyMembers() {
+    const grid = document.getElementById('familyMembersGrid');
+    const badge = document.getElementById('familyCountBadge');
+    
+    try {
+        let members = [];
+        try {
+            members = await API.get('/api/profile/family');
+        } catch (apiErr) {
+            console.warn("Could not fetch remote family members, checking local cache:", apiErr);
+            const cached = localStorage.getItem('neurocare_family_members');
+            if (cached) {
+                try { members = JSON.parse(cached); } catch (_) {}
+            }
+        }
+
+        currentFamilyMembers = Array.isArray(members) ? members : [];
+        localStorage.setItem('neurocare_family_members', JSON.stringify(currentFamilyMembers));
+
+        if (badge) {
+            badge.textContent = `${currentFamilyMembers.length} Registered`;
+        }
+
+        renderFamilyMembersList(currentFamilyMembers);
+        renderFamilyVaultButtons();
+    } catch (err) {
+        console.error("Error loading family members:", err);
+        if (grid) {
+            grid.innerHTML = `
+                <div class="col-12 text-center py-4 text-danger">
+                    <i class="bi bi-exclamation-circle me-1"></i> Failed to load family members.
+                    <button class="btn btn-sm btn-outline-primary ms-2" onclick="loadFamilyMembers()">Retry</button>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderFamilyMembersList(members) {
+    const grid = document.getElementById('familyMembersGrid');
+    if (!grid) return;
+
+    if (!members || members.length === 0) {
+        grid.innerHTML = `
+            <div class="col-12 text-center py-5 border rounded-4 bg-light bg-opacity-50">
+                <i class="bi bi-people display-5 text-secondary opacity-50 d-block mb-3"></i>
+                <h6 class="fw-bold text-dark">No Family Members Registered Yet</h6>
+                <p class="text-muted small mb-3">Add family members to securely store their critical medical details and generate unique SHA-256 Emergency Hashcodes for paramedic lookup.</p>
+                <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold rounded-pill" onclick="openAddFamilyMemberModal()">
+                    <i class="bi bi-person-plus-fill me-1"></i> Add First Family Member
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    members.forEach(m => {
+        const initial = (m.full_name || 'F').charAt(0).toUpperCase();
+        const blood = m.blood_group || 'Not recorded';
+        const ageText = m.age ? `${m.age} yrs` : (m.date_of_birth ? m.date_of_birth : 'Age not recorded');
+        const genderText = m.gender || 'Other';
+        const allergies = m.known_allergies && m.known_allergies !== 'None' ? m.known_allergies : null;
+        const conditions = m.chronic_conditions && m.chronic_conditions !== 'None' ? m.chronic_conditions : null;
+        const meds = m.current_medications && m.current_medications !== 'None' ? m.current_medications : null;
+        const phone = m.phone || '';
+        const whatsapp = m.whatsapp || phone;
+        const hash = m.emergency_hashcode || '';
+        const shortHash = hash.length > 20 ? `${hash.substring(0, 10)}...${hash.substring(hash.length - 8)}` : hash;
+
+        html += `
+            <div class="col-md-6 col-xl-6">
+                <div class="card family-member-card rounded-4 p-3 shadow-sm h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="family-avatar-circle">${escapeHtml(initial)}</div>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">${escapeHtml(m.full_name)}</h6>
+                                <div class="d-flex align-items-center gap-1 flex-wrap mt-1">
+                                    <span class="badge bg-primary text-white" style="font-size:0.7rem;">${escapeHtml(m.relationship)}</span>
+                                    <span class="text-muted small">${escapeHtml(ageText)} · ${escapeHtml(genderText)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="badge bg-danger fs-6 px-2 py-1 shadow-sm" title="Blood Group">${escapeHtml(blood)}</span>
+                    </div>
+
+                    <!-- Clinical Baseline Badges -->
+                    <div class="my-2 d-flex flex-wrap gap-1">
+                        ${allergies ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle small"><i class="bi bi-exclamation-triangle-fill me-1"></i>Allergy: ${escapeHtml(allergies)}</span>` : '<span class="badge bg-light text-secondary border small">No Known Allergies</span>'}
+                        ${conditions ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle small"><i class="bi bi-heart-pulse me-1"></i>${escapeHtml(conditions)}</span>` : ''}
+                    </div>
+
+                    ${meds ? `
+                        <div class="small text-muted mb-2">
+                            <strong class="text-dark"><i class="bi bi-capsule text-purple me-1"></i>Meds:</strong> ${escapeHtml(meds)}
+                        </div>
+                    ` : ''}
+
+                    <!-- Contact Buttons -->
+                    <div class="d-flex align-items-center gap-2 my-2 flex-wrap">
+                        ${phone ? `
+                            <a href="tel:${escapeHtml(phone)}" class="btn btn-sm btn-outline-secondary py-0 px-2 small" title="Call Emergency Contact">
+                                <i class="bi bi-telephone me-1 text-primary"></i> ${escapeHtml(phone)}
+                            </a>
+                        ` : ''}
+                        ${whatsapp ? `
+                            <a href="https://wa.me/${escapeHtml(whatsapp.replace(/[^0-9]/g, ''))}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 small" title="Open WhatsApp Chat">
+                                <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                            </a>
+                        ` : ''}
+                    </div>
+
+                    <!-- Emergency Hashcode Container -->
+                    <div class="p-2 rounded-3 bg-light border mt-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small fw-semibold text-primary"><i class="bi bi-shield-lock-fill me-1"></i>Emergency Hashcode</span>
+                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-muted" onclick="copyFamilyHash('${escapeHtml(hash)}')" title="Copy Full Hash">
+                                <i class="bi bi-clipboard me-1"></i><small>Copy</small>
+                            </button>
+                        </div>
+                        <div class="hashcode-badge d-flex align-items-center justify-content-between">
+                            <span class="font-monospace text-truncate" style="max-width: 80%;">${escapeHtml(shortHash)}</span>
+                            <span class="badge bg-success-subtle text-success" style="font-size:0.65rem;">SHA-256</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                        <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="openFamilyEmergencyCard(${m.id})">
+                            <i class="bi bi-person-vcard me-1"></i> Emergency Card &amp; QR
+                        </button>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary" onclick="openEditFamilyMemberModal(${m.id})" title="Edit Information">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" onclick="deleteFamilyMember(${m.id})" title="Remove Member">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    grid.innerHTML = html;
+}
+
+function filterFamilyMembersList() {
+    const q = (document.getElementById('familySearchInput')?.value || '').toLowerCase().trim();
+    if (!q) {
+        renderFamilyMembersList(currentFamilyMembers);
+        return;
+    }
+    const filtered = currentFamilyMembers.filter(m => {
+        return (
+            (m.full_name && m.full_name.toLowerCase().includes(q)) ||
+            (m.relationship && m.relationship.toLowerCase().includes(q)) ||
+            (m.blood_group && m.blood_group.toLowerCase().includes(q)) ||
+            (m.emergency_hashcode && m.emergency_hashcode.toLowerCase().includes(q)) ||
+            (m.known_allergies && m.known_allergies.toLowerCase().includes(q)) ||
+            (m.chronic_conditions && m.chronic_conditions.toLowerCase().includes(q))
+        );
+    });
+    renderFamilyMembersList(filtered);
+}
+
+function openAddFamilyMemberModal(memberId = null) {
+    const form = document.getElementById('addFamilyMemberForm');
+    const title = document.getElementById('familyMemberModalTitle');
+    const saveBtn = document.getElementById('saveFamilyBtn');
+    const idInput = document.getElementById('fMemId');
+
+    if (form) form.reset();
+    if (idInput) idInput.value = '';
+
+    if (title) {
+        title.innerHTML = '<i class="bi bi-people-fill me-2"></i>Register Family Member & Emergency Hashcode';
+    }
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Save Family Member & Hashcode';
+    }
+
+    // Auto-generate fresh hashcode for convenience
+    generateFamilyMemberHashInModal();
+
+    const modalEl = document.getElementById('addFamilyMemberModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function openEditFamilyMemberModal(memberId) {
+    const m = currentFamilyMembers.find(x => x.id === memberId);
+    if (!m) return;
+
+    const title = document.getElementById('familyMemberModalTitle');
+    const saveBtn = document.getElementById('saveFamilyBtn');
+    const idInput = document.getElementById('fMemId');
+
+    if (title) {
+        title.innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Family Member: ${escapeHtml(m.full_name)}`;
+    }
+    if (saveBtn) {
+        saveBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Update Family Member';
+    }
+
+    if (idInput) idInput.value = m.id;
+    if (document.getElementById('fMemName')) document.getElementById('fMemName').value = m.full_name || '';
+    if (document.getElementById('fMemRelation')) document.getElementById('fMemRelation').value = m.relationship || 'Spouse';
+    if (document.getElementById('fMemGender')) document.getElementById('fMemGender').value = m.gender || 'Male';
+    if (document.getElementById('fMemDob')) document.getElementById('fMemDob').value = m.date_of_birth || '';
+    if (document.getElementById('fMemAge')) document.getElementById('fMemAge').value = m.age || '';
+    if (document.getElementById('fMemBlood')) document.getElementById('fMemBlood').value = m.blood_group || 'O+';
+    if (document.getElementById('fMemPhone')) document.getElementById('fMemPhone').value = m.phone || '';
+    if (document.getElementById('fMemWhatsapp')) document.getElementById('fMemWhatsapp').value = m.whatsapp || '';
+    if (document.getElementById('fMemAllergies')) document.getElementById('fMemAllergies').value = m.known_allergies || '';
+    if (document.getElementById('fMemConditions')) document.getElementById('fMemConditions').value = m.chronic_conditions || '';
+    if (document.getElementById('fMemMeds')) document.getElementById('fMemMeds').value = m.current_medications || '';
+    if (document.getElementById('fMemHashcode')) document.getElementById('fMemHashcode').value = m.emergency_hashcode || '';
+    if (document.getElementById('fMemNotes')) document.getElementById('fMemNotes').value = m.notes || '';
+
+    const modalEl = document.getElementById('addFamilyMemberModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+async function saveNewFamilyMember(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const idVal = document.getElementById('fMemId')?.value.trim();
+    const nameVal = document.getElementById('fMemName')?.value.trim();
+    const relationVal = document.getElementById('fMemRelation')?.value || 'Spouse';
+    const genderVal = document.getElementById('fMemGender')?.value || 'Other';
+    const dobVal = document.getElementById('fMemDob')?.value.trim() || null;
+    const calcAge = calculateFamilyAgeFromDob();
+    const ageVal = calcAge !== null ? calcAge : (parseInt(document.getElementById('fMemAge')?.value) || null);
+    const bloodVal = document.getElementById('fMemBlood')?.value || 'O+';
+    const phoneVal = document.getElementById('fMemPhone')?.value.trim() || null;
+    const whatsappVal = document.getElementById('fMemWhatsapp')?.value.trim() || phoneVal;
+    const allergiesVal = document.getElementById('fMemAllergies')?.value.trim() || null;
+    const conditionsVal = document.getElementById('fMemConditions')?.value.trim() || null;
+    const medsVal = document.getElementById('fMemMeds')?.value.trim() || null;
+    let hashVal = document.getElementById('fMemHashcode')?.value.trim();
+    const notesVal = document.getElementById('fMemNotes')?.value.trim() || null;
+
+    if (!nameVal) {
+        alert("Please enter the full name of the family member.");
+        return;
+    }
+
+    if (!hashVal) {
+        hashVal = generateCryptographicHash(`${nameVal}-${bloodVal}`);
+    }
+
+    const payload = {
+        full_name: nameVal,
+        relationship: relationVal,
+        gender: genderVal,
+        date_of_birth: dobVal,
+        age: ageVal,
+        blood_group: bloodVal,
+        phone: phoneVal,
+        whatsapp: whatsappVal,
+        known_allergies: allergiesVal,
+        chronic_conditions: conditionsVal,
+        current_medications: medsVal,
+        emergency_hashcode: hashVal,
+        notes: notesVal
+    };
+
+    const saveBtn = document.getElementById('saveFamilyBtn');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+    }
+
+    try {
+        if (idVal) {
+            // Update existing
+            await API.put(`/api/profile/family/${idVal}`, payload);
+            showToastMessage(`Updated profile for ${nameVal} (${relationVal})`);
+        } else {
+            // Create new
+            await API.post('/api/profile/family', payload);
+            showToastMessage(`Registered ${nameVal} (${relationVal}) with Emergency Hashcode`);
+        }
+
+        const modalEl = document.getElementById('addFamilyMemberModal');
+        if (modalEl) {
+            const inst = bootstrap.Modal.getInstance(modalEl);
+            if (inst) inst.hide();
+        }
+
+        await loadFamilyMembers();
+    } catch (err) {
+        console.error("Error saving family member:", err);
+        alert(err.message || "Failed to save family member. Please check details and try again.");
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Save Family Member & Hashcode';
+        }
+    }
+}
+
+async function deleteFamilyMember(memberId) {
+    const m = currentFamilyMembers.find(x => x.id === memberId);
+    const name = m ? m.full_name : 'this family member';
+
+    if (!confirm(`Are you sure you want to remove ${name} from your Emergency Family Registry?`)) {
+        return;
+    }
+
+    try {
+        await API.delete(`/api/profile/family/${memberId}`);
+        showToastMessage(`Removed ${name} from emergency registry.`);
+        await loadFamilyMembers();
+    } catch (err) {
+        console.error("Error deleting family member:", err);
+        alert(err.message || "Failed to delete family member.");
+    }
+}
+
+function openFamilyEmergencyCard(memberId) {
+    const m = currentFamilyMembers.find(x => x.id === memberId);
+    if (!m) return;
+
+    currentSelectedEmergencyMember = m;
+    const body = document.getElementById('familyEmergencyCardBody');
+    if (!body) return;
+
+    const user = API.getUser() || {};
+    const guardianName = user.full_name || 'Family Guardian';
+    const guardianPhone = user.phone || 'Recorded on File';
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(window.location.origin + '/emergency.html?hash=' + m.emergency_hashcode)}`;
+
+    body.innerHTML = `
+        <div class="text-center mb-3">
+            <div class="d-inline-block p-2 bg-white rounded-3 shadow-sm border mb-2">
+                <img src="${qrUrl}" alt="Emergency QR Code" width="160" height="160" class="img-fluid rounded">
+            </div>
+            <div class="font-monospace small text-muted">Scan with any smartphone or paramedic scanner</div>
+        </div>
+
+        <div class="bg-light p-3 rounded-3 border mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark">${escapeHtml(m.full_name)}</h5>
+                    <span class="badge bg-primary text-white">${escapeHtml(m.relationship)}</span>
+                    <span class="small text-muted ms-1">${m.age ? m.age + ' yrs' : ''} · ${escapeHtml(m.gender || 'Other')}</span>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-danger fs-5 px-3 py-1 shadow-sm">${escapeHtml(m.blood_group || 'O+')}</span>
+                    <div class="small text-muted mt-1">Blood Group</div>
+                </div>
+            </div>
+
+            <hr class="my-2">
+
+            <!-- Critical Clinical Alerts -->
+            <div class="mb-2">
+                <strong class="small text-danger d-block mb-1"><i class="bi bi-shield-alert me-1"></i>Known Drug &amp; Food Allergies:</strong>
+                <div class="p-2 rounded bg-danger-subtle text-danger small fw-semibold">
+                    ${escapeHtml(m.known_allergies || 'No known allergies reported.')}
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <strong class="small text-dark d-block mb-1"><i class="bi bi-heart-pulse text-warning me-1"></i>Pre-Existing / Chronic Conditions:</strong>
+                <div class="small text-dark">
+                    ${escapeHtml(m.chronic_conditions || 'None reported.')}
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <strong class="small text-dark d-block mb-1"><i class="bi bi-capsule text-purple me-1"></i>Current Medications:</strong>
+                <div class="small text-dark">
+                    ${escapeHtml(m.current_medications || 'None recorded.')}
+                </div>
+            </div>
+
+            ${m.notes ? `
+                <div class="mb-2">
+                    <strong class="small text-muted d-block mb-1"><i class="bi bi-info-circle me-1"></i>First Responder Notes:</strong>
+                    <div class="small fst-italic text-secondary">
+                        ${escapeHtml(m.notes)}
+                    </div>
+                </div>
+            ` : ''}
+
+            <!-- Contacts -->
+            <div class="p-2 rounded bg-white border mt-3 small">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <span class="text-muted d-block">Emergency Member Tel:</span>
+                        <strong class="text-dark">${escapeHtml(m.phone || 'None')}</strong>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted d-block">Primary Guardian (${escapeHtml(guardianName)}):</span>
+                        <strong class="text-dark">${escapeHtml(guardianPhone)}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hashcode -->
+            <div class="mt-3 p-2 bg-dark text-white rounded-3 text-center">
+                <div class="small opacity-75 mb-1"><i class="bi bi-key-fill text-warning me-1"></i>Cryptographic Emergency Hash</div>
+                <div class="font-monospace small fw-bold text-break text-warning">${escapeHtml(m.emergency_hashcode)}</div>
+            </div>
+        </div>
+    `;
+
+    const modalEl = document.getElementById('familyEmergencyCardModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function shareFamilyEmergencyViaWhatsApp() {
+    const m = currentSelectedEmergencyMember;
+    if (!m) return;
+
+    const user = API.getUser() || {};
+    const guardian = user.full_name || 'Primary Guardian';
+    const guardianPhone = user.phone || 'On file';
+
+    const text = `🚨 *NEUROCARE EMERGENCY MEDICAL PASSPORT* 🚨\n\n` +
+        `👤 *Patient:* ${m.full_name} (${m.relationship})\n` +
+        `🩸 *Blood Group:* ${m.blood_group || 'O+'}\n` +
+        `🎂 *Age / Gender:* ${m.age ? m.age + ' yrs' : 'N/A'} / ${m.gender || 'Other'}\n` +
+        `⚠️ *Allergies:* ${m.known_allergies || 'None reported'}\n` +
+        `🩺 *Chronic Conditions:* ${m.chronic_conditions || 'None'}\n` +
+        `💊 *Current Medications:* ${m.current_medications || 'None'}\n` +
+        `🔑 *Emergency Hashcode:* ${m.emergency_hashcode}\n` +
+        `📞 *Family Guardian (${guardian}):* ${guardianPhone}\n\n` +
+        `🔒 *Cryptographically verified by NeuroCare Emergency Network.*`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+}
+
+function openFamilyEmergencyLookupModal() {
+    const box = document.getElementById('emergencyLookupResultBox');
+    if (box) {
+        box.classList.add('d-none');
+        box.innerHTML = '';
+    }
+    const input = document.getElementById('lookupHashInput');
+    if (input) input.value = '';
+
+    const modalEl = document.getElementById('familyEmergencyLookupModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+async function performEmergencyHashLookup() {
+    const input = document.getElementById('lookupHashInput');
+    const box = document.getElementById('emergencyLookupResultBox');
+    if (!input || !box) return;
+
+    const hash = input.value.trim();
+    if (!hash) {
+        alert("Please enter or paste an emergency hashcode.");
+        return;
+    }
+
+    box.classList.remove('d-none');
+    box.innerHTML = `
+        <div class="text-center py-3 text-muted">
+            <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+            Verifying cryptographic emergency hash on NeuroCare network...
+        </div>
+    `;
+
+    try {
+        const data = await API.get(`/api/profile/family/emergency-lookup/${encodeURIComponent(hash)}`);
+        
+        box.innerHTML = `
+            <div class="card border-success border-2 rounded-4 p-3 bg-success-subtle bg-opacity-10">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-success"><i class="bi bi-shield-check me-1"></i>VERIFIED EMERGENCY RECORD</span>
+                    <span class="badge bg-danger fs-6 px-2">${escapeHtml(data.blood_group || 'O+')}</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-0">${escapeHtml(data.full_name)}</h5>
+                <div class="small text-muted mb-2">${escapeHtml(data.relationship)} · ${data.age ? data.age + ' yrs' : ''} · ${escapeHtml(data.gender || 'Other')}</div>
+
+                <div class="p-2 rounded bg-danger-subtle text-danger small fw-semibold mb-2">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Allergies: ${escapeHtml(data.known_allergies || 'None recorded')}
+                </div>
+
+                <div class="small text-dark mb-1">
+                    <strong>Conditions:</strong> ${escapeHtml(data.chronic_conditions || 'None')}
+                </div>
+                <div class="small text-dark mb-2">
+                    <strong>Medications:</strong> ${escapeHtml(data.current_medications || 'None')}
+                </div>
+
+                <div class="p-2 rounded bg-white border small">
+                    <div><strong>Guardian:</strong> ${escapeHtml(data.primary_guardian_name)} (${escapeHtml(data.primary_guardian_phone || 'No phone')})</div>
+                    ${data.phone ? `<div><strong>Member Phone:</strong> ${escapeHtml(data.phone)}</div>` : ''}
+                </div>
+            </div>
+        `;
+    } catch (err) {
+        console.error("Lookup error:", err);
+        box.innerHTML = `
+            <div class="alert alert-danger mb-0 small">
+                <i class="bi bi-exclamation-triangle me-1"></i> No active record found for this emergency hashcode. Please check the code and retry.
+            </div>
+        `;
+    }
+}
+
+// Global window bindings for HTML onclick handlers
+window.calculateFamilyAgeFromDob = calculateFamilyAgeFromDob;
+window.generateFamilyMemberHashInModal = generateFamilyMemberHashInModal;
+window.copyFamilyHashFromInput = copyFamilyHashFromInput;
+window.copyFamilyHash = copyFamilyHash;
+window.loadFamilyMembers = loadFamilyMembers;
+window.openAddFamilyMemberModal = openAddFamilyMemberModal;
+window.openEditFamilyMemberModal = openEditFamilyMemberModal;
+window.saveNewFamilyMember = saveNewFamilyMember;
+window.deleteFamilyMember = deleteFamilyMember;
+window.openFamilyEmergencyCard = openFamilyEmergencyCard;
+window.shareFamilyEmergencyViaWhatsApp = shareFamilyEmergencyViaWhatsApp;
+window.filterFamilyMembersList = filterFamilyMembersList;
+window.openFamilyEmergencyLookupModal = openFamilyEmergencyLookupModal;
+window.performEmergencyHashLookup = performEmergencyHashLookup;
+
+// Compatibility aliases for legacy vault switchers
 function getFamilyMembers() {
     const user = API.getUser() || {};
-    // "Self" is always the logged-in user: use the login name and real profile values only
     const selfName = user.full_name || (currentProfile && currentProfile.full_name) || "Me";
     const p = currentProfile || {};
-
     const members = {
         self: {
             id: 'self',
@@ -4193,13 +4819,24 @@ function getFamilyMembers() {
             blood: p.blood_group || 'Not set',
             allergies: p.drug_allergies || 'None logged',
             meds: p.current_medications || 'None logged',
-            records: null,   // null = keep dashboard defaults
+            records: null,
             labs: null
         }
     };
-
-    const stored = getStoredFamilyMembers();
-    Object.assign(members, stored);
+    currentFamilyMembers.forEach(m => {
+        const key = 'mem_' + m.id;
+        members[key] = {
+            id: key,
+            name: m.full_name,
+            relation: m.relationship,
+            age: m.age,
+            blood: m.blood_group,
+            allergies: m.known_allergies || 'None logged',
+            meds: m.current_medications || 'None logged',
+            records: 0,
+            labs: 0
+        };
+    });
     return members;
 }
 
@@ -4233,7 +4870,6 @@ function renderFamilyVaultButtons() {
     container.innerHTML = html;
 }
 
-// Update only the text of a dashboard metric, keeping its icon
 function setDashMetric(id, text) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -4262,7 +4898,6 @@ function switchFamilyVault(memberKey, silent = false) {
 
     renderFamilyVaultButtons();
 
-    // Welcome banner
     const welcome = document.getElementById('userWelcomeText');
     if (welcome) {
         welcome.textContent = isSelf
@@ -4270,7 +4905,6 @@ function switchFamilyVault(memberKey, silent = false) {
             : `Viewing Vault: ${m.name} (${m.relation}${m.age ? ', ' + m.age + 'y' : ''})`;
     }
 
-    // Dashboard metrics
     setDashMetric('dashMetricRecords', m.records == null ? _dashDefaults['dashMetricRecords'] : `${m.records} verified`);
     setDashMetric('dashMetricLabs', m.labs == null ? _dashDefaults['dashMetricLabs'] : `${m.labs} records`);
     setDashMetric('dashMetricMeds', `${countListItems(m.meds)} active`);
@@ -4278,18 +4912,8 @@ function switchFamilyVault(memberKey, silent = false) {
 
     renderFamilyVaultDetails(m, isSelf);
     try { initTravelTab(true); } catch (_) {}
-
-    if (!silent) {
-        showSMSNotification({
-            title: "ACTIVE HEALTH VAULT SWITCHED",
-            message: `Active Health Vault switched to ${m.name} (${m.relation}). Segregated sovereign permissions active.`,
-            channel: "sms",
-            duration: 4000
-        });
-    }
 }
 
-// Shows the selected person's details right under the vault switcher
 function renderFamilyVaultDetails(m, isSelf) {
     const box = document.getElementById('familyVaultDetails');
     if (!box) return;
@@ -4310,60 +4934,11 @@ function renderFamilyVaultDetails(m, isSelf) {
         </div>`;
 }
 
-function openAddFamilyMemberModal() {
-    const form = document.getElementById('addFamilyMemberForm');
-    if (form) form.reset();
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('addFamilyMemberModal')).show();
-}
+window.getFamilyMembers = getFamilyMembers;
+window.renderFamilyVaultButtons = renderFamilyVaultButtons;
+window.switchFamilyVault = switchFamilyVault;
+window.renderFamilyVaultDetails = renderFamilyVaultDetails;
 
-function saveNewFamilyMember(e) {
-    if (e) e.preventDefault();
-    const name = document.getElementById('fMemName').value.trim();
-    const relation = document.getElementById('fMemRelation').value;
-    const age = parseInt(document.getElementById('fMemAge').value) || 0;
-    const blood = document.getElementById('fMemBlood').value.trim() || "Unspecified";
-    const allergies = document.getElementById('fMemAllergies').value.trim() || "None logged";
-    const meds = document.getElementById('fMemMeds').value.trim() || "None logged";
-    const records = parseInt(document.getElementById('fMemRecords').value) || 0;
-
-    if (!name) {
-        alert("Please enter full name of family member.");
-        return;
-    }
-
-    const user = API.getUser() || {};
-    const userId = user.id || 'default';
-    const key = `ehealth_family_vault_${userId}`;
-
-    const stored = getStoredFamilyMembers();
-    const memberKey = 'mem_' + Date.now();
-    stored[memberKey] = {
-        id: memberKey,
-        name,
-        relation,
-        age,
-        blood,
-        allergies,
-        meds,
-        records,
-        labs: 0
-    };
-
-    localStorage.setItem(key, JSON.stringify(stored));
-
-    const modalEl = document.getElementById('addFamilyMemberModal');
-    const modalInst = bootstrap.Modal.getInstance(modalEl);
-    if (modalInst) modalInst.hide();
-
-    switchFamilyVault(memberKey);
-
-    showSMSNotification({
-        title: "FAMILY MEMBER ADDED",
-        message: `Successfully added ${name} (${relation}) to your Sovereign Family Health Vault.`,
-        channel: "whatsapp",
-        duration: 6000
-    });
-}
 
 
 // ===================================================================
