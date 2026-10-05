@@ -9,9 +9,115 @@ from typing import List, Dict, Any, Optional
 from .dataset import DISEASES_DB
 from .uncertainty_engine import calculate_disease_posteriors, compute_entropy_and_uncertainty
 
-# Comprehensive clinical inquiry pool with hypothesis discriminators & strict domain triggers
+# Comprehensive clinical inquiry pool with rich hypothesis discriminators across all clinical domains
 QUESTION_BANK = [
-    # 1. Hair & Scalp Loss Pattern
+    # =========================================================================
+    # 1. FEVER & SYSTEMIC INFECTIONS
+    # =========================================================================
+    {
+        "id": "q_fever_pattern",
+        "domain_triggers": ["fever", "chills", "sweat", "shivering", "temperature", "cold"],
+        "question": "What is your highest body temperature and how does the fever behave?",
+        "options": [
+            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering",
+            "Gradually rising step-ladder fever day by day with severe fatigue and headache",
+            "Mild low-grade fever (around 99-100°F) mainly in late afternoon/evening",
+            "Intermittent sweating episodes without high thermometer readings"
+        ],
+        "discriminates": [
+            "Acute Dengue Infection with Warning Signs",
+            "Typhoid Enteric Fever",
+            "Bacterial Pneumonia / Lower Respiratory Infection"
+        ],
+        "target_symptoms_boost": {
+            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering": ["chills", "high_fever"],
+            "Gradually rising step-ladder fever day by day with severe fatigue and headache": ["high_fever", "severe_headache"]
+        }
+    },
+    {
+        "id": "q_fever_body_aches",
+        "domain_triggers": ["fever", "chills", "aches", "body_pain", "myalgia", "weakness"],
+        "question": "How severe are your body aches and joint pains with this fever?",
+        "options": [
+            "Severe agonizing bone-breaking muscle and back aches (deep throbbing)",
+            "Moderate muscle stiffness and generalized fatigue (like typical seasonal flu)",
+            "Mainly headache and eye pain behind the sockets (retro-orbital pain)",
+            "Mild body tiredness without severe aches"
+        ],
+        "discriminates": [
+            "Acute Dengue Infection with Warning Signs",
+            "Acute Viral Syndrome & Generalized Myalgia",
+            "Typhoid Enteric Fever"
+        ],
+        "target_symptoms_boost": {
+            "Severe agonizing bone-breaking muscle and back aches (deep throbbing)": ["body_muscle_aches"],
+            "Mainly headache and eye pain behind the sockets (retro-orbital pain)": ["severe_headache"]
+        }
+    },
+    {
+        "id": "q_fever_rash_bleeding",
+        "domain_triggers": ["fever", "rash", "petechiae", "bleeding", "skin", "spots"],
+        "question": "Have you noticed any skin spots, rash, or bleeding tendencies with the fever?",
+        "options": [
+            "Tiny pinpoint non-blanching red or purple dots (petechiae) or bleeding gums",
+            "Diffuse fine red rash or flushing across chest, arms, and face",
+            "Nosebleeds or unusually easy bruising on limbs",
+            "No skin changes or bleeding signs at all"
+        ],
+        "discriminates": [
+            "Acute Dengue Infection with Warning Signs",
+            "Typhoid Enteric Fever",
+            "Allergic Dermatitis & Urticaria"
+        ],
+        "target_symptoms_boost": {
+            "Tiny pinpoint non-blanching red or purple dots (petechiae) or bleeding gums": ["petechiae_purpura"],
+            "Diffuse fine red rash or flushing across chest, arms, and face": ["skin_rash"]
+        }
+    },
+    {
+        "id": "q_fever_gi_symptoms",
+        "domain_triggers": ["fever", "abdominal", "stomach", "vomiting", "diarrhea", "nausea", "loss_of_appetite"],
+        "question": "Are you experiencing any stomach, digestion, or appetite symptoms alongside the fever?",
+        "options": [
+            "Severe persistent abdominal tenderness and repeated vomiting",
+            "Loss of appetite, constipation followed by watery diarrhea (pea-soup stools)",
+            "Mild nausea with sour taste in mouth, but able to keep fluids down",
+            "Zero stomach discomfort, appetite is relatively normal"
+        ],
+        "discriminates": [
+            "Typhoid Enteric Fever",
+            "Acute Dengue Infection with Warning Signs",
+            "Acute Gastroenteritis & Dehydration"
+        ],
+        "target_symptoms_boost": {
+            "Severe persistent abdominal tenderness and repeated vomiting": ["abdominal_pain", "vomiting"],
+            "Loss of appetite, constipation followed by watery diarrhea (pea-soup stools)": ["loss_of_appetite", "diarrhea"]
+        }
+    },
+    {
+        "id": "q_fever_duration_meds",
+        "domain_triggers": ["fever", "chills", "paracetamol", "temperature"],
+        "question": "How many days has the fever persisted, and how does it respond to Paracetamol?",
+        "options": [
+            "Fever spikes back every 4-6 hours immediately after Paracetamol wears off",
+            "Fever has lasted continuously for more than 5-7 days (unyielding high fever)",
+            "Fever began 1-2 days ago with acute sudden onset and extreme weakness",
+            "Fever settles with simple rest and oral hydration"
+        ],
+        "discriminates": [
+            "Acute Dengue Infection with Warning Signs",
+            "Typhoid Enteric Fever",
+            "Bacterial Pneumonia / Lower Respiratory Infection"
+        ],
+        "target_symptoms_boost": {
+            "Fever has lasted continuously for more than 5-7 days (unyielding high fever)": ["high_fever", "general_weakness"],
+            "Fever began 1-2 days ago with acute sudden onset and extreme weakness": ["chills", "fatigue"]
+        }
+    },
+
+    # =========================================================================
+    # 2. HAIR & SCALP CARE
+    # =========================================================================
     {
         "id": "q_hair_loss_pattern",
         "domain_triggers": ["hair", "scalp", "alopecia", "shedding", "thinning", "folliculitis", "greying", "brittle"],
@@ -33,7 +139,6 @@ QUESTION_BANK = [
             "Greasy yellowish buildup with severe dandruff, scalp itching, and hair breakage": ["dandruff_scalp_flaking", "scalp_itching_irritation", "scalp_redness_bumps"]
         }
     },
-    # 2. Scalp Condition & Sensations
     {
         "id": "q_scalp_condition_sensation",
         "domain_triggers": ["scalp", "dandruff", "itching", "folliculitis", "flaking", "bumps", "hair"],
@@ -54,7 +159,6 @@ QUESTION_BANK = [
             "Relatively clean scalp without flakes, but hair pulls out with minimal tension": ["hair_fall_excessive"]
         }
     },
-    # 3. Hair Triggers & Medical History
     {
         "id": "q_hair_triggers_history",
         "domain_triggers": ["hair", "scalp", "alopecia", "thinning", "shedding"],
@@ -75,7 +179,30 @@ QUESTION_BANK = [
             "Low dietary protein, iron deficiency anemia, or extreme work fatigue": ["general_weakness", "fatigue"]
         }
     },
-    # 4. Facial Acne & Breakouts
+    {
+        "id": "q_hair_density_volume",
+        "domain_triggers": ["hair", "scalp", "thinning", "receding", "density"],
+        "question": "How has your overall ponytail thickness or scalp visibility changed?",
+        "options": [
+            "Ponytail circumference significantly reduced by more than 30-50%",
+            "Scalp is clearly visible under direct light or when hair is wet",
+            "Hairline at temples is receding backwards in an M-shape pattern",
+            "Hair strands feel much finer, weaker, and break easily when combed"
+        ],
+        "discriminates": [
+            "Telogen Effluvium & Scalp Seborrheic Dermatitis",
+            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity"
+        ],
+        "target_symptoms_boost": {
+            "Ponytail circumference significantly reduced by more than 30-50%": ["hair_fall_excessive"],
+            "Scalp is clearly visible under direct light or when hair is wet": ["hair_thinning_scalp"],
+            "Hairline at temples is receding backwards in an M-shape pattern": ["receding_hairline"]
+        }
+    },
+
+    # =========================================================================
+    # 3. FACIAL ACNE & DERMATOLOGY
+    # =========================================================================
     {
         "id": "q_facial_breakout_type",
         "domain_triggers": ["acne", "face", "facial", "pimple", "cystic", "blackhead", "whitehead", "comedone"],
@@ -97,7 +224,6 @@ QUESTION_BANK = [
             "Stubborn post-acne dark marks, hyperpigmentation, and textured acne spots": ["post_acne_scars_spots", "dry_peeling_skin"]
         }
     },
-    # 5. Facial Skin Sensitivity & Barrier
     {
         "id": "q_facial_skin_reaction",
         "domain_triggers": ["rosacea", "face", "facial", "redness", "peeling", "oily", "grease", "acne"],
@@ -119,29 +245,27 @@ QUESTION_BANK = [
             "Feels uncomfortably tight, dry, flaky, and sensitive despite moisturizing": ["dry_peeling_skin"]
         }
     },
-    # 6. Menstrual & PCOS Hormonal Symptoms
     {
-        "id": "q_menstrual_cycle_pcos",
-        "domain_triggers": ["period", "menstrual", "pcos", "pcod", "cramp", "pelvic", "ovarian"],
-        "question": "Describe your menstrual cycle regularity and associated hormonal features:",
+        "id": "q_acne_scars_pigmentation",
+        "domain_triggers": ["acne", "face", "facial", "scars", "pigmentation", "spots"],
+        "question": "What happens after an acne breakout subsides on your face?",
         "options": [
-            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial/body hair",
-            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period",
-            "Heavy prolonged menstrual flow requiring frequent pad changes or passing large clots",
-            "Delayed period by more than 6-8 weeks with lower pelvic heaviness"
+            "Leaves long-lasting stubborn dark brown hyperpigmented spots (PIH)",
+            "Leaves persistently red/purple vascular marks (PIE)",
+            "Causes indented pitted scars / icepick scars",
+            "Heals cleanly without significant marks"
         ],
         "discriminates": [
-            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
-            "Primary Dysmenorrhea & Pelvic Pain"
+            "Acne Vulgaris & Hormonal Sebum Imbalance"
         ],
         "target_symptoms_boost": {
-            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial/body hair": ["pcos_pcod_symptoms", "cystic_hormonal_acne"],
-            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period": ["lower_pelvic_ovarian_pain"],
-            "Heavy prolonged menstrual flow requiring frequent pad changes or passing large clots": ["general_weakness", "fatigue"],
-            "Delayed period by more than 6-8 weeks with lower pelvic heaviness": ["pcos_pcod_symptoms"]
+            "Leaves long-lasting stubborn dark brown hyperpigmented spots (PIH)": ["post_acne_scars_spots"]
         }
     },
-    # 7. Abdominal Pain & GI Reflux
+
+    # =========================================================================
+    # 4. GASTROINTESTINAL & STOMACH ACIDITY
+    # =========================================================================
     {
         "id": "q_abdominal_location",
         "domain_triggers": ["abdominal", "stomach", "acidity", "epigastric", "reflux", "gerd", "vomiting", "diarrhea", "nausea", "bloating", "indigestion", "flank"],
@@ -165,7 +289,54 @@ QUESTION_BANK = [
             "Lower back / flank side discomfort near the kidney angle": ["flank_kidney_angle_pain"]
         }
     },
-    # 8. Skin Allergy & Rash
+    {
+        "id": "q_gi_meal_timing",
+        "domain_triggers": ["abdominal", "stomach", "acidity", "gerd", "peptic", "reflux"],
+        "question": "How is your stomach pain affected by food intake and meal timing?",
+        "options": [
+            "Worse on an empty stomach or wakes you up in the middle of the night",
+            "Worse immediately within 30-60 minutes after eating oily, spicy, or heavy meals",
+            "Associated with severe bloating, early satiety (feeling full quickly), and burping",
+            "Pain is constant and unchanged by eating"
+        ],
+        "discriminates": [
+            "Gastroesophageal Reflux (GERD) & Peptic Ulcer",
+            "Acute Cholecystitis / Gallstone Pathology"
+        ],
+        "target_symptoms_boost": {
+            "Worse on an empty stomach or wakes you up in the middle of the night": ["epigastric_burning_pain"],
+            "Worse immediately within 30-60 minutes after eating oily, spicy, or heavy meals": ["right_upper_quadrant_pain", "nausea"]
+        }
+    },
+
+    # =========================================================================
+    # 5. GYNAECOLOGY, PERIODS & PCOS
+    # =========================================================================
+    {
+        "id": "q_menstrual_cycle_pcos",
+        "domain_triggers": ["period", "menstrual", "pcos", "pcod", "cramp", "pelvic", "ovarian"],
+        "question": "Describe your menstrual cycle regularity and associated hormonal features:",
+        "options": [
+            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial/body hair",
+            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period",
+            "Heavy prolonged menstrual flow requiring frequent pad changes or passing large clots",
+            "Delayed period by more than 6-8 weeks with lower pelvic heaviness"
+        ],
+        "discriminates": [
+            "Polycystic Ovary Syndrome (PCOS) & Menstrual Irregularity",
+            "Primary Dysmenorrhea & Pelvic Pain"
+        ],
+        "target_symptoms_boost": {
+            "Irregular, delayed cycles (>35-50 days) with jawline acne or excess facial/body hair": ["pcos_pcod_symptoms", "cystic_hormonal_acne"],
+            "Severe debilitating lower abdominal/pelvic cramps during first 48 hours of period": ["lower_pelvic_ovarian_pain"],
+            "Heavy prolonged menstrual flow requiring frequent pad changes or passing large clots": ["general_weakness", "fatigue"],
+            "Delayed period by more than 6-8 weeks with lower pelvic heaviness": ["pcos_pcod_symptoms"]
+        }
+    },
+
+    # =========================================================================
+    # 6. SKIN RASH & ALLERGIES
+    # =========================================================================
     {
         "id": "q_skin_rash_allergy",
         "domain_triggers": ["rash", "hives", "itching", "pruritus", "urticaria", "blister", "petechiae"],
@@ -187,7 +358,10 @@ QUESTION_BANK = [
             "Tiny pinpoint non-blanching red/purple dots (petechiae) with fever": ["petechiae_purpura", "high_fever"]
         }
     },
-    # 9. Chest Pain & Cardiac Radiation
+
+    # =========================================================================
+    # 7. CHEST & CARDIOVASCULAR
+    # =========================================================================
     {
         "id": "q_pain_radiation",
         "domain_triggers": ["chest", "palpitation", "heart", "angina", "arm_jaw"],
@@ -205,7 +379,28 @@ QUESTION_BANK = [
             "Yes, radiates to left arm, neck, or lower jaw with heavy squeezing tightness": ["pain_radiating_to_arm_jaw"]
         }
     },
-    # 10. Respiratory & Breathing Triggers
+    {
+        "id": "q_cardiac_associated",
+        "domain_triggers": ["chest", "palpitation", "heart", "angina"],
+        "question": "Are you experiencing any of these associated symptoms with the chest discomfort?",
+        "options": [
+            "Cold clammy diaphoresis (sudden profuse cold sweating) and acute nausea",
+            "Rapid irregular pounding heart palpitations and lightheaded dizziness",
+            "Shortness of breath even when sitting still or resting",
+            "None of the above"
+        ],
+        "discriminates": [
+            "Acute Coronary Syndrome / Angina (Cardiac Emergency)"
+        ],
+        "target_symptoms_boost": {
+            "Cold clammy diaphoresis (sudden profuse cold sweating) and acute nausea": ["cold_clammy_sweats", "dizziness_lightheadedness"],
+            "Rapid irregular pounding heart palpitations and lightheaded dizziness": ["palpitations_rapid_heartbeat"]
+        }
+    },
+
+    # =========================================================================
+    # 8. RESPIRATORY & COUGH
+    # =========================================================================
     {
         "id": "q_breathing_trigger",
         "domain_triggers": ["cough", "breath", "breathlessness", "wheezing", "dyspnea", "sputum", "phlegm"],
@@ -225,28 +420,10 @@ QUESTION_BANK = [
             "Severe breathlessness when lying completely flat on the bed": ["orthopnea_lying_flat_breathless"]
         }
     },
-    # 11. Fever Pattern
-    {
-        "id": "q_fever_pattern",
-        "domain_triggers": ["fever", "chills", "sweat", "shivering"],
-        "question": "What is your highest body temperature and how does the fever behave?",
-        "options": [
-            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering",
-            "Gradually rising step-ladder fever day by day with severe fatigue and headache",
-            "Mild low-grade fever (around 99-100°F) mainly in late afternoon/evening",
-            "Intermittent sweating episodes without high thermometer readings"
-        ],
-        "discriminates": [
-            "Acute Dengue Infection with Warning Signs",
-            "Typhoid Enteric Fever",
-            "Bacterial Pneumonia / Lower Respiratory Infection"
-        ],
-        "target_symptoms_boost": {
-            "High spike (>102°F) with intense teeth-chattering chills and shaking shivering": ["chills"],
-            "Gradually rising step-ladder fever day by day with severe fatigue and headache": ["high_fever"]
-        }
-    },
-    # 12. Headache Character
+
+    # =========================================================================
+    # 9. HEADACHE & NEUROLOGICAL
+    # =========================================================================
     {
         "id": "q_headache_character",
         "domain_triggers": ["headache", "migraine", "thunderclap", "vertigo", "photophobia"],
@@ -268,7 +445,6 @@ QUESTION_BANK = [
             "Associated with spinning vertigo and loss of balance": ["vertigo_room_spinning"]
         }
     },
-    # 13. Neurological Focal Signs
     {
         "id": "q_neurological_focal",
         "domain_triggers": ["droop", "slurred", "stroke", "weakness", "numbness", "paralysis", "facial_droop"],
@@ -334,8 +510,9 @@ def select_next_best_question(
     patient_context: Optional[Dict[str, Any]] = None
 ) -> Optional[Dict[str, Any]]:
     """
-    Evaluates only clinical questions that match the active symptom domain, computes their Information Gain,
-    and returns the single best question. Stops asking when all relevant domain questions are answered.
+    Evaluates all clinical questions in the active symptom domain, computes their Information Gain,
+    and returns the single best next question. Continues asking relevant clinical inquiries
+    until the user finishes the sequence or proceeds.
     """
     qa_answers = qa_answers or {}
     patient_context = patient_context or {}
@@ -354,7 +531,7 @@ def select_next_best_question(
     symptoms_joined = " ".join(current_symptoms).lower()
     top_candidates = [c["disease"] for c in entropy_info["candidate_distribution"][:3]]
 
-    # 2. Evaluate Information Gain across strictly eligible domain questions
+    # 2. Evaluate Information Gain across eligible domain questions
     candidates = []
     for q in QUESTION_BANK:
         if q["id"] in answered_ids_set:
@@ -367,9 +544,20 @@ def select_next_best_question(
         # Check hypothesis overlap with top candidate diseases
         overlap_count = sum(1 for d in q["discriminates"] if d in top_candidates)
 
-        # STRICT FILTER: DO NOT ask question if it has no symptom domain match AND no top disease overlap
+        # STRICT DOMAIN FILTER:
+        # 1. If question has direct trigger match with user's selected symptoms, it is eligible.
+        # 2. If question only has overlap with top candidates, ONLY allow if none of its specialized trigger keywords conflict with unselected domains
         if not has_trigger_match:
-            continue
+            restricted_keywords = [
+                "fever", "chills", "chest", "heart", "breath", "cough", "wheezing", 
+                "stomach", "vomit", "diarrhea", "menstrual", "period", "pelvic",
+                "hair", "scalp", "face", "facial", "acne", "headache", "migraine"
+            ]
+            has_conflicting_restricted_trigger = any(
+                rk in triggers for rk in restricted_keywords if rk not in symptoms_joined
+            )
+            if has_conflicting_restricted_trigger or overlap_count == 0:
+                continue
 
         ig = calculate_information_gain_for_question(
             q_data=q,
@@ -379,20 +567,25 @@ def select_next_best_question(
             patient_context=patient_context
         )
         
-        keyword_boost = 6.0 if has_trigger_match else 0.0
-        relevance_score = (ig * 3.0) + (overlap_count * 4.0) + keyword_boost
+        keyword_boost = 10.0 if has_trigger_match else 1.0
+        relevance_score = (ig * 3.0) + (overlap_count * 2.0) + keyword_boost
 
         candidates.append({
             "question_data": q,
-            "information_gain": round(max(ig, 0.45), 3),
+            "has_trigger_match": has_trigger_match,
+            "information_gain": round(max(ig, 0.45 if has_trigger_match else 0.2), 3),
             "relevance_score": round(relevance_score, 3),
-            "expected_uncertainty_reduction_pct": round(min(((max(ig, 0.45)) / max(current_entropy, 0.1)) * 100, 75.0), 1),
+            "expected_uncertainty_reduction_pct": round(min(((max(ig, 0.45 if has_trigger_match else 0.2)) / max(current_entropy, 0.1)) * 100, 75.0), 1),
             "target_hypotheses": q["discriminates"]
         })
 
     if not candidates:
-        # All relevant symptom domain questions have been answered!
         return None
+
+    # Prioritize questions matching active symptom triggers first
+    trigger_matched = [c for c in candidates if c.get("has_trigger_match")]
+    if trigger_matched:
+        candidates = trigger_matched
 
     # Sort descending by relevance & information gain
     candidates.sort(key=lambda x: (x["relevance_score"], x["information_gain"]), reverse=True)
