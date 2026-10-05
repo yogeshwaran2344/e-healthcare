@@ -196,6 +196,106 @@ def evaluate_risk_triage(
         "triage_reasons": reasons
     }
 
+def resolve_broad_specialist(top_disease: str, symptoms: List[str]) -> Dict[str, str]:
+    """
+    Assigns the exact broad clinical medical specialty based on organ domain and symptoms.
+    Guarantees that stomach/GI/liver issues route to Gastroenterologists & Hepatologists,
+    chest/heart to Cardiologists, lungs/breathing to Pulmonologists, skin/hair/acne to Dermatologists/Trichologists,
+    periods/PCOS/gynac to Gynecologists, urinary/kidney to Urologists/Nephrologists, etc.
+    """
+    symptoms_joined = " ".join(symptoms).lower()
+    disease_lower = (top_disease or "").lower()
+
+    # 1. Stomach, GI, Liver, Gallbladder, Acid Reflux, Bowel
+    if any(k in disease_lower for k in ["gastro", "ulcer", "cholecyst", "stomach", "enteric", "typhoid", "liver", "hepatic", "jaundice", "gallstone", "pancreat", "bowel", "diarrhea", "acidity", "reflux", "gerd", "crohn", "colitis", "gastritis"]) or \
+       any(k in symptoms_joined for k in ["abdominal", "stomach", "epigastric", "acidity", "vomiting", "diarrhea", "jaundice", "dark_urine", "nausea", "bloating", "indigestion", "loose_motion", "constipation", "hematemesis"]):
+        return {
+            "specialist": "Gastroenterologist & Hepatologist",
+            "domain": "Digestive Health & Hepatology",
+            "rationale": "Directly evaluates stomach mucosa, gastric acid secretion, intestinal absorption, liver function, and biliary tract pathology."
+        }
+
+    # 2. Cardiovascular, Chest Pain, Palpitations, Blood Pressure
+    if any(k in disease_lower for k in ["coronary", "cardiac", "angina", "infarction", "arrhythmia", "hypertension", "heart"]) or \
+       any(k in symptoms_joined for k in ["sharp_chest_pain", "palpitations", "radiating_to_arm", "angina", "cold_clammy", "syncope"]):
+        return {
+            "specialist": "Cardiologist (Interventional / Clinical)",
+            "domain": "Cardiology & Vascular Medicine",
+            "rationale": "Specializes in coronary perfusion, myocardial ischemia, rhythm disturbances, and acute cardiovascular risk management."
+        }
+
+    # 3. Respiratory, Lungs, Cough, Wheezing, Dyspnea
+    if any(k in disease_lower for k in ["pneumonia", "covid", "bronch", "asthma", "pulmon", "respiratory", "pleur"]) or \
+       any(k in symptoms_joined for k in ["cough", "breathlessness", "wheezing", "chest_tightness", "stridor", "hemoptysis"]):
+        return {
+            "specialist": "Pulmonologist (Chest Physician)",
+            "domain": "Pulmonology & Respiratory Medicine",
+            "rationale": "Specialized diagnosis and treatment of airway obstruction, lung parenchyma consolidation, and oxygen saturation dynamics."
+        }
+
+    # 4. Gynaecology, Women's Health, Periods, PCOS, Pelvic
+    if any(k in disease_lower for k in ["pcos", "pcod", "dysmenorrhea", "ovarian", "uterine", "gynac", "pregnancy", "menopause", "endometri"]) or \
+       any(k in symptoms_joined for k in ["period", "menstrual", "pcos", "pelvic", "vaginal", "ovarian", "breast_pain", "hot_flashes"]):
+        return {
+            "specialist": "Gynecologist & Obstetrician",
+            "domain": "Obstetrics, Gynaecology & Reproductive Health",
+            "rationale": "Focused management of hormonal ovulatory cycles, pelvic structures, endometrial health, and reproductive wellbeing."
+        }
+
+    # 5. Dermatology, Hair, Scalp, Acne, Skin
+    if any(k in disease_lower for k in ["dermat", "acne", "hair", "scalp", "alopecia", "effluvium", "eczema", "psoriasis", "urticaria", "rash"]) or \
+       any(k in symptoms_joined for k in ["acne", "hair", "scalp", "dandruff", "pimples", "rash", "hives", "itching", "alopecia", "skin_redness"]):
+        return {
+            "specialist": "Dermatologist & Trichologist",
+            "domain": "Dermatology & Scalp Disorders",
+            "rationale": "Expert clinical evaluation of cutaneous barrier function, follicular health, sebum gland regulation, and skin allergy pathways."
+        }
+
+    # 6. Neurological, Brain, Stroke, Migraine, Vertigo, Nerves
+    if any(k in disease_lower for k in ["stroke", "migraine", "cerebrovascular", "headache", "neuro", "seizure", "epilepsy", "meningitis"]) or \
+       any(k in symptoms_joined for k in ["thunderclap", "facial_droop", "limb_weakness", "slurred_speech", "vertigo", "photophobia", "stiff_neck", "confusion", "severe_headache"]):
+        return {
+            "specialist": "Neurologist",
+            "domain": "Neurology & Neuro-vascular Disorders",
+            "rationale": "Targeted neurological localization of central/peripheral nervous system abnormalities, vascular perfusion, and cephalalgia triggers."
+        }
+
+    # 7. Urology & Nephrology, Kidney, Urinary, Flank
+    if any(k in disease_lower for k in ["pyelonephritis", "uti", "urinary", "renal", "kidney", "nephro", "urol", "calculus", "stone"]) or \
+       any(k in symptoms_joined for k in ["flank", "dysuria", "urinary", "hematuria", "kidney"]):
+        return {
+            "specialist": "Urologist & Nephrologist",
+            "domain": "Urology & Renal Medicine",
+            "rationale": "Specialized assessment of glomerular filtration, urinary tract infection, and renal parenchymal integrity."
+        }
+
+    # 8. Orthopedics & Rheumatology, Joints, Bones, Arthritis
+    if any(k in disease_lower for k in ["arthrit", "rheumat", "joint", "bone", "ortho", "gout", "spondyl"]) or \
+       any(k in symptoms_joined for k in ["joint_pain", "morning_joint_stiffness", "swelling_in_legs", "calf_tenderness"]):
+        return {
+            "specialist": "Orthopedic Specialist & Rheumatologist",
+            "domain": "Musculoskeletal & Rheumatic Disorders",
+            "rationale": "Provides targeted clinical care for synovial inflammation, autoimmune joint damage, and biomechanical structural integrity."
+        }
+
+    # 9. Infectious Disease / Fevers
+    if any(k in disease_lower for k in ["dengue", "malaria", "typhoid", "sepsis", "viral", "infection"]) or \
+       any(k in symptoms_joined for k in ["high_fever", "fever", "chills", "petechiae"]):
+        return {
+            "specialist": "Infectious Disease Specialist & Internal Medicine",
+            "domain": "Infectious Diseases & Internal Medicine",
+            "rationale": "Specialized investigation of pathogen dynamics, serological markers, and systemic febrile syndromic care."
+        }
+
+    # Fallback
+    top_info = DISEASES_DB.get(top_disease, {})
+    fallback_specialist = top_info.get("specialist", "General Physician / Internal Medicine")
+    return {
+        "specialist": fallback_specialist,
+        "domain": "Internal Medicine & Primary Care",
+        "rationale": "Comprehensive systemic evaluation and holistic initial diagnostic workup."
+    }
+
 def compute_explainable_diagnosis(
     symptoms: List[str],
     qa_answers: Dict[str, Any],
@@ -225,6 +325,9 @@ def compute_explainable_diagnosis(
     top_disease = top["disease"]
     top_prob = top["probability"]
     top_info = DISEASES_DB.get(top_disease, {})
+
+    # Broad specialist assignment tailored by domain & organ system
+    specialist_res = resolve_broad_specialist(top_disease, symptoms)
 
     # Dynamic calibrated confidence: calculated directly from Bayesian posterior probability
     qa_bonus = min(len(qa_answers) * 3.5, 14.0) if qa_answers else 0.0
@@ -262,15 +365,17 @@ def compute_explainable_diagnosis(
     if not xai_factors:
         xai_factors.append(f"Clinical symptom presentation correlates with {top_disease}.")
 
-    # Differential diagnoses
+    # Differential diagnoses with domain specialist mapping
     alternatives = []
     for alt in candidate_list[1:4]:
         if alt["probability"] > 0.05:
             alt_info = DISEASES_DB.get(alt["disease"], {})
+            alt_spec = resolve_broad_specialist(alt["disease"], symptoms)
             alternatives.append({
                 "disease": alt["disease"],
                 "confidence_percentage": round(min(alt["probability"] * 100 * 1.3, 85.0), 1),
-                "specialist": alt_info.get("specialist", "General Physician"),
+                "specialist": alt_spec["specialist"],
+                "specialist_domain": alt_spec["domain"],
                 "reason": f"Symptom overlap with Bayesian prior {round(alt['probability']*100, 1)}%"
             })
 
@@ -284,12 +389,6 @@ def compute_explainable_diagnosis(
     )
 
     # Closed-Loop Adaptive Intelligence Additions
-    posteriors = calculate_disease_posteriors(symptoms, qa_answers, patient_context, biomarkers)
-    entropy_uncertainty = compute_entropy_and_uncertainty(posteriors)
-    
-    candidate_list = [{"disease": d, "probability": p} for d, p in posteriors.items()]
-    candidate_list.sort(key=lambda x: x["probability"], reverse=True)
-
     min_test_set = optimize_minimum_diagnostic_test_set(
         top_disease=top["disease"],
         top_candidates=candidate_list,
@@ -311,7 +410,9 @@ def compute_explainable_diagnosis(
         "top_disease": top_disease,
         "confidence_percentage": round(confidence, 1),
         "severity": top_info.get("severity", "Moderate"),
-        "specialist_recommended": top_info.get("specialist", "General Physician"),
+        "specialist_recommended": specialist_res["specialist"],
+        "specialist_domain": specialist_res["domain"],
+        "specialist_rationale": specialist_res["rationale"],
         "medical_advice": top_info.get("advice", ""),
         "recommended_diagnostic_tests": top_info.get("recommended_tests", ["Complete Blood Count (CBC)"]),
         "triage": triage,

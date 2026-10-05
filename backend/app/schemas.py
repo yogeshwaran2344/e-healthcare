@@ -102,6 +102,8 @@ class PredictResponse(BaseModel):
     confidence_percentage: float
     severity: str
     specialist_recommended: str
+    specialist_domain: Optional[str] = "Clinical Medicine"
+    specialist_rationale: Optional[str] = None
     medical_advice: str
     recommended_diagnostic_tests: List[str]
     needs_lab_reports: bool
@@ -124,6 +126,8 @@ class NavigatorAssessmentResponse(BaseModel):
     confidence_percentage: float
     severity: str
     specialist_recommended: str
+    specialist_domain: Optional[str] = "Clinical Medicine"
+    specialist_rationale: Optional[str] = None
     medical_advice: str
     recommended_diagnostic_tests: List[str]
     triage: TriageResult

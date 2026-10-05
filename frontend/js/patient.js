@@ -1198,6 +1198,20 @@ function displayStep4Results(res) {
         reasonsList.innerHTML = `<div class="text-muted">Standard clinical pathway. No acute emergency red-flags triggered.</div>`;
     }
 
+    // Recommended Broad Medical Specialty
+    const specNameEl = document.getElementById('step4SpecialistName');
+    if (specNameEl) {
+        specNameEl.textContent = res.specialist_recommended || "Specialist Physician";
+    }
+    const specDomainEl = document.getElementById('step4SpecialistDomain');
+    if (specDomainEl) {
+        specDomainEl.textContent = res.specialist_domain || "Clinical Medicine";
+    }
+    const specRationaleEl = document.getElementById('step4SpecialistRationale');
+    if (specRationaleEl) {
+        specRationaleEl.textContent = res.specialist_rationale || "Consulting this domain specialist directly ensures accurate diagnosis and targeted treatment.";
+    }
+
     // 1. "Why Did AI Decide This?" Explainable Health Decision Map
     const mapBox = document.getElementById('explainableDecisionMapContainer');
     const xaiData = res.explainable_decision_map;

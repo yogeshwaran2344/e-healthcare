@@ -78,6 +78,8 @@ def assess_multimodal_health(
         confidence_percentage=assessment["confidence_percentage"],
         severity=assessment["severity"],
         specialist_recommended=assessment["specialist_recommended"],
+        specialist_domain=assessment.get("specialist_domain", "Clinical Medicine"),
+        specialist_rationale=assessment.get("specialist_rationale"),
         medical_advice=assessment["medical_advice"],
         recommended_diagnostic_tests=assessment["recommended_diagnostic_tests"],
         triage=assessment["triage"],
