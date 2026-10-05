@@ -22,26 +22,9 @@ def get_user_devices(
     db: Session = Depends(get_db)
 ):
     """
-    Returns registered IoT medical wearables for patient. Auto-initializes defaults if new.
+    Returns registered IoT medical wearables for patient. Returns empty list if no device paired.
     """
     devices = db.query(IoTDevice).filter(IoTDevice.patient_id == current_user.id).all()
-    if not devices:
-        # Initialize default paired medical devices
-        for cat in IOT_DEVICE_CATALOG:
-            d = IoTDevice(
-                patient_id=current_user.id,
-                device_name=cat["device_name"],
-                device_type=cat["device_type"],
-                device_uid=f"{cat['device_uid']}-{current_user.id}",
-                firmware_version=cat["firmware"],
-                battery_level=94,
-                connection_status="connected",
-                last_sync_at=datetime.utcnow()
-            )
-            db.add(d)
-        db.commit()
-        devices = db.query(IoTDevice).filter(IoTDevice.patient_id == current_user.id).all()
-
     return [
         {
             "id": d.id,
@@ -76,10 +59,6 @@ def get_latest_vitals(
 
     # Retrieve devices for target
     devices = db.query(IoTDevice).filter(IoTDevice.patient_id == target_id).all()
-    if not devices and current_user.role == "patient":
-        # Trigger init
-        get_user_devices(current_user, db)
-        devices = db.query(IoTDevice).filter(IoTDevice.patient_id == target_id).all()
 
     latest_readings = {}
     for d in devices:

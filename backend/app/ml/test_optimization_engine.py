@@ -41,50 +41,71 @@ def optimize_minimum_diagnostic_test_set(
 ) -> Dict[str, Any]:
     """
     Computes the Minimum Diagnostic Test Set:
-    - Identifies mandatory life-safety tests (cannot be pruned under any cost constraint)
-    - Solves greedy multi-objective utility knapsack:
-      Score = (Diagnostic Utility * 1000) / (Cost Factor + Radiation Penalty)
-    - Ensures residual uncertainty drops below 15%
+    - Identifies mandatory life-safety tests strictly relevant to the active condition and symptoms
+    - Solves greedy multi-objective utility knapsack
+    - Ensures tests are realistic and directly correlate with the patient's clinical complaint
     """
     selected_tests = []
     total_cost_inr = 0
     cumulative_utility = 0.0
     mandatory_tests = set()
+    symptoms_joined = " ".join(symptoms).lower()
 
-    # 1. Identify Mandatory Life Safety Tests from disease profiles
-    for cand in top_candidates[:2]:
-        d_name = cand["disease"]
-        d_info = DISEASES_DB.get(d_name, {})
-        for m_test in d_info.get("mandatory_tests", []):
-            if m_test in TESTS_CATALOG:
-                mandatory_tests.add(m_test)
+    # 1. Identify Mandatory Tests strictly from the primary suspected disease
+    top_info = DISEASES_DB.get(top_disease, {})
+    for m_test in top_info.get("mandatory_tests", []):
+        if m_test in TESTS_CATALOG:
+            mandatory_tests.add(m_test)
 
-    # Symptom-driven safety overrides
-    symptoms_set = set(symptoms)
-    if "sharp_chest_pain" in symptoms_set or "pain_radiating_to_arm_jaw" in symptoms_set or "heaviness_pressure_in_chest" in symptoms_set:
+    # Symptom-specific targeted test rules (High clinical realism)
+    # Cardiac / Chest Pain
+    if any(s in symptoms_joined for s in ["sharp_chest_pain", "pain_radiating_to_arm", "palpitations"]):
         mandatory_tests.add("12-Lead Electrocardiogram (ECG)")
-        mandatory_tests.add("High-Sensitivity Cardiac Troponin-I")
+        if "sharp_chest_pain" in symptoms_joined or "radiating" in symptoms_joined:
+            mandatory_tests.add("High-Sensitivity Cardiac Troponin-I")
 
-    if "facial_droop_weakness" in symptoms_set or "unilateral_limb_weakness" in symptoms_set or "slurred_speech" in symptoms_set or "sudden_thunderclap_headache" in symptoms_set:
+    # Respiratory / Lungs / Cough
+    if any(s in symptoms_joined for s in ["cough", "breathlessness", "chest_tightness", "wheezing"]):
+        mandatory_tests.add("Chest X-Ray (PA View)")
+
+    # Gastrointestinal / Stomach / Liver / Gallbladder
+    if any(s in symptoms_joined for s in ["abdominal", "epigastric", "acidity", "vomiting", "diarrhea", "stomach", "jaundice", "dark_urine", "right_upper_quadrant", "indigestion"]):
+        if any(s in symptoms_joined for s in ["right_upper_quadrant", "jaundice", "dark_urine"]):
+            mandatory_tests.add("Abdominal Ultrasound (USG Whole Abdomen)")
+            mandatory_tests.add("Liver Function Test (LFT) with Bilirubin")
+        elif any(s in symptoms_joined for s in ["epigastric", "acidity", "abdominal", "vomiting", "diarrhea"]):
+            mandatory_tests.add("Complete Blood Count (CBC)")
+
+    # Neurological / Acute severe headache / stroke symptoms
+    if any(s in symptoms_joined for s in ["thunderclap", "facial_droop", "limb_weakness", "slurred_speech", "stiff_neck"]):
         mandatory_tests.add("Brain Non-Contrast CT Scan")
 
-    if "calf_tenderness_swelling" in symptoms_set and "breathlessness_shortness_of_breath" in symptoms_set:
-        mandatory_tests.add("D-Dimer Quantitative Assay")
-
-    if "hair_fall_excessive" in symptoms_set or "hair_thinning_scalp" in symptoms_set:
+    # Hair / Scalp
+    if any(s in symptoms_joined for s in ["hair_fall", "hair_thinning", "dandruff", "scalp_itching"]):
         mandatory_tests.add("Serum Ferritin & Iron Studies (Hair Loss/Anemia)")
 
-    if "irregular_missed_periods" in symptoms_set or "pcos_pcod_symptoms" in symptoms_set:
+    # Gynaecology / Menstrual / PCOS
+    if any(s in symptoms_joined for s in ["period", "menstrual", "pcos", "pelvic", "vaginal"]):
         mandatory_tests.add("Pelvic Ultrasound (USG Pelvis TVS/TAS)")
         mandatory_tests.add("Female Hormone Panel (LH, FSH, Total Testosterone, DHEA-S)")
 
+    # Urinary / Flank pain
+    if any(s in symptoms_joined for s in ["flank", "dysuria", "hematuria"]):
+        mandatory_tests.add("Urinalysis Routine & Microscopic (Urine R/M)")
+
+    # If no mandatory test was triggered, default to basic CBC
+    if not mandatory_tests:
+        mandatory_tests.add("Complete Blood Count (CBC)")
+
     # Add all mandatory tests first with specific rationales
     for test_name in mandatory_tests:
+        if test_name not in TESTS_CATALOG:
+            continue
         meta = TESTS_CATALOG[test_name]
-        rationale = TEST_CLINICAL_RATIONALES.get(test_name, f"Emergency safety standard: essential to confirm or rule out acute {top_disease.split('/')[0].strip()}.")
+        rationale = TEST_CLINICAL_RATIONALES.get(test_name, f"Essential clinical investigation for evaluation of suspected {top_disease.split('/')[0].strip()}.")
         selected_tests.append({
             "test_name": test_name,
-            "priority": "MANDATORY (Life Safety Override)",
+            "priority": "MANDATORY (Targeted Clinical Test)",
             "priority_tier": 1,
             "cost_inr": meta["cost_inr"],
             "cost_tier": meta["cost_tier"],
@@ -96,22 +117,17 @@ def optimize_minimum_diagnostic_test_set(
         total_cost_inr += meta["cost_inr"]
         cumulative_utility += meta["diagnostic_utility"]
 
-    # 2. Pool candidate optional/recommended tests from candidate diseases
+    # 2. Add recommended tests strictly from top_disease if needed for complete workup
     candidate_test_pool = set()
-    for cand in top_candidates[:3]:
-        d_name = cand["disease"]
-        d_info = DISEASES_DB.get(d_name, {})
-        for r_test in d_info.get("recommended_tests", []):
-            if r_test in TESTS_CATALOG and r_test not in mandatory_tests:
-                candidate_test_pool.add(r_test)
+    for r_test in top_info.get("recommended_tests", []):
+        if r_test in TESTS_CATALOG and r_test not in mandatory_tests:
+            candidate_test_pool.add(r_test)
 
     # 3. Score candidate tests by Cost-Benefit Pareto Ratio
     scored_candidates = []
     for test_name in candidate_test_pool:
         meta = TESTS_CATALOG[test_name]
-        # Radiation penalty factor
         rad_penalty = 1.4 if meta["radiation_risk"] == "Moderate" else 1.0
-        # Cost-effectiveness ratio: Information Gain per 1000 INR
         cost_weight = max(meta["cost_inr"] / 500.0, 1.0)
         efficiency_ratio = (meta["diagnostic_utility"] * 10.0) / (cost_weight * rad_penalty)
 
@@ -121,17 +137,15 @@ def optimize_minimum_diagnostic_test_set(
             "meta": meta
         })
 
-    # Sort by efficiency
     scored_candidates.sort(key=lambda x: x["efficiency_ratio"], reverse=True)
 
-    # Pick high-efficiency tests if uncertainty is still elevated
-    target_utility = 1.4 # threshold for sufficient clinical confirmation
+    # Add at most 1 high-yield recommended test if appropriate
     for item in scored_candidates:
-        if cumulative_utility >= target_utility and len(selected_tests) >= 2:
+        if len(selected_tests) >= 3:
             break
         test_name = item["test_name"]
         meta = item["meta"]
-        rationale = TEST_CLINICAL_RATIONALES.get(test_name, f"High diagnostic yield for differential diagnosis ({meta['cost_tier']} cost, {meta['radiation_risk']} radiation).")
+        rationale = TEST_CLINICAL_RATIONALES.get(test_name, f"High diagnostic yield for differential evaluation ({meta['cost_tier']} cost, {meta['radiation_risk']} radiation).")
         selected_tests.append({
             "test_name": test_name,
             "priority": "RECOMMENDED (High Information Gain)",
@@ -145,8 +159,7 @@ def optimize_minimum_diagnostic_test_set(
         })
         total_cost_inr += meta["cost_inr"]
         cumulative_utility += meta["diagnostic_utility"]
-        if len(selected_tests) >= 3:
-            break
+        break
 
     # If no tests needed (e.g. low severity self care)
     if not selected_tests:

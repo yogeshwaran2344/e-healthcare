@@ -34,12 +34,12 @@
                 </button>
                 <div class="text-end d-none d-md-block ms-2">
                     <div class="d-flex align-items-center gap-1 justify-content-end">
-                        <span class="fw-bold text-dark" id="docNameDisplay">Dr. Sarah Sharma</span>
+                        <span class="fw-bold text-dark" id="docNameDisplay">Dr. Yogeshwaran</span>
                         <span class="badge bg-success-subtle text-success border border-success-subtle small cursor-pointer" onclick="showDoctorLicenseModal()" style="cursor: pointer;" title="Verified by State Medical Council">
-                            <i class="bi bi-patch-check-fill text-success"></i> NMC #MCI-2018-98421
+                            <i class="bi bi-patch-check-fill text-success"></i> NMC #NMC-2024-98104
                         </span>
                     </div>
-                    <small class="text-muted d-block" id="docSpecDisplay">Pulmonology Specialist &bull; Apex Hospital</small>
+                    <small class="text-muted d-block" id="docSpecDisplay">Gastroenterologist &amp; Physician &bull; NeuroCare Health Center</small>
                 </div>
                 <button class="btn btn-outline-danger btn-sm ms-1" onclick="API.logout()">
                     <i class="bi bi-box-arrow-right"></i> Sign Out
@@ -181,53 +181,10 @@
 
                     <!-- Queue List -->
                     <div id="queueContainer" class="row g-3">
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-danger bg-white h-100">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <span class="badge bg-danger">P1 Urgent Triage</span>
-                                    <small class="text-muted">Case #101 &bull; Active Queue</small>
-                                </div>
-                                <h6 class="fw-bold mb-1 text-dark">Rahul Verma &bull; Age 38 (Male)</h6>
-                                <p class="small text-muted mb-2">Chief Complaint: Sharp crushing chest tightness with left-arm radiation. Cold clammy diaphoresis.</p>
-                                <div class="p-2 bg-light rounded small mb-3">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="text-muted">AI Differential:</span>
-                                        <strong class="text-danger">Acute Coronary Syndrome (76.4% match)</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span class="text-muted">Shannon Entropy:</span>
-                                        <span>2.73 bits (Diagnostic Uncertainty: 68%)</span>
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-auto">
-                                    <span class="badge bg-success-subtle text-success"><i class="bi bi-shield-check"></i> SBAR Verified</span>
-                                    <button class="btn btn-primary btn-sm px-3 fw-semibold" onclick="selectConsultation(101)">Inspect & Prescribe</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-warning bg-white h-100">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <span class="badge bg-warning text-dark">P2 Standard Triage</span>
-                                    <small class="text-muted">Case #102 &bull; Active Queue</small>
-                                </div>
-                                <h6 class="fw-bold mb-1 text-dark">Sarah Jenkins &bull; Age 45 (Female)</h6>
-                                <p class="small text-muted mb-2">Chief Complaint: High continuous fever (102.4°F), deep chest cough with rust-colored sputum.</p>
-                                <div class="p-2 bg-light rounded small mb-3">
-                                    <div class="d-flex justify-content-between mb-1">
-                                        <span class="text-muted">AI Differential:</span>
-                                        <strong class="text-primary">Bacterial Pneumonia (42.9% match)</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span class="text-muted">Recommended Tests:</span>
-                                        <span>Chest X-Ray (PA View), Sputum Culture</span>
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mt-auto">
-                                    <span class="badge bg-primary-subtle text-primary"><i class="bi bi-file-earmark-medical"></i> Labs Attached</span>
-                                    <button class="btn btn-outline-primary btn-sm px-3 fw-semibold" onclick="selectConsultation(102)">Inspect & Prescribe</button>
-                                </div>
-                            </div>
+                        <div class="col-12 text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 text-secondary d-block mb-2"></i>
+                            <h6 class="fw-semibold">No Pending Patient Consultations</h6>
+                            <p class="small mb-0">Incoming triage cases and SBAR handovers will appear here.</p>
                         </div>
                     </div>
                 </div>
@@ -249,43 +206,43 @@
                     <!-- Patient Vitals Display Strip -->
                     <div class="p-3 bg-light rounded-4 mb-4 border">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <strong class="text-dark">Patient: Rahul Verma (Age 48, Male) • B+ • Type 2 Diabetes, Hypertension</strong>
-                            <span class="badge bg-success-subtle text-success">Continuous Telemetry Active</span>
+                            <strong class="text-dark" id="docPatientVitalsHeader">Patient Telemetry &bull; No Active Stream Selected</strong>
+                            <span class="badge bg-secondary-subtle text-secondary" id="docTelemetryStatusBadge">Telemetry Standby</span>
                         </div>
                         <div class="row g-3 text-center">
                             <div class="col-md-3">
                                 <div class="bg-white p-3 rounded-3 border">
                                     <small class="text-muted d-block">Blood Pressure</small>
-                                    <h4 class="fw-bold text-dark mb-0" id="docBpVal">128/84 mmHg</h4>
-                                    <span class="badge bg-success-subtle text-success small mt-1">Normal Range</span>
+                                    <h4 class="fw-bold text-dark mb-0" id="docBpVal">--/-- mmHg</h4>
+                                    <span class="badge bg-secondary-subtle text-secondary small mt-1">Pending</span>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="bg-white p-3 rounded-3 border">
                                     <small class="text-muted d-block">Continuous Glucose</small>
-                                    <h4 class="fw-bold text-warning mb-0" id="docGlucoseVal">172 mg/dL</h4>
-                                    <span class="badge bg-warning-subtle text-warning small mt-1">Slight Elevation</span>
+                                    <h4 class="fw-bold text-secondary mb-0" id="docGlucoseVal">-- mg/dL</h4>
+                                    <span class="badge bg-secondary-subtle text-secondary small mt-1">Pending</span>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="bg-white p-3 rounded-3 border">
                                     <small class="text-muted d-block">Oxygen SpO2</small>
-                                    <h4 class="fw-bold text-info mb-0" id="docSpo2Val">98%</h4>
-                                    <span class="badge bg-success-subtle text-success small mt-1">Healthy</span>
+                                    <h4 class="fw-bold text-secondary mb-0" id="docSpo2Val">--%</h4>
+                                    <span class="badge bg-secondary-subtle text-secondary small mt-1">Pending</span>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <div class="bg-white p-3 rounded-3 border">
                                     <small class="text-muted d-block">Heart Rate</small>
-                                    <h4 class="fw-bold text-success mb-0" id="docHrVal">74 bpm</h4>
-                                    <span class="badge bg-success-subtle text-success small mt-1">Sinus Rhythm</span>
+                                    <h4 class="fw-bold text-secondary mb-0" id="docHrVal">-- bpm</h4>
+                                    <span class="badge bg-secondary-subtle text-secondary small mt-1">Pending</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Lead-II ECG Waveform Canvas -->
-                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-activity text-success me-1"></i>Synchronized Lead-II ECG Strip:</h6>
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-activity text-secondary me-1"></i>Synchronized Lead-II ECG Strip:</h6>
                     <div class="ecg-canvas-container ecg-grid mb-3">
                         <canvas id="docEcgCanvas" width="900" height="130" style="width: 100%; height: 130px;"></canvas>
                     </div>
@@ -294,10 +251,10 @@
                     <div class="p-3 bg-light rounded-3 border">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <strong class="text-dark"><i class="bi bi-bell-fill text-warning me-1"></i> Context-Aware Caregiver Escalation Tier:</strong>
-                            <span class="badge bg-success" id="docCaregiverTierBadge">LEVEL 1 STABLE</span>
+                            <span class="badge bg-secondary" id="docCaregiverTierBadge">STANDBY</span>
                         </div>
                         <p class="small text-muted mb-0" id="docCaregiverStatusText">
-                            Routine vital baseline confirmed. Next prioritized escalation: Caregiver push on Level 2 deviation; Doctor OPD consultation queue trigger on Level 3.
+                            Telemetry monitor standby. Live caregiver escalation activates upon real patient vital deviation.
                         </p>
                     </div>
                 </div>
@@ -317,17 +274,9 @@
                     </div>
 
                     <div id="doctorErFeedContainer" class="d-flex flex-column gap-3">
-                        <div class="p-3 bg-light rounded-3 border-start border-4 border-danger">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="badge bg-danger">Inbound EMS En Route &bull; 6 Mins ETA</span>
-                                <small class="text-muted">ALS Ambulance #07 &bull; Reserved: Trauma Bay 3</small>
-                            </div>
-                            <h6 class="fw-bold mb-1 text-dark">Patient: Rahul Verma (Age 38, Male) &bull; Suspected Acute Myocardial Infarction</h6>
-                            <p class="small text-muted mb-2">Vitals Stream: SpO2 88% &bull; Pulse 124 bpm &bull; Blood Pressure: 158/98 mmHg. ER Oxygen & Heparin Protocol Pre-Alerted.</p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="badge bg-secondary-subtle text-secondary border">Dispatch Telemetry Active</span>
-                                <button class="btn btn-danger btn-sm py-0 px-2 fw-semibold" onclick="document.getElementById('erPassportPatientId').value='4'; document.getElementById('erPassportPurpose').value='Inbound emergency trauma triage';">Load Emergency Passport</button>
-                            </div>
+                        <div class="p-4 bg-light rounded-3 text-center text-muted">
+                            <i class="bi bi-ambulance fs-2 text-secondary d-block mb-1"></i>
+                            <p class="mb-0">No active inbound emergency dispatches at this moment.</p>
                         </div>
                     </div>
                 </div>
@@ -338,7 +287,7 @@
                     <form class="row g-2 align-items-end" onsubmit="openDoctorLivePassport(event)">
                         <div class="col-md-3">
                             <label class="form-label small fw-bold mb-1">Patient ID</label>
-                            <input type="number" id="erPassportPatientId" class="form-control" value="4" required>
+                            <input type="number" id="erPassportPatientId" class="form-control" placeholder="e.g. 5" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold mb-1">Purpose / reason (min 8 characters)</label>
@@ -378,29 +327,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr class="table-danger-subtle">
-                                    <td><strong class="fs-6 text-danger">A-112</strong></td>
-                                    <td><strong>Rahul Verma</strong> <small class="text-muted">(Age 38, M)</small></td>
-                                    <td><span class="badge bg-danger">P1 Urgent</span></td>
-                                    <td>Acute retrosternal chest pain, diaphoresis</td>
-                                    <td><span class="badge bg-danger">IN-CONSULTATION</span></td>
-                                    <td><button class="btn btn-outline-danger btn-sm py-0 px-2">Calling</button></td>
-                                </tr>
                                 <tr>
-                                    <td><strong class="fs-6 text-warning">A-113</strong></td>
-                                    <td><strong>Sarah Jenkins</strong> <small class="text-muted">(Age 45, F)</small></td>
-                                    <td><span class="badge bg-warning text-dark">P2 Standard</span></td>
-                                    <td>Persistent fever, productive chest cough</td>
-                                    <td><span class="badge bg-primary-subtle text-primary">NEXT WAITING</span></td>
-                                    <td><button class="btn btn-primary btn-sm py-0 px-2" onclick="callQueueToken('A-113')">Call In</button></td>
-                                </tr>
-                                <tr>
-                                    <td><strong class="fs-6 text-secondary">A-114</strong></td>
-                                    <td><strong>Vikram Patel</strong> <small class="text-muted">(Age 52, M)</small></td>
-                                    <td><span class="badge bg-secondary">P3 Routine</span></td>
-                                    <td>Routine hypertension & lipid review</td>
-                                    <td><span class="badge bg-light text-dark border">Waiting (Est 14 min)</span></td>
-                                    <td><button class="btn btn-outline-secondary btn-sm py-0 px-2">Notify</button></td>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="bi bi-ticket-perforated fs-3 text-secondary d-block mb-1"></i>
+                                        No patients currently waiting in OPD queue.
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -855,16 +786,16 @@
                     <div class="rounded-circle bg-success-subtle text-success mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; font-size: 2.2rem;">
                         <i class="bi bi-shield-check"></i>
                     </div>
-                    <h5 class="fw-bold mb-1">Dr. Sarah Sharma, MD, DM</h5>
-                    <span class="badge bg-success-subtle text-success fs-6 mb-3">ACTIVE & VERIFIED REGISTRATION</span>
+                    <h5 class="fw-bold mb-1">Dr. Yogeshwaran, MBBS, MD</h5>
+                    <span class="badge bg-success-subtle text-success fs-6 mb-3">ACTIVE &amp; VERIFIED REGISTRATION</span>
 
                     <div class="p-3 bg-light rounded-3 border text-start small mb-3">
-                        <div class="mb-1"><strong>Registration License:</strong> <code class="text-dark">MCI-2018-98421</code></div>
-                        <div class="mb-1"><strong>Regulatory Authority:</strong> National Medical Commission (NMC) / Karnataka Medical Council</div>
-                        <div class="mb-1"><strong>Primary Specialty:</strong> Pulmonology & Critical Care Medicine</div>
-                        <div class="mb-1"><strong>Hospital Clearance:</strong> Chief of Respiratory ICU, Apex Super-Specialty Hospital</div>
-                        <div class="mb-1"><strong>Verification Status:</strong> <span class="text-success fw-bold">✓ Valid through 2029</span></div>
-                        <div><strong>Cryptographic Seal:</strong> <code class="text-primary small">NMC-SIG-849201-RSA2048-VALID</code></div>
+                        <div class="mb-1"><strong>Registration License:</strong> <code class="text-dark">NMC-2024-98104</code></div>
+                        <div class="mb-1"><strong>Regulatory Authority:</strong> National Medical Commission (NMC)</div>
+                        <div class="mb-1"><strong>Primary Specialty:</strong> Gastroenterologist &amp; Physician</div>
+                        <div class="mb-1"><strong>Hospital Clearance:</strong> NeuroCare Multi-Specialty Health Center</div>
+                        <div class="mb-1"><strong>Verification Status:</strong> <span class="text-success fw-bold">✓ Valid &amp; Active</span></div>
+                        <div><strong>Cryptographic Seal:</strong> <code class="text-primary small">NMC-SIG-YOGESH-RSA2048-VALID</code></div>
                     </div>
 
                     <button type="button" class="btn btn-outline-success btn-sm w-100" data-bs-dismiss="modal">
@@ -886,8 +817,8 @@
                 <div class="modal-body p-4">
                     <form id="docRequestConsentForm" onsubmit="submitDoctorConsentRequest(event)">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Target Patient ID / Universal Health ID:</label>
-                            <input type="number" id="docReqPatientId" class="form-control" value="4" required>
+                            <label class="form-label small fw-bold">Target Patient ID / Health ID:</label>
+                            <input type="number" id="docReqPatientId" class="form-control" placeholder="e.g. 5" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Clinical Purpose:</label>

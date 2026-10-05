@@ -1384,7 +1384,7 @@
 
                 <div class="row g-3 mb-4" id="iotDevicesContainer">
 
-                    <div class="col-12 text-center py-3 text-muted">Discovering paired medical wearables...</div>
+                    <div class="col-12 text-center py-3 text-muted"><i class="bi bi-bluetooth me-2 text-secondary"></i>No IoT Wearable Devices Paired</div>
 
                 </div>
 
@@ -1402,13 +1402,13 @@
 
                                 <span class="badge bg-danger-subtle text-danger"><i class="bi bi-heart-pulse me-1"></i>Blood Pressure</span>
 
-                                <span class="badge bg-success-subtle text-success small" id="badgeBpStatus">Normal</span>
+                                <span class="badge bg-secondary-subtle text-secondary small" id="badgeBpStatus">Pending</span>
 
                             </div>
 
-                            <h2 class="fw-bold mb-0 text-dark" id="valBp">120/80</h2>
+                            <h2 class="fw-bold mb-0 text-dark" id="valBp">--/--</h2>
 
-                            <small class="text-muted">mmHg (Omron Platinum)</small>
+                            <small class="text-muted" id="subBp">mmHg &bull; No Device Synced</small>
 
                         </div>
 
@@ -1424,13 +1424,13 @@
 
                                 <span class="badge bg-warning-subtle text-warning"><i class="bi bi-droplet me-1"></i>Blood Glucose</span>
 
-                                <span class="badge bg-warning-subtle text-warning small" id="badgeGlucoseStatus">Elevated</span>
+                                <span class="badge bg-secondary-subtle text-secondary small" id="badgeGlucoseStatus">Pending</span>
 
                             </div>
 
-                            <h2 class="fw-bold mb-0 text-dark" id="valGlucose">168</h2>
+                            <h2 class="fw-bold mb-0 text-dark" id="valGlucose">--</h2>
 
-                            <small class="text-muted">mg/dL (Dexcom G7 CGM)</small>
+                            <small class="text-muted" id="subGlucose">mg/dL &bull; No Device Synced</small>
 
                         </div>
 
@@ -1446,13 +1446,13 @@
 
                                 <span class="badge bg-info-subtle text-info"><i class="bi bi-lungs me-1"></i>Oxygen SpO2</span>
 
-                                <span class="badge bg-success-subtle text-success small" id="badgeSpo2Status">Optimal</span>
+                                <span class="badge bg-secondary-subtle text-secondary small" id="badgeSpo2Status">Pending</span>
 
                             </div>
 
-                            <h2 class="fw-bold mb-0 text-dark" id="valSpo2">98</h2>
+                            <h2 class="fw-bold mb-0 text-dark" id="valSpo2">--</h2>
 
-                            <small class="text-muted">% (Wellue O2Ring)</small>
+                            <small class="text-muted" id="subSpo2">% &bull; No Device Synced</small>
 
                         </div>
 
@@ -1468,13 +1468,13 @@
 
                                 <span class="badge bg-secondary-subtle text-secondary"><i class="bi bi-thermometer-half me-1"></i>Temperature</span>
 
-                                <span class="badge bg-success-subtle text-success small">Normal</span>
+                                <span class="badge bg-secondary-subtle text-secondary small" id="badgeTempStatus">Pending</span>
 
                             </div>
 
-                            <h2 class="fw-bold mb-0 text-dark" id="valTemp">98.6</h2>
+                            <h2 class="fw-bold mb-0 text-dark" id="valTemp">--</h2>
 
-                            <small class="text-muted">°F (Digital Sensor)</small>
+                            <small class="text-muted" id="subTemp">°F &bull; No Device Synced</small>
 
                         </div>
 
@@ -1490,13 +1490,13 @@
 
                         <div>
 
-                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-activity text-success me-2"></i>Synchronized Lead-II ECG Rhythm Waveform</h5>
+                            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-activity text-secondary me-2"></i>Synchronized Lead-II ECG Rhythm Waveform</h5>
 
-                            <small class="text-muted">Live streaming telemetry from KardiaMobile 6-lead patch (Heart Rate: <span id="valHeartRate" class="fw-bold text-success">76 bpm</span>)</small>
+                            <small class="text-muted" id="subEcg">Heart Rate: <span id="valHeartRate" class="fw-bold text-secondary">-- bpm</span> &bull; ECG sensor not paired</small>
 
                         </div>
 
-                        <span class="badge bg-success px-3 py-2"><i class="bi bi-circle-fill me-1 small"></i>Live Streaming</span>
+                        <span class="badge bg-secondary px-3 py-2" id="badgeEcgStatus"><i class="bi bi-slash-circle me-1 small"></i>Telemetry Inactive</span>
 
                     </div>
 
@@ -1528,71 +1528,13 @@
 
                 <div id="consultationsList" class="row g-3">
 
-                    <div class="col-md-6">
+                    <div class="col-12 text-center py-5 text-muted">
 
-                        <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-success bg-white h-100">
+                        <i class="bi bi-journal-medical fs-1 text-secondary d-block mb-2"></i>
 
-                            <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="fw-semibold">No Consultation Records Found</h6>
 
-                                <span class="badge bg-success-subtle text-success">Completed & Signed</span>
-
-                                <small class="text-muted">Record #101 &bull; Active Record</small>
-
-                            </div>
-
-                            <h6 class="fw-bold mb-1 text-dark">Cardiology Clinical Assessment</h6>
-
-                            <p class="small text-muted mb-2">Physician: Dr. Sarah Chen, MD (Cardiologist) &bull; Primary Diagnosis: Acute Coronary Evaluation</p>
-
-                            <div class="p-2 bg-light rounded small mb-2">
-
-                                <strong>SBAR Handover:</strong> Patient presented with sharp retrosternal tightness. ECG & Serial Troponin I negative. Discharged with lifestyle guidance and follow-up plan.
-
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mt-auto">
-
-                                <span class="badge bg-light text-dark border"><i class="bi bi-shield-check text-success me-1"></i>SHA-256 Verified</span>
-
-                                <button class="btn btn-outline-primary btn-sm" onclick="switchToTab('tab-recovery')">Track Recovery</button>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="col-md-6">
-
-                        <div class="card border-0 shadow-sm rounded-4 p-3 border-start border-4 border-primary bg-white h-100">
-
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-
-                                <span class="badge bg-primary-subtle text-primary">Lab Report Verified</span>
-
-                                <small class="text-muted">CBC Diagnostic Panel</small>
-
-                            </div>
-
-                            <h6 class="fw-bold mb-1 text-dark">Comprehensive Blood & Biomarker Panel</h6>
-
-                            <p class="small text-muted mb-2">Facility: Apex Diagnostic Lab &bull; Biomarkers: Hb 13.5 g/dL, Platelets 220,000, WBC 6,400</p>
-
-                            <div class="p-2 bg-light rounded small mb-2">
-
-                                <strong>Automated Extraction:</strong> All haematology parameters within standard reference intervals. Zero acute bacterial flags detected.
-
-                            </div>
-
-                            <div class="d-flex justify-content-between align-items-center mt-auto">
-
-                                <span class="badge bg-light text-dark border"><i class="bi bi-boxes text-primary me-1"></i>Ledger Block #1</span>
-
-                                <span class="text-success small fw-semibold"><i class="bi bi-check-all"></i> Normal Reference</span>
-
-                            </div>
-
-                        </div>
+                        <p class="small mb-0">Book a consultation or complete an AI assessment to generate your first clinical report.</p>
 
                     </div>
 
@@ -2910,15 +2852,13 @@
 
                                     <select class="form-select form-select-sm" id="navDestinationSelect" onchange="calculateNavRoute()" style="width: auto;">
 
-                                        <option value="OPD_PULMONOLOGY">Dr. Sarah Sharma (Suite 104 - Pulmonology)</option>
+                                        <option value="OPD_GASTRO">Dr. Yogeshwaran (Suite 101 - Gastroenterology &amp; Physician)</option>
 
-                                        <option value="OPD_CARDIOLOGY">Dr. Rajesh Mehta (Suite 102 - Cardiology)</option>
-
-                                        <option value="EMERGENCY_ER">Emergency Room & Trauma Bay</option>
+                                        <option value="EMERGENCY_ER">Emergency Room &amp; Trauma Bay</option>
 
                                         <option value="PATHOLOGY_LAB">Central Pathology Diagnostic Lab</option>
 
-                                        <option value="RADIOLOGY">Radiology & Chest CT/X-Ray</option>
+                                        <option value="RADIOLOGY">Radiology &amp; Scans</option>
 
                                         <option value="PHARMACY">24/7 Outpatient Pharmacy</option>
 
@@ -4050,9 +3990,9 @@
 
                         <div id="tModalAccessLog">
 
-                            <div>&bull; 28 Sep 2026: Accessed by Dr. Rajesh Kumar (Authorized Consultation)</div>
+                            <div>&bull; Authorized: Dr. Yogeshwaran (Clinical Consultation)</div>
 
-                            <div>&bull; 01 Oct 2026: Accessed by Apollo ER Trauma Unit (Emergency Protocol)</div>
+                            <div>&bull; Verified: NeuroCare Emergency Protocol</div>
 
                         </div>
 
@@ -4096,13 +4036,13 @@
 
                             <div>
 
-                                <h6 class="fw-bold mb-0 text-dark">Dr. Sarah Sharma</h6>
+                                <h6 class="fw-bold mb-0 text-dark">Dr. Yogeshwaran</h6>
 
-                                <small class="text-muted">Pulmonology Specialist &bull; Apex Multi-Specialty Hospital</small>
+                                <small class="text-muted">Gastroenterologist &amp; Physician &bull; NeuroCare Health Center</small>
 
                                 <div class="mt-1">
 
-                                    <span class="badge bg-success-subtle text-success small"><i class="bi bi-patch-check-fill"></i> NMC Verified #MCI-2018-98421</span>
+                                    <span class="badge bg-success-subtle text-success small"><i class="bi bi-patch-check-fill"></i> NMC Verified #NMC-2024-98104</span>
 
                                 </div>
 

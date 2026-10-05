@@ -29,7 +29,7 @@ from .routes import (
 Base.metadata.create_all(bind=engine)
 
 def auto_migrate():
-    """Ensures newly added columns are automatically migrated into existing database tables."""
+    """Ensures newly added columns are automatically migrated into existing database tables and dummy data is purged."""
     try:
         from sqlalchemy import text
         with engine.connect() as conn:
@@ -41,6 +41,45 @@ def auto_migrate():
                 conn.commit()
     except Exception as e:
         print(f"Auto-migration notice: {e}")
+
+    # Ensure dummy doctors/patients are purged and Dr. Yogeshwaran is configured
+    try:
+        from .database import SessionLocal
+        from .models import User, DoctorProfile, IoTDevice, IoTVitalReading
+        db = SessionLocal()
+        dummy_emails = ['doctor@example.com', 'rajesh.cardio@example.com', 'ananya.gp@example.com', 'patient@example.com']
+        dummy_users = db.query(User).filter(User.email.in_(dummy_emails)).all()
+        if dummy_users:
+            dummy_ids = [u.id for u in dummy_users]
+            db.query(DoctorProfile).filter(DoctorProfile.user_id.in_(dummy_ids)).delete(synchronize_session=False)
+            db.query(User).filter(User.id.in_(dummy_ids)).delete(synchronize_session=False)
+            db.commit()
+
+        doc_yogesh = db.query(User).filter(User.email == 'vmsyogesh@gmail.com').first()
+        if doc_yogesh:
+            doc_yogesh.full_name = "Dr. Yogeshwaran"
+            doc_profile = db.query(DoctorProfile).filter(DoctorProfile.user_id == doc_yogesh.id).first()
+            if not doc_profile:
+                doc_profile = DoctorProfile(
+                    user_id=doc_yogesh.id,
+                    specialization="Gastroenterologist & Physician",
+                    qualification="MBBS, MD (General Medicine / Gastroenterology)",
+                    license_number="NMC-2024-98104",
+                    experience_years=10,
+                    hospital_affiliation="NeuroCare Multi-Specialty Health Center",
+                    bio="Specialist in digestive health, clinical diagnosis, and internal medicine.",
+                    is_available=True
+                )
+                db.add(doc_profile)
+            else:
+                doc_profile.specialization = "Gastroenterologist & Physician"
+                doc_profile.qualification = "MBBS, MD (General Medicine / Gastroenterology)"
+                doc_profile.hospital_affiliation = "NeuroCare Multi-Specialty Health Center"
+                doc_profile.is_available = True
+            db.commit()
+        db.close()
+    except Exception as e:
+        print(f"Startup clean/doctor sync notice: {e}")
 
 auto_migrate()
 

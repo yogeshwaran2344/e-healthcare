@@ -170,13 +170,13 @@
                                     <span class="badge bg-success" id="receiptStatus">READY FOR ISSUANCE</span>
                                 </div>
                                 <div class="small text-muted mb-1">
-                                    <strong>Target Patient:</strong> <span id="receiptPatient">John Doe (HID-2026-98104)</span>
+                                    <strong>Target Patient:</strong> <span id="receiptPatient">--</span>
                                 </div>
                                 <div class="small text-muted mb-1">
-                                    <strong>Issuer Authority:</strong> Apex Hospital Central Node #APEX-7782
+                                    <strong>Issuer Authority:</strong> NeuroCare Central Node #NC-7782
                                 </div>
                                 <div class="small text-muted mb-2">
-                                    <strong>SHA-256 Hash Digest:</strong> <code class="text-primary text-truncate d-block" id="receiptHash">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+                                    <strong>SHA-256 Hash Digest:</strong> <code class="text-primary text-truncate d-block" id="receiptHash">--</code>
                                 </div>
                                 <div class="small text-muted">
                                     <strong>Zero Data Leakage:</strong> Sensitive pathology payload stored encrypted off-chain. Non-repudiation verified via block validator signature.
@@ -195,12 +195,12 @@
             <!-- TAB 2: PATIENT INTAKE & LOOKUP -->
             <div class="tab-pane fade" id="hosp-intake">
                 <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-                    <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-search text-primary me-2"></i>Patient Intake & Emergency Record Lookup</h5>
+                    <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-search text-primary me-2"></i>Patient Intake &amp; Emergency Record Lookup</h5>
                     <div class="row g-3 mb-3">
                         <div class="col-md-8">
                             <div class="input-group">
                                 <span class="input-group-text bg-white"><i class="bi bi-person-vcard"></i></span>
-                                <input type="text" id="lookupPatientQuery" class="form-control" placeholder="Enter Universal Health ID (e.g. 4 or patient@example.com)..." value="4">
+                                <input type="text" id="lookupPatientQuery" class="form-control" placeholder="Enter Patient ID or email (e.g. 5 or yogeshwaranselvaraj02@gmail.com)..." value="">
                                 <button class="btn btn-primary fw-semibold px-4" onclick="lookupPatientRecord()">
                                     <i class="bi bi-search me-1"></i> Retrieve Authorized Baseline
                                 </button>
@@ -209,26 +209,9 @@
                     </div>
 
                     <div id="patientLookupResult" class="p-3 bg-light rounded-3 border">
-                        <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-3">
-                            <div>
-                                <h5 class="fw-bold mb-0">John Doe</h5>
-                                <span class="text-muted small">Age: 35 &bull; Universal Health ID: <code>HID-2026-98104</code></span>
-                            </div>
-                            <span class="badge bg-danger fs-6 px-3 py-2">Blood: O+</span>
-                        </div>
-                        <div class="row g-2 small">
-                            <div class="col-md-4">
-                                <strong class="text-danger d-block">Critical Drug Allergies:</strong>
-                                <span>Penicillin (Fatal anaphylaxis warning), Sulfa</span>
-                            </div>
-                            <div class="col-md-4">
-                                <strong class="text-dark d-block">Active Medications:</strong>
-                                <span>Metformin 500mg, Lisinopril 10mg</span>
-                            </div>
-                            <div class="col-md-4">
-                                <strong class="text-secondary d-block">Emergency Contact:</strong>
-                                <span>Sarah Doe (+91 98765 43210 - Spouse)</span>
-                            </div>
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-person-bounding-box fs-2 text-secondary d-block mb-1"></i>
+                            <p class="mb-0">Enter a Patient ID or email above to retrieve their authorized clinical profile.</p>
                         </div>
                     </div>
                 </div>

@@ -520,23 +520,48 @@ let docEcgPoints = [];
 // 1. IoT Remote Patient Monitoring (RPM)
 async function loadDoctorTelemetry() {
     try {
-        const res = await API.get('/api/iot/vitals/latest?patient_id=4');
+        const targetPatientId = activeConsultation?.patient_id || (allConsultations && allConsultations[0]?.patient_id);
+        if (!targetPatientId) {
+            const bpEl = document.getElementById('docBpVal');
+            if (bpEl) bpEl.textContent = '--/-- mmHg';
+            const glucEl = document.getElementById('docGlucoseVal');
+            if (glucEl) glucEl.textContent = '-- mg/dL';
+            const spo2El = document.getElementById('docSpo2Val');
+            if (spo2El) spo2El.textContent = '--%';
+            const hrEl = document.getElementById('docHrVal');
+            if (hrEl) hrEl.textContent = '-- bpm';
+            return;
+        }
+        const res = await API.get(`/api/iot/vitals/latest?patient_id=${targetPatientId}`);
         const stream = res.telemetry_stream || {};
 
         if (stream.bp_monitor) {
             document.getElementById('docBpVal').textContent = `${Math.round(stream.bp_monitor.primary_value)}/${Math.round(stream.bp_monitor.secondary_value || 84)} mmHg`;
+        } else {
+            const bpEl = document.getElementById('docBpVal');
+            if (bpEl) bpEl.textContent = '--/-- mmHg';
         }
         if (stream.glucose_sensor) {
             document.getElementById('docGlucoseVal').textContent = `${Math.round(stream.glucose_sensor.primary_value)} mg/dL`;
+        } else {
+            const glucEl = document.getElementById('docGlucoseVal');
+            if (glucEl) glucEl.textContent = '-- mg/dL';
         }
         if (stream.pulse_oximeter) {
             document.getElementById('docSpo2Val').textContent = `${Math.round(stream.pulse_oximeter.primary_value)}%`;
+        } else {
+            const spo2El = document.getElementById('docSpo2Val');
+            if (spo2El) spo2El.textContent = '--%';
         }
         if (stream.ecg_sensor) {
             document.getElementById('docHrVal').textContent = `${Math.round(stream.ecg_sensor.primary_value)} bpm`;
             if (stream.ecg_sensor.ecg_waveform) {
                 docEcgPoints = stream.ecg_sensor.ecg_waveform;
             }
+        } else {
+            const hrEl = document.getElementById('docHrVal');
+            if (hrEl) hrEl.textContent = '-- bpm';
+            docEcgPoints = [];
         }
 
         initDocEcgCanvas();
@@ -743,9 +768,20 @@ async function bumpDoctorQueueEmergency(tokenId) {
 // 4. Blockchain Audit Verifier
 async function loadDoctorBlockchain() {
     try {
-        const res = await API.get('/api/blockchain/ledger?patient_id=4');
+        const targetPatientId = activeConsultation?.patient_id || (allConsultations && allConsultations[0]?.patient_id);
         const container = document.getElementById('docBlockchainBlocksContainer');
         if (!container) return;
+
+        if (!targetPatientId) {
+            container.innerHTML = `<div class="p-4 bg-light rounded-3 text-center text-muted">No blockchain medical ledger records found. Select a patient consultation to view their ledger.</div>`;
+            return;
+        }
+
+        const res = await API.get(`/api/blockchain/ledger?patient_id=${targetPatientId}`);
+        if (!res.chain || res.chain.length === 0) {
+            container.innerHTML = `<div class="p-4 bg-light rounded-3 text-center text-muted">No blockchain blocks anchored for Patient #${targetPatientId}.</div>`;
+            return;
+        }
 
         container.innerHTML = res.chain.map(b => `
             <div class="block-card p-3 rounded-3 shadow-sm border ${b.record_type === 'GENESIS' ? 'genesis' : ''}">
@@ -764,9 +800,14 @@ async function loadDoctorBlockchain() {
 
 async function doctorVerifyBlockchain() {
     try {
-        const res = await API.post('/api/blockchain/verify-integrity?patient_id=4');
+        const targetPatientId = activeConsultation?.patient_id || (allConsultations && allConsultations[0]?.patient_id);
+        if (!targetPatientId) {
+            alert("No patient consultation selected for blockchain verification.");
+            return;
+        }
+        const res = await API.post(`/api/blockchain/verify-integrity?patient_id=${targetPatientId}`);
         const alertBox = document.getElementById('docBlockchainAlert');
-        alertBox.textContent = res.verification_status;
+        if (alertBox) alertBox.textContent = res.verification_status;
         alert(res.verification_status);
     } catch (err) {
         alert("Error verifying: " + err.message);
