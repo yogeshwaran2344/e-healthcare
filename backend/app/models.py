@@ -526,4 +526,19 @@ class FamilyMember(Base):
     user = orm_relationship("User", back_populates="family_members")
 
 
+class ContactMessage(Base):
+    """Inquiries and support messages submitted via the Contact Us form."""
+    __tablename__ = "contact_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(150), nullable=False)
+    phone = Column(String(30), nullable=True)
+    subject = Column(String(200), default="General Inquiry")
+    message = Column(Text, nullable=False)
+    status = Column(String(30), default="new")  # new, in_progress, resolved
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+
 

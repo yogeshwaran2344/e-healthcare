@@ -1079,5 +1079,65 @@ body.high-contrast-mode .text-primary {
     color: white;
 }
 
+/* Dark Blue Medical Cloud Footer */
+.neurocare-footer {
+    background: linear-gradient(180deg, #0b1c38 0%, #061021 100%);
+    color: #e2e8f0;
+    border-top: 1px solid rgba(56, 189, 248, 0.2);
+    position: relative;
+    z-index: 10;
+}
+
+.neurocare-footer a {
+    color: #94a3b8;
+    text-decoration: none;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.neurocare-footer a:hover {
+    color: #38bdf8;
+}
+
+.neurocare-footer .social-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    transition: all 0.2s ease;
+}
+
+.neurocare-footer .social-icon-btn:hover {
+    background: #0d6efd;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.footer-contact-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.footer-input {
+    background: rgba(15, 23, 42, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+.footer-input:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 0.25rem rgba(56, 189, 248, 0.25) !important;
+}
+
+.footer-input::placeholder {
+    color: #64748b !important;
+}
+
+
 
 

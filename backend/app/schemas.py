@@ -376,3 +376,25 @@ class ExplainableMapRequest(BaseModel):
     target_disease: str
     symptoms: List[str] = []
     qa_answers: Optional[Dict[str, Any]] = {}
+
+# Contact Form Schemas
+class ContactMessageCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    subject: Optional[str] = "General Inquiry"
+    message: str
+
+class ContactMessageOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    phone: Optional[str] = None
+    subject: Optional[str] = None
+    message: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+

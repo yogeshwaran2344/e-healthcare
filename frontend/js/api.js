@@ -152,3 +152,77 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 window.escapeHtml = escapeHtml;
+
+/**
+ * Universal Footer Contact Form Submission Handler
+ */
+async function submitFooterContact(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const btn = document.getElementById('footerContactBtn');
+    const statusBox = document.getElementById('footerContactStatus');
+    const name = document.getElementById('footerContactName')?.value.trim();
+    const email = document.getElementById('footerContactEmail')?.value.trim();
+    const phone = document.getElementById('footerContactPhone')?.value.trim();
+    const subject = document.getElementById('footerContactSubject')?.value || 'General Inquiry';
+    const message = document.getElementById('footerContactMessage')?.value.trim();
+
+    if (!name || !email || !message) {
+        if (statusBox) {
+            statusBox.className = 'small mt-2 alert alert-warning py-1 px-2';
+            statusBox.textContent = 'Please fill out your name, email, and message.';
+            statusBox.classList.remove('d-none');
+        }
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+    }
+
+    try {
+        const res = await API.post('/api/contact', {
+            name,
+            email,
+            phone: phone || null,
+            subject,
+            message
+        });
+
+        if (statusBox) {
+            statusBox.className = 'small mt-2 alert alert-success py-1 px-2';
+            statusBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Message sent! Inquiry #' + res.id + ' recorded in Cloud DB. We will respond shortly.';
+            statusBox.classList.remove('d-none');
+        }
+
+        const form = document.getElementById('footerContactForm');
+        if (form) form.reset();
+    } catch (err) {
+        if (statusBox) {
+            statusBox.className = 'small mt-2 alert alert-danger py-1 px-2';
+            statusBox.textContent = 'Failed to submit: ' + (err.message || 'Please check your connection.');
+            statusBox.classList.remove('d-none');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send-fill me-1"></i> Send to Support';
+        }
+    }
+}
+window.submitFooterContact = submitFooterContact;
+
+function openDisclaimerModal() {
+    const m = document.getElementById('medicalDisclaimerModal');
+    if (m && window.bootstrap) bootstrap.Modal.getOrCreateInstance(m).show();
+    else alert("NeuroCare Medical Disclaimer:\n\nNeuroCare is an intelligent clinical decision support and health passport platform. It does NOT replace professional medical diagnosis, emergency department triage, or licensed physician care. In medical emergencies, immediately contact local emergency services or call +91 80 4719 2300.");
+}
+window.openDisclaimerModal = openDisclaimerModal;
+
+function openPrivacyModal() {
+    const m = document.getElementById('privacyPolicyModal');
+    if (m && window.bootstrap) bootstrap.Modal.getOrCreateInstance(m).show();
+    else alert("NeuroCare Privacy & Data Protection:\n\nAll personal health records, consultations, and doctor credentials are encrypted using 256-bit AES protocols and synced to secure cloud PostgreSQL databases. You retain 100% sovereign ownership and can revoke third-party doctor access tokens at any time via the Blockchain Consent Matrix.");
+}
+window.openPrivacyModal = openPrivacyModal;
+
