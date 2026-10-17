@@ -10,6 +10,14 @@ Tests:
 """
 
 import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+_BACKEND = Path(__file__).resolve().parent
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 from fastapi.testclient import TestClient
 from backend.app.main import app
 from backend.app.ml.adaptive_reminders_engine import calculate_adaptive_reminder, DEFAULT_SCHEDULES
@@ -21,6 +29,27 @@ def main():
     print("=====================================================================")
 
     client = TestClient(app)
+
+    # Ensure patient@example.com exists
+    from backend.app.database import SessionLocal
+    from backend.app.models import User
+    from backend.app.auth import hash_password
+    db = SessionLocal()
+    p = db.query(User).filter(User.email == "patient@example.com").first()
+    if not p:
+        p = User(
+            email="patient@example.com",
+            full_name="Rahul Verma",
+            password_hash=hash_password("patient123"),
+            role="patient",
+            phone="+918618912755"
+        )
+        db.add(p)
+        db.commit()
+    else:
+        p.password_hash = hash_password("patient123")
+        db.commit()
+    db.close()
 
     # 1. Login Authentication
     login_res = client.post('/api/auth/login', json={"email": "patient@example.com", "password": "patient123"})

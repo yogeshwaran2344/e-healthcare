@@ -13,6 +13,14 @@ Validates:
 """
 
 import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+_BACKEND = Path(__file__).resolve().parent
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 from backend.app.ml.dataset import ALL_SYMPTOMS, SYMPTOMS_BY_CATEGORY, TESTS_CATALOG, DISEASES_DB
 from backend.app.ml.uncertainty_engine import calculate_disease_posteriors, compute_entropy_and_uncertainty, identify_missing_critical_information
 from backend.app.ml.next_question_engine import select_next_best_question

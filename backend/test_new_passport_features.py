@@ -1,4 +1,12 @@
 import sys
+from pathlib import Path
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+_BACKEND = Path(__file__).resolve().parent
+if str(_BACKEND) not in sys.path:
+    sys.path.insert(0, str(_BACKEND))
+
 from fastapi.testclient import TestClient
 from backend.app.main import app
 
@@ -22,8 +30,10 @@ def test_new_features():
     print(f"[PASS] 2. Access History retrieved ({len(history)} records found)")
 
     # 3. Test Break-Glass Emergency Access
+    me_res = client.get("/api/auth/me", headers=headers)
+    patient_id = me_res.json()["id"] if me_res.status_code == 200 else 1
     bg_payload = {
-        "patient_id": 4,
+        "patient_id": patient_id,
         "hospital": "Apex Super-Specialty ER Trauma Bay 1",
         "justification": "Severe acute respiratory distress with hemodynamic instability; immediate access required."
     }

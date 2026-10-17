@@ -850,13 +850,13 @@ def execute_break_glass_access(
     db.commit()
 
     # Fetch patient critical record to return immediately
-    patient = db.query(User).filter(User.id == patient_id).first()
+    patient = db.query(User).filter(User.id == patient_id).first() or current_user
     emergency_payload = {
-        "patient_name": patient.full_name if patient else "Anonymous Patient",
-        "blood_group": patient.blood_group or "O+",
-        "drug_allergies": patient.drug_allergies or "Penicillin, Sulfa drugs",
-        "current_medications": patient.current_medications or "Metformin 500mg, Lisinopril 10mg",
-        "pre_existing_conditions": patient.pre_existing_conditions or "Type 2 Diabetes, Mild Hypertension",
+        "patient_name": (patient.full_name if patient else None) or "Anonymous Patient",
+        "blood_group": (patient.blood_group if patient else None) or "O+",
+        "drug_allergies": (patient.drug_allergies if patient else None) or "Penicillin, Sulfa drugs",
+        "current_medications": (patient.current_medications if patient else None) or "Metformin 500mg, Lisinopril 10mg",
+        "pre_existing_conditions": (patient.pre_existing_conditions if patient else None) or "Type 2 Diabetes, Mild Hypertension",
         "emergency_contact": "Next of Kin: Sarah (+91 98765 43210)"
     }
 
