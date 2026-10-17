@@ -154,11 +154,13 @@ def send_sms(
             else:
                 raw_err = resp_data.get("message")
                 err_text = " ".join(raw_err) if isinstance(raw_err, list) else str(raw_err or f"HTTP {response.status_code}")
+                if resp_data.get("status_code") == 999:
+                    err_text = "Fast2SMS requires completing a one-time recharge of ₹100 ('ADD CREDIT' button in Fast2SMS dashboard) to unlock automated API sending."
                 logger.warning(f"Fast2SMS API notice ({response.status_code}): {err_text}")
                 return {
                     "success": False,
                     "sid": f"F2SMS-ERR-{clean_digits[-4:]}",
-                    "status": "gateway_rejected",
+                    "status": "activation_needed" if resp_data.get("status_code") == 999 else "gateway_rejected",
                     "provider": "Fast2SMS Quick SMS Gateway",
                     "phone": f"+91{clean_digits}",
                     "recipient_10digit": clean_digits,
