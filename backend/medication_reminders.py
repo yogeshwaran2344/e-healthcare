@@ -20,7 +20,13 @@ if str(_CURRENT_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from sms_service import send_sms, sanitize_indian_mobile_number
+from whatsapp_service import (
+    send_whatsapp,
+    send_sms,
+    sanitize_indian_mobile_number,
+    format_whatsapp_recipient,
+    format_whatsapp_url
+)
 
 # Configure logger
 logger = logging.getLogger("MedicationReminders")
@@ -42,11 +48,11 @@ def send_medication_reminder(
     patient_name: str = ""
 ) -> Dict[str, Any]:
     """
-    Sends an automated cellular SMS medication reminder to the patient.
+    Sends an automated WhatsApp medication reminder to the patient.
     
     Example Message:
     "NeuroCare Reminder: Hello John, your scheduled dose of Metformin 500mg (1 tablet)
-     is due now (08:00 AM). Please follow your prescribed clinical plan."
+     is due now (08:00 AM). Please take your prescribed medication on time."
     """
     clean_phone = sanitize_indian_mobile_number(patient_phone)
     if not clean_phone or len(clean_phone) != 10:
@@ -55,7 +61,8 @@ def send_medication_reminder(
             "success": False,
             "error": f"Invalid 10-digit mobile number: '{patient_phone}'",
             "medication": medication_name,
-            "scheduled_time": scheduled_time
+            "scheduled_time": scheduled_time,
+            "channel": "whatsapp"
         }
 
     dosage_str = f" ({dosage.strip()})" if dosage and dosage.strip() else ""
@@ -67,9 +74,9 @@ def send_medication_reminder(
         f"Please take your prescribed medication on time."
     )
 
-    logger.info(f"Dispatching cellular SMS reminder for '{medication_name}' to +91{clean_phone}...")
+    logger.info(f"Dispatching WhatsApp reminder for '{medication_name}' to +91{clean_phone}...")
 
-    res = send_sms(
+    res = send_whatsapp(
         recipient_phone=clean_phone,
         message=message
     )
@@ -78,6 +85,8 @@ def send_medication_reminder(
     res["scheduled_time"] = scheduled_time
     res["dosage"] = dosage
     res["patient_name"] = p_name
+    res["channel"] = "whatsapp"
+    res["whatsapp_notification"] = dict(res)
     return res
 
 

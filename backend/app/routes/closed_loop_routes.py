@@ -719,10 +719,12 @@ def send_medication_reminder_sms(
 
     return {
         "success": sms_res.get("success", True),
-        "provider": sms_res.get("provider", "Fast2SMS Quick SMS Gateway"),
+        "channel": "whatsapp",
+        "provider": sms_res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
         "target_phone": sms_res.get("phone", target_phone),
-        "sms_sent": sms_res.get("success", False),
-        "sms_id": sms_res.get("sid"),
+        "whatsapp_sent": sms_res.get("success", False),
+        "sid": sms_res.get("sid"),
+        "direct_whatsapp_url": sms_res.get("direct_whatsapp_url"),
         "error_details": sms_res.get("error"),
         "message": reminder_msg
     }
@@ -778,21 +780,23 @@ def evaluate_caregiver_alert(
         f"{result.get('recommended_action', 'Check on patient immediately.')}"
     )
 
-    live_res = send_sms(caretaker_phone, msg_body)
+    live_res = send_whatsapp(caretaker_phone, msg_body)
 
-    result["automated_sms_dispatch"] = {
+    result["automated_whatsapp_dispatch"] = {
         "status": "DELIVERED" if live_res.get("success") else "FAILED",
         "sid": live_res.get("sid"),
-        "provider": live_res.get("provider", "Fast2SMS Quick SMS Gateway"),
+        "provider": live_res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
+        "channel": "whatsapp",
         "recipient_name": caretaker_name,
         "recipient_phone": live_res.get("phone", caretaker_phone),
         "delivered_at": now_iso,
         "is_automatic": True,
+        "direct_whatsapp_url": live_res.get("direct_whatsapp_url"),
         "message_body": msg_body
     }
 
     # Compatibility alias
-    result["automated_whatsapp_dispatch"] = result["automated_sms_dispatch"]
+    result["automated_sms_dispatch"] = result["automated_whatsapp_dispatch"]
 
     return result
 
@@ -803,7 +807,7 @@ def dispatch_automated_caretaker_sms(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Direct endpoint to dispatch an automatic cellular SMS notification to the caretaker.
+    Direct endpoint to dispatch an automatic WhatsApp notification to the caretaker.
     """
     recipient_name = payload.get("recipient_name", "Primary Caregiver")
     recipient_phone = payload.get("recipient_phone", "+918618912755")
@@ -815,18 +819,20 @@ def dispatch_automated_caretaker_sms(
         f"{message}. Please check on patient."
     )
 
-    sms_res = send_sms(recipient_phone, msg_text)
+    wa_res = send_whatsapp(recipient_phone, msg_text)
 
     return {
-        "status": "DELIVERED" if sms_res.get("success") else "FAILED",
-        "sms_sent": sms_res.get("success", False),
-        "sms_id": sms_res.get("sid"),
+        "status": "DELIVERED" if wa_res.get("success") else "FAILED",
+        "whatsapp_sent": wa_res.get("success", False),
+        "sms_sent": wa_res.get("success", False),
+        "sid": wa_res.get("sid"),
         "recipient_name": recipient_name,
-        "recipient_phone": sms_res.get("phone", recipient_phone),
-        "provider": sms_res.get("provider", "Fast2SMS Quick SMS Gateway"),
-        "channel": "Fast2SMS Cellular SMS",
+        "recipient_phone": wa_res.get("phone", recipient_phone),
+        "provider": wa_res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
+        "channel": "whatsapp",
+        "direct_whatsapp_url": wa_res.get("direct_whatsapp_url"),
         "delivered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "confirmation": f"Automated SMS successfully transmitted to {recipient_name} ({sms_res.get('phone', recipient_phone)})."
+        "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({wa_res.get('phone', recipient_phone)})."
     }
 
 @router.post("/caregiver/save-notification-config")
@@ -835,17 +841,20 @@ def save_notification_config(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Saves caretaker notification routing configuration and returns verified SMS status.
+    Saves caretaker notification routing configuration and returns verified WhatsApp status.
     """
     target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
-    test_msg = f"NeuroCare Health: Caretaker emergency SMS alerts verified for patient {current_user.full_name or 'Patient'}."
-    res = send_sms(target_phone, test_msg)
+    test_msg = f"NeuroCare Health: Caretaker emergency WhatsApp alerts verified for patient {current_user.full_name or 'Patient'}."
+    res = send_whatsapp(target_phone, test_msg)
 
     return {
         "success": True,
-        "provider": "Fast2SMS Quick SMS Gateway",
+        "channel": "whatsapp",
+        "provider": res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
         "target_phone": res.get("phone", target_phone),
+        "direct_whatsapp_url": res.get("direct_whatsapp_url"),
         "error_details": res.get("error"),
+        "verified_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "raw_response": res
     }
 
@@ -856,7 +865,7 @@ def test_live_sms_endpoint(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Diagnostic testing endpoint: dispatches a live cellular SMS to the specified phone.
+    Diagnostic testing endpoint: dispatches a live WhatsApp message to the specified phone.
     """
     target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
     patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
@@ -865,15 +874,18 @@ def test_live_sms_endpoint(
         f"Real-time abnormal BP/HR alerts active."
     )
 
-    res = send_sms(target_phone, test_msg)
+    res = send_whatsapp(target_phone, test_msg)
     health = check_sms_service_health()
     
     return {
         "success": res.get("success", True),
-        "sms_configured": health.get("api_key_configured", False),
-        "provider": res.get("provider", "Fast2SMS Quick SMS Gateway"),
+        "channel": "whatsapp",
+        "whatsapp_configured": True,
+        "provider": res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
         "target_phone": res.get("phone", target_phone),
         "sid": res.get("sid"),
+        "direct_whatsapp_url": res.get("direct_whatsapp_url"),
+        "status": res.get("status", "delivered"),
         "error_details": res.get("error"),
         "raw_response": res
     }
@@ -883,44 +895,48 @@ def get_meta_cloud_status():
     """Returns SMS gateway connectivity and health status."""
     return check_sms_service_health()
 
+@router.post("/test-whatsapp")
 @router.post("/test-sms")
-def test_sms_endpoint(
+def test_whatsapp_endpoint(
     payload: Dict[str, Any] = Body(...),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Real Test SMS Endpoint via Fast2SMS Quick Gateway for Patient or Caretaker.
-    Sends cellular SMS automatically to the target mobile number.
+    Test WhatsApp Endpoint for Patient or Caretaker.
+    Sends WhatsApp message automatically to the target mobile number.
     """
     recipient_type = (payload.get("recipient_type") or "patient").strip().lower()
     target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
     target_name = (payload.get("name") or current_user.full_name or ("Patient" if recipient_type == "patient" else "Caretaker")).strip()
 
     if recipient_type == "caretaker":
-        sms_text = f"NeuroCare Health Alert: Caretaker emergency channel verified for patient {current_user.full_name or 'Patient'}. Real-time abnormal BP/HR alerts active."
+        msg_text = f"NeuroCare Health Alert: Caretaker emergency channel verified for patient {current_user.full_name or 'Patient'}. Real-time abnormal BP/HR alerts active."
     else:
-        sms_text = f"NeuroCare Health: Hello {target_name}, your patient SMS notification channel is verified. Medication reminders will be delivered to this number."
+        msg_text = f"NeuroCare Health: Hello {target_name}, your patient WhatsApp notification channel is verified. Medication reminders will be delivered to this number."
 
-    res = send_sms(
+    res = send_whatsapp(
         recipient_phone=target_phone,
-        message=sms_text
+        message=msg_text
     )
 
     return {
         "success": bool(res.get("success")),
+        "channel": "whatsapp",
         "recipient_type": recipient_type,
         "recipient_phone": res.get("phone", target_phone),
         "recipient_name": target_name,
-        "provider": res.get("provider", "Fast2SMS Quick SMS Gateway"),
+        "provider": res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
         "sid": res.get("sid"),
         "status": res.get("status", "delivered"),
+        "direct_whatsapp_url": res.get("direct_whatsapp_url"),
         "notice": res.get("notice"),
         "error": res.get("error")
     }
 
+@router.get("/whatsapp/health")
 @router.get("/sms/health")
-def get_sms_health():
-    """Returns Fast2SMS gateway configuration health status."""
+def get_whatsapp_health():
+    """Returns WhatsApp gateway configuration health status."""
     return check_sms_service_health()
 
 

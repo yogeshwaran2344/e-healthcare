@@ -22,7 +22,13 @@ if str(_CURRENT_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from sms_service import send_sms, sanitize_indian_mobile_number
+from whatsapp_service import (
+    send_whatsapp,
+    send_sms,
+    sanitize_indian_mobile_number,
+    format_whatsapp_recipient,
+    format_whatsapp_url
+)
 
 # Configure logger
 logger = logging.getLogger("HealthAlerts")
@@ -216,10 +222,10 @@ def check_vitals(
     if not clean_caretaker_phone:
         clean_caretaker_phone = sanitize_indian_mobile_number(os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755"))
 
-    # 5. Send Live SMS Alert via Fast2SMS
-    logger.warning(f"Dispatching [{severity}] caretaker SMS health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
+    # 5. Send Live WhatsApp Alert to Caretaker
+    logger.warning(f"Dispatching [{severity}] caretaker WhatsApp health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
 
-    dispatch_res = send_sms(
+    dispatch_res = send_whatsapp(
         recipient_phone=clean_caretaker_phone,
         message=message
     )
@@ -231,6 +237,7 @@ def check_vitals(
         "systolic": systolic_bp,
         "hr": heart_rate,
         "last_status": dispatch_res.get("status"),
+        "whatsapp_status": dispatch_res.get("status"),
         "sms_status": dispatch_res.get("status")
     }
 
@@ -240,16 +247,26 @@ def check_vitals(
         "severity": severity,
         "alerts": alerts,
         "message": message,
+        "channel": "whatsapp",
         "notification": dispatch_res,
+        "whatsapp_notification": dispatch_res,
         "sms_notification": dispatch_res,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
-def evaluate_patient_latest_vitals(patient_id: int, db=None) -> Dict[str, Any]:
+def evaluate_patient_latest_vitals(
+    patient_id: int,
+    db=None,
+    systolic: Optional[float] = None,
+    diastolic: Optional[float] = None,
+    heart_rate: Optional[float] = None,
+    bypass_cooldown: bool = False
+) -> Dict[str, Any]:
     """
     Database bridge: looks up patient vitals and caretaker configuration from database,
     then executes check_vitals with patient-specific limits.
+    Supports optional direct overrides for real-time sensor streams.
     """
     close_db = False
     if db is None:
@@ -289,33 +306,42 @@ def evaluate_patient_latest_vitals(patient_id: int, db=None) -> Dict[str, Any]:
         if not caretaker_phone:
             caretaker_phone = user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
 
-        # Get latest BP and HR readings
-        bp_reading = (
-            db.query(IoTVitalReading)
-            .filter(IoTVitalReading.patient_id == patient_id, IoTVitalReading.metric_type == "blood_pressure")
-            .order_by(IoTVitalReading.recorded_at.desc())
-            .first()
-        )
-        hr_reading = (
-            db.query(IoTVitalReading)
-            .filter(IoTVitalReading.patient_id == patient_id, IoTVitalReading.metric_type == "heart_rate")
-            .order_by(IoTVitalReading.recorded_at.desc())
-            .first()
-        )
+        # Get latest BP and HR readings if not explicitly provided
+        sys_val = systolic
+        dia_val = diastolic
+        hr_val = heart_rate
 
-        sys_val = bp_reading.primary_value if bp_reading else 120.0
-        dia_val = bp_reading.secondary_value if bp_reading else 80.0
-        hr_val = hr_reading.primary_value if hr_reading else 75.0
+        if sys_val is None or dia_val is None:
+            bp_reading = (
+                db.query(IoTVitalReading)
+                .filter(IoTVitalReading.patient_id == patient_id, IoTVitalReading.metric_type == "blood_pressure")
+                .order_by(IoTVitalReading.recorded_at.desc())
+                .first()
+            )
+            if sys_val is None:
+                sys_val = bp_reading.primary_value if bp_reading else 120.0
+            if dia_val is None:
+                dia_val = bp_reading.secondary_value if bp_reading else 80.0
+
+        if hr_val is None:
+            hr_reading = (
+                db.query(IoTVitalReading)
+                .filter(IoTVitalReading.patient_id == patient_id, IoTVitalReading.metric_type == "heart_rate")
+                .order_by(IoTVitalReading.recorded_at.desc())
+                .first()
+            )
+            hr_val = hr_reading.primary_value if hr_reading else 75.0
 
         return check_vitals(
             patient_id=str(patient_id),
             caretaker_phone=caretaker_phone,
-            systolic_bp=sys_val,
-            diastolic_bp=dia_val,
-            heart_rate=hr_val,
+            systolic_bp=float(sys_val),
+            diastolic_bp=float(dia_val),
+            heart_rate=float(hr_val),
             bp_limits=bp_limits,
             heart_rate_limits=hr_limits,
-            patient_name=user.full_name or "Patient"
+            patient_name=user.full_name or "Patient",
+            bypass_cooldown=bypass_cooldown
         )
     finally:
         if close_db and db is not None:

@@ -31,6 +31,12 @@ if not logger.handlers:
 # Load environment
 _CURRENT_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _CURRENT_DIR.parent if _CURRENT_DIR.name == "backend" else _CURRENT_DIR
+import sys
+if str(_CURRENT_DIR) not in sys.path:
+    sys.path.insert(0, str(_CURRENT_DIR))
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 for env_path in [_PROJECT_ROOT / ".env", _CURRENT_DIR / ".env", Path(".env")]:
     if env_path.exists():
         load_dotenv(dotenv_path=env_path, override=False)
@@ -90,27 +96,31 @@ sanitize_sms_recipient_digits = sanitize_indian_mobile_number
 sanitize_phone_number = sanitize_indian_mobile_number
 
 
+from whatsapp_service import (
+    send_whatsapp,
+    format_whatsapp_recipient,
+    format_whatsapp_url,
+    format_whatsapp_display
+)
+
 def send_sms(
     recipient_phone: str,
     message: str,
     route: str = "q"
 ) -> Dict[str, Any]:
     """
-    Sends an automated, server-side cellular SMS using Fast2SMS Quick Route ('q').
-    
-    Endpoint: POST https://www.fast2sms.com/dev/bulkV2
-    Headers:
-      authorization: <FAST2SMS_API_KEY>
-      Content-Type: application/json
-    Payload:
-      {
-        "route": "q",
-        "message": "<text>",
-        "numbers": "<10-digit number>"
-      }
-    
-    If FAST2SMS_API_KEY is not configured, records the dispatch cleanly in simulated
-    mode so workflows and tests never break.
+    Unified notification dispatch: delivers via WhatsApp (as requested by user to replace SMS with WhatsApp).
+    """
+    return send_whatsapp(recipient_phone=recipient_phone, message=message)
+
+
+def send_cellular_sms(
+    recipient_phone: str,
+    message: str,
+    route: str = "q"
+) -> Dict[str, Any]:
+    """
+    Direct cellular SMS dispatch using Fast2SMS Quick Route ('q').
     """
     cfg = get_fast2sms_config()
     clean_digits = sanitize_indian_mobile_number(recipient_phone)

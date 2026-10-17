@@ -16,11 +16,16 @@ from datetime import datetime
 from ..database import get_db
 from ..models import User, MedicationSchedule, CaretakerAlertConfig, IoTVitalReading
 from ..auth import get_current_user
-from ..sms_service import (
+from ..whatsapp_service import (
+    send_whatsapp,
     send_sms,
-    get_fast2sms_config,
+    get_whatsapp_config,
+    check_whatsapp_service_health,
     check_sms_service_health,
-    sanitize_indian_mobile_number
+    sanitize_indian_mobile_number,
+    format_whatsapp_recipient,
+    format_whatsapp_url,
+    format_whatsapp_display
 )
 from ..medication_reminders import send_medication_reminder, check_and_send_due_reminders
 from ..health_alerts import check_vitals, DEFAULT_BP_LIMITS, DEFAULT_HR_LIMITS
@@ -28,37 +33,28 @@ from ..health_alerts import check_vitals, DEFAULT_BP_LIMITS, DEFAULT_HR_LIMITS
 router = APIRouter(prefix="/api/notifications", tags=["Notifications & Reminders"])
 
 
+@router.get("/whatsapp/status")
 @router.get("/sms/status")
-def get_sms_status(current_user: User = Depends(get_current_user)):
+def get_whatsapp_status(current_user: User = Depends(get_current_user)):
     """
-    Checks Fast2SMS configuration status for authenticated users.
-    Returns whether Fast2SMS credentials are configured in .env.
+    Checks WhatsApp configuration status for authenticated users.
     """
-    cfg = get_fast2sms_config()
-    is_configured = bool(cfg.get("api_key"))
-
-    return {
-        "provider": "Fast2SMS",
-        "configured": is_configured,
-        "route": cfg.get("route", "q"),
-        "default_recipient": cfg.get("default_recipient"),
-        "requires_dlt": False,
-        "automated": True
-    }
+    health = check_whatsapp_service_health()
+    return health
 
 
 @router.get("/status")
 def get_notification_system_status():
     """
-    Returns the real-time operational status of the Fast2SMS Quick Gateway service.
+    Returns the real-time operational status of the WhatsApp Notification service.
     """
-    health = check_sms_service_health()
+    health = check_whatsapp_service_health()
     return {
-        "service": "NeuroCare Automated SMS Gateway",
+        "service": "NeuroCare Automated WhatsApp Gateway",
         "health": health,
         "workflows": {
-            "workflow_1": "Patient Medication Reminders (Automated Dose Schedules)",
-            "workflow_2": "Caretaker Vital Signs Health Alerts (BP & Heart Rate Monitoring)"
+            "workflow_1": "Patient Medication Reminders (Automated Dose Schedules via WhatsApp)",
+            "workflow_2": "Caretaker Vital Signs Health Alerts (BP & Heart Rate Monitoring via WhatsApp)"
         },
         "checked_at": datetime.utcnow().isoformat()
     }
@@ -67,19 +63,20 @@ def get_notification_system_status():
 @router.post("/whatsapp/test")
 @router.post("/sms/test")
 @router.post("/sms/send")
-def test_sms_message(
+def test_whatsapp_message(
     payload: Dict[str, Any] = Body(...),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Direct diagnostic endpoint to test cellular SMS dispatch to a specified phone number.
+    Direct diagnostic endpoint to test WhatsApp message dispatch to a specified phone number.
     """
     phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
-    message = payload.get("message", "Test notification from NeuroCare Platform: Cellular SMS gateway verified.").strip()
+    message = payload.get("message", "Test notification from NeuroCare Platform: WhatsApp notification gateway verified.").strip()
     
-    result = send_sms(phone, message)
+    result = send_whatsapp(phone, message)
     return {
         "requested_phone": phone,
+        "channel": "whatsapp",
         "result": result
     }
 

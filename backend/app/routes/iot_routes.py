@@ -216,6 +216,11 @@ def record_vital_reading(
     primary_val = float(payload.get("primary_value", 120.0))
     secondary_val = float(payload.get("secondary_value", 80.0)) if payload.get("secondary_value") is not None else None
 
+    # Handle optional simultaneous multi-parameter smartwatch telemetry
+    incoming_hr = payload.get("heart_rate")
+    incoming_sys = payload.get("systolic")
+    incoming_dia = payload.get("diastolic")
+
     device = db.query(IoTDevice).filter(IoTDevice.patient_id == current_user.id).first()
     dev_id = device.id if device else 1
 
@@ -234,13 +239,52 @@ def record_vital_reading(
         recorded_at=datetime.utcnow()
     )
     db.add(reading)
+
+    # If incoming payload contains both BP and HR from the smartwatch, record HR reading as well
+    if metric_type == "blood_pressure" and incoming_hr is not None:
+        hr_val = float(incoming_hr)
+        hr_thresh = evaluate_vital_thresholds("heart_rate", hr_val)
+        hr_reading = IoTVitalReading(
+            patient_id=current_user.id,
+            device_id=dev_id,
+            metric_type="heart_rate",
+            primary_value=hr_val,
+            unit="bpm",
+            is_anomaly=hr_thresh["is_anomaly"],
+            alert_severity=hr_thresh["severity"],
+            alert_message=hr_thresh["message"],
+            recorded_at=datetime.utcnow()
+        )
+        db.add(hr_reading)
+
     db.commit()
     db.refresh(reading)
 
+    # Determine overrides for vital threshold evaluation
+    eval_sys = primary_val if metric_type == "blood_pressure" else incoming_sys
+    eval_dia = secondary_val if metric_type == "blood_pressure" else incoming_dia
+    eval_hr = incoming_hr if metric_type == "blood_pressure" else (primary_val if metric_type == "heart_rate" else None)
+
     caretaker_alert_info = None
-    if reading.is_anomaly or reading.alert_severity in ("WARNING", "CRITICAL"):
+    # Trigger automated Caretaker WhatsApp alert if BP or HR is abnormal
+    is_abnormal = thresh["is_anomaly"] or thresh["severity"] in ("WARNING", "CRITICAL")
+    if eval_hr and (float(eval_hr) < 50.0 or float(eval_hr) > 100.0):
+        is_abnormal = True
+    if eval_sys and (float(eval_sys) < 90.0 or float(eval_sys) > 140.0):
+        is_abnormal = True
+    if eval_dia and (float(eval_dia) < 60.0 or float(eval_dia) > 90.0):
+        is_abnormal = True
+
+    if is_abnormal:
         try:
-            caretaker_alert_info = evaluate_patient_latest_vitals(patient_id=current_user.id, db=db)
+            caretaker_alert_info = evaluate_patient_latest_vitals(
+                patient_id=current_user.id,
+                db=db,
+                systolic=float(eval_sys) if eval_sys is not None else None,
+                diastolic=float(eval_dia) if eval_dia is not None else None,
+                heart_rate=float(eval_hr) if eval_hr is not None else None,
+                bypass_cooldown=bool(payload.get("bypass_cooldown", True))
+            )
         except Exception as ex:
             caretaker_alert_info = {"error": str(ex)}
 
@@ -250,8 +294,9 @@ def record_vital_reading(
         "metric_type": reading.metric_type,
         "primary_value": reading.primary_value,
         "secondary_value": reading.secondary_value,
+        "heart_rate": eval_hr,
         "alert_severity": reading.alert_severity,
-        "is_anomaly": reading.is_anomaly,
+        "is_anomaly": is_abnormal,
         "caretaker_alert": caretaker_alert_info
     }
 
