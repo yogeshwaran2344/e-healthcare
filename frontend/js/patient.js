@@ -106,10 +106,11 @@ async function testPatientWhatsApp() {
         if (res.success) {
             showSMSNotification({
                 title: "✅ PATIENT WHATSAPP DISPATCHED",
-                message: `Automated WhatsApp notification transmitted to Patient (${res.recipient_phone}) via ${res.provider}! Ref: ${res.sid}. Check patient's WhatsApp.`,
+                message: `WhatsApp notification prepared for Patient (${res.recipient_phone}). Click below to deliver directly to Patient WhatsApp:`,
                 channel: "whatsapp",
                 phone: pPhone,
-                duration: 9000
+                whatsappUrl: res.direct_whatsapp_url,
+                duration: 15000
             });
         } else {
             showSMSNotification({
@@ -140,11 +141,11 @@ async function testCaretakerWhatsApp() {
     const cName = (document.getElementById('modalCaretakerName')?.value || document.getElementById('profCaretakerName')?.value || 'Primary Caretaker').trim();
 
     showSMSNotification({
-        title: "⚡ DISPATCHING AUTOMATED WHATSAPP...",
-        message: `Transmitting automated WhatsApp alert to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via NeuroCare Gateway...`,
+        title: "⚡ PREPARING WHATSAPP ALERT...",
+        message: `Connecting to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via WhatsApp...`,
         channel: "whatsapp",
         phone: cPhone,
-        duration: 5000
+        duration: 3000
     });
 
     try {
@@ -155,11 +156,12 @@ async function testCaretakerWhatsApp() {
         });
         if (res.success) {
             showSMSNotification({
-                title: "✅ CARETAKER WHATSAPP DISPATCHED",
-                message: `Automated WhatsApp alert transmitted to Caretaker (${res.recipient_phone}) via ${res.provider}! Ref: ${res.sid}. Check caretaker's WhatsApp.`,
+                title: "✅ CARETAKER WHATSAPP READY",
+                message: `Urgent Caretaker vital alert generated for ${res.recipient_phone}. Tap below to send directly via WhatsApp:`,
                 channel: "whatsapp",
                 phone: cPhone,
-                duration: 9000
+                whatsappUrl: res.direct_whatsapp_url,
+                duration: 15000
             });
         } else {
             showSMSNotification({
@@ -323,6 +325,17 @@ function showSMSNotification(options) {
         </div>
     ` : '';
 
+    const waUrl = (options && options.whatsappUrl) || (channel === 'whatsapp' && phoneDigits ? `https://wa.me/91${phoneDigits}?text=${encodeURIComponent(title + ': ' + msg)}` : null);
+    const waActionHtml = waUrl ? `
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-success text-white px-3 py-1 rounded-2 text-decoration-none fw-bold shadow-sm d-inline-flex align-items-center gap-1" style="font-size:0.78rem;">
+            <i class="bi bi-whatsapp"></i> Open & Send in WhatsApp
+        </a>
+    ` : `
+        <span class="text-success small fw-semibold me-auto" style="font-size:0.74rem;">
+            <i class="bi bi-whatsapp text-success me-1"></i> WhatsApp Dispatched to +91 ${phoneDigits || 'Recipient'}
+        </span>
+    `;
+
     card.innerHTML = `
         <div class="sms-header">
             ${channelBadge}
@@ -335,10 +348,8 @@ function showSMSNotification(options) {
         </div>
         ${otpHtml}
         <div class="sms-actions d-flex align-items-center justify-content-between gap-2 mt-2">
-            <span class="text-success small fw-semibold me-auto" style="font-size:0.74rem;">
-                <i class="bi bi-whatsapp text-success me-1"></i> WhatsApp Dispatched to +91 ${phoneDigits || 'Recipient'}
-            </span>
-            <button class="sms-btn bg-light text-secondary border px-2 py-1 rounded" style="font-size:0.75rem;" onclick="this.closest('.sms-otp-card').remove()">
+            ${waActionHtml}
+            <button class="sms-btn bg-light text-secondary border px-2 py-1 rounded ms-auto" style="font-size:0.75rem;" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
             </button>
         </div>
@@ -3557,10 +3568,11 @@ async function checkAndTriggerAbnormalVitalsAlert(sys, dia, hr, force = false) {
 
         showSMSNotification({
             title: "🚨 ABNORMAL VITALS - AUTOMATED WHATSAPP DISPATCHED",
-            message: `Telemetry breach detected from ${bleWatchName}: ${summaryStr}. Automated emergency WhatsApp alert sent to Caretaker (${caretakerPhone})! Ref ID: ${notif.sid || 'WA-AUTO'}`,
+            message: `Telemetry breach detected from ${bleWatchName}: ${summaryStr}. Automated emergency WhatsApp alert prepared for Caretaker (${caretakerPhone})! Ref ID: ${notif.sid || 'WA-AUTO'}`,
             channel: "whatsapp",
             phone: caretakerPhone,
-            duration: 10000
+            whatsappUrl: notif.direct_whatsapp_url,
+            duration: 12000
         });
 
     } catch (err) {
