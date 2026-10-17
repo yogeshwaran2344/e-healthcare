@@ -68,7 +68,15 @@ def send_medication_reminder(
     )
 
     logger.info(f"Dispatching medication reminder for '{medication_name}' to {clean_phone}...")
-    res = send_whatsapp(clean_phone, message)
+    tmpl_name = os.getenv("WHATSAPP_TEMPLATE_MEDICATION_REMINDER")
+    tmpl_params = [f"{medication_name.strip()}{dosage_str}", scheduled_time.strip()] if tmpl_name else None
+
+    res = send_whatsapp(
+        phone_number=clean_phone,
+        message=message,
+        template_name=tmpl_name,
+        template_params=tmpl_params
+    )
     res["medication_name"] = medication_name
     res["scheduled_time"] = scheduled_time
     res["dosage"] = dosage

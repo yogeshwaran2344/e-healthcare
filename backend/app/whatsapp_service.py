@@ -1,6 +1,6 @@
 """
 Backend App WhatsApp Service Bridge
-Exposes WhatsApp notification capabilities from backend.whatsapp_service
+Exposes Meta WhatsApp Cloud API capabilities from backend.whatsapp_service
 """
 
 import sys
@@ -14,7 +14,12 @@ if str(_BACKEND_DIR) not in sys.path:
 from whatsapp_service import (
     send_whatsapp,
     sanitize_phone_number,
+    sanitize_meta_recipient_digits,
     format_whatsapp_recipient,
+    format_whatsapp_direct_url,
+    format_sms_direct_url,
+    send_meta_whatsapp_cloud_api,
+    get_meta_cloud_config,
     check_whatsapp_service_health,
     DEFAULT_SANDBOX_FROM
 )
@@ -22,7 +27,12 @@ from whatsapp_service import (
 __all__ = [
     "send_whatsapp",
     "sanitize_phone_number",
+    "sanitize_meta_recipient_digits",
     "format_whatsapp_recipient",
+    "format_whatsapp_direct_url",
+    "format_sms_direct_url",
+    "send_meta_whatsapp_cloud_api",
+    "get_meta_cloud_config",
     "check_whatsapp_service_health",
     "DEFAULT_SANDBOX_FROM"
 ]

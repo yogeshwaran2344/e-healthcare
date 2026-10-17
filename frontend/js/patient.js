@@ -97,16 +97,34 @@ async function testDirectWhatsAppAlert() {
     const waDirectUrl = `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${encoded}`;
 
     showSMSNotification({
-        title: "✅ DIRECT WHATSAPP READY",
-        message: `Notification gateway active for +${waPhoneDigits}. Click Open in WhatsApp to send test message directly.`,
+        title: "⚡ DISPATCHING WHATSAPP...",
+        message: `Connecting to Meta WhatsApp Cloud API for +${waPhoneDigits}...`,
         channel: "whatsapp",
         phone: targetPhone,
-        duration: 12000
+        duration: 5000
     });
 
     try {
+        const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', {
+            phone: waPhoneDigits,
+            patient_name: (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.full_name) || 'Patient'
+        });
+
+        const provider = res.provider || "Meta WhatsApp Cloud API";
+        showSMSNotification({
+            title: "✅ WHATSAPP NOTIFICATION SENT",
+            message: `Healthcare alert dispatched to +${res.target_phone || waPhoneDigits} via ${provider}. Ref: ${res.raw_response?.sid || 'Live Dispatch'}.`,
+            channel: "whatsapp",
+            phone: targetPhone,
+            duration: 12000
+        });
+
+        if (res.direct_whatsapp_url) {
+            window.open(res.direct_whatsapp_url, '_blank');
+        }
+    } catch (_) {
         window.open(waDirectUrl, '_blank');
-    } catch (_) {}
+    }
 }
 
 function saveContactSettings(e) {

@@ -10,7 +10,7 @@ import sys
 import os
 import math
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
@@ -85,7 +85,7 @@ def should_suppress_duplicate_alert(
         3. Heart rate shifts by >= 20 bpm.
     """
     pid = str(patient_id)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cached = _ALERT_EPISODE_CACHE.get(pid)
 
     if not cached:
@@ -221,13 +221,21 @@ def check_vitals(
     if not clean_caretaker_phone:
         clean_caretaker_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
 
-    # 5. Send Live WhatsApp Alert
+    # 5. Send Live WhatsApp Alert via Meta Cloud API or direct fallback
     logger.warning(f"Dispatching [{severity}] caretaker health alert for patient {patient_id} to {clean_caretaker_phone}...")
-    dispatch_res = send_whatsapp(clean_caretaker_phone, message)
+    tmpl_name = os.getenv("WHATSAPP_TEMPLATE_HEALTH_ALERT")
+    tmpl_params = [p_name] if tmpl_name else None
+
+    dispatch_res = send_whatsapp(
+        phone_number=clean_caretaker_phone,
+        message=message,
+        template_name=tmpl_name,
+        template_params=tmpl_params
+    )
 
     # 6. Update Episode Cache
     _ALERT_EPISODE_CACHE[pid_str] = {
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "severity": severity,
         "systolic": systolic_bp,
         "hr": heart_rate,
@@ -241,7 +249,7 @@ def check_vitals(
         "alerts": alerts,
         "message": message,
         "notification": dispatch_res,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

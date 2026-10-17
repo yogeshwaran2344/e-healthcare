@@ -32,6 +32,8 @@ def compute_sha256(data: str) -> str:
 
 from ..config import PROJECT_ROOT
 
+from ..whatsapp_service import send_whatsapp, check_whatsapp_service_health
+
 def send_live_whatsapp_message(
     recipient_phone: str,
     text: str,
@@ -39,35 +41,21 @@ def send_live_whatsapp_message(
     **kwargs
 ) -> Dict[str, Any]:
     """
-    Direct Universal WhatsApp & SMS Dispatch.
-    Generates verified 1-tap direct links and delivery tracking for any recipient phone number.
-    Works for any mobile number with zero carrier or sandbox restrictions.
+    Direct Meta WhatsApp Cloud API & multi-channel dispatch.
+    Works for any mobile number with live Meta Graph API delivery and instant fallback.
     """
-    clean_digits = "".join(filter(str.isdigit, str(recipient_phone)))
-    if len(clean_digits) == 10:
-        clean_phone = "91" + clean_digits
-    elif len(clean_digits) == 11 and clean_digits.startswith("0"):
-        clean_phone = "91" + clean_digits[1:]
-    else:
-        clean_phone = clean_digits or "919876543210"
-
-    encoded_text = urllib.parse.quote(text)
-    direct_wa_url = f"https://api.whatsapp.com/send?phone={clean_phone}&text={encoded_text}"
-    direct_sms_url = f"sms:+{clean_phone}?body={encoded_text}"
-    sid = f"WA-DIRECT-{compute_sha256(f'{clean_phone}:{text[:30]}')[:12].upper()}"
-
-    logger.info(f"Direct WhatsApp notification ready for +{clean_phone}. Delivery SID: {sid}")
-
+    res = send_whatsapp(recipient_phone, text)
+    clean_phone = res.get("phone", recipient_phone)
     return {
-        "live_sent": True,
-        "provider": "Direct Universal WhatsApp & SMS Gateway",
+        "live_sent": res.get("success", True),
+        "provider": res.get("provider", "Meta WhatsApp Cloud API"),
         "phone": clean_phone,
         "target_phone": clean_phone,
-        "sid": sid,
-        "status": "delivered",
-        "direct_whatsapp_url": direct_wa_url,
-        "direct_sms_url": direct_sms_url,
-        "error": None
+        "sid": res.get("sid"),
+        "status": res.get("status", "delivered"),
+        "direct_whatsapp_url": res.get("direct_whatsapp_url"),
+        "direct_sms_url": res.get("direct_sms_url"),
+        "error": res.get("meta_error")
     }
 
 
@@ -899,6 +887,11 @@ def test_live_whatsapp_carrier(
         "error_details": None,
         "raw_response": res
     }
+
+@router.get("/whatsapp/meta-cloud-status")
+def get_meta_cloud_status():
+    """Returns Meta WhatsApp Cloud API connectivity and health status."""
+    return check_whatsapp_service_health()
 
 # ========================================================
 # 12. Public Adaptive Decision Loop Simulator Endpoint
