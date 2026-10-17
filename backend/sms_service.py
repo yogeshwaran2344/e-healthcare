@@ -39,14 +39,19 @@ else:
     load_dotenv()
 
 
+FALLBACK_FAST2SMS_API_KEY = "0143Vm2DoXJkbCihNnwBtZgcLWlTF9z6xsYUaMr5IEQ8SpdReydgLOxjimuetZJ8rbP23spcY6W0oE1R"
+
 def get_fast2sms_config() -> Dict[str, str]:
     """Retrieves Fast2SMS configuration from environment, always ensuring latest values."""
     for env_path in [_PROJECT_ROOT / ".env", _CURRENT_DIR / ".env", Path(".env")]:
         if env_path.exists():
             load_dotenv(dotenv_path=env_path, override=True)
             break
+    api_key = (os.getenv("FAST2SMS_API_KEY") or "").strip()
+    if not api_key:
+        api_key = FALLBACK_FAST2SMS_API_KEY
     return {
-        "api_key": (os.getenv("FAST2SMS_API_KEY") or "").strip(),
+        "api_key": api_key,
         "route": (os.getenv("FAST2SMS_ROUTE") or "q").strip(),
         "default_recipient": (os.getenv("DEFAULT_ALERT_RECIPIENT") or "+918618912755").strip()
     }
