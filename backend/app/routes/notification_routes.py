@@ -17,10 +17,30 @@ from ..database import get_db
 from ..models import User, MedicationSchedule, CaretakerAlertConfig, IoTVitalReading
 from ..auth import get_current_user
 from ..whatsapp_service import send_whatsapp, check_whatsapp_service_health, sanitize_phone_number
+from ..sms_service import get_msg91_config, check_sms_service_health
 from ..medication_reminders import send_medication_reminder, check_and_send_due_reminders
 from ..health_alerts import check_vitals, DEFAULT_BP_LIMITS, DEFAULT_HR_LIMITS
 
-router = APIRouter(prefix="/api/notifications", tags=["WhatsApp Notifications & Reminders"])
+router = APIRouter(prefix="/api/notifications", tags=["Notifications & Reminders"])
+
+
+@router.get("/sms/status")
+def get_sms_status(current_user: User = Depends(get_current_user)):
+    """
+    Checks MSG91 configuration status for authenticated users.
+    Returns whether MSG91 credentials and sender are configured in .env.
+    """
+    cfg = get_msg91_config()
+    is_configured = bool(cfg.get("auth_key"))
+    sender_configured = bool(cfg.get("sender_id"))
+
+    return {
+        "provider": "MSG91",
+        "configured": is_configured,
+        "sender_configured": sender_configured,
+        "sender_id": cfg.get("sender_id"),
+        "flow_configured": bool(cfg.get("flow_id_default") or cfg.get("flow_id_medication") or cfg.get("flow_id_alert"))
+    }
 
 
 @router.get("/status")
