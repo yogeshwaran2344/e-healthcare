@@ -40,7 +40,11 @@ else:
 
 
 def get_fast2sms_config() -> Dict[str, str]:
-    """Retrieves Fast2SMS configuration from environment."""
+    """Retrieves Fast2SMS configuration from environment, always ensuring latest values."""
+    for env_path in [_PROJECT_ROOT / ".env", _CURRENT_DIR / ".env", Path(".env")]:
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path, override=True)
+            break
     return {
         "api_key": (os.getenv("FAST2SMS_API_KEY") or "").strip(),
         "route": (os.getenv("FAST2SMS_ROUTE") or "q").strip(),

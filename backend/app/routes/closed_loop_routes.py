@@ -907,7 +907,7 @@ def test_sms_endpoint(
     )
 
     return {
-        "success": res.get("success", True),
+        "success": bool(res.get("success")),
         "recipient_type": recipient_type,
         "recipient_phone": res.get("phone", target_phone),
         "recipient_name": target_name,

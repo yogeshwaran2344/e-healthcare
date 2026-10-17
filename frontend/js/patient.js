@@ -107,13 +107,23 @@ async function testPatientSMS() {
             phone: pPhone,
             name: pName
         });
-        showSMSNotification({
-            title: "✅ PATIENT SMS DELIVERED",
-            message: `Automated SMS delivered to Patient (+${res.recipient_phone}) via ${res.provider}! Ref ID: ${res.sid}. Check patient's phone inbox.`,
-            channel: "sms",
-            phone: pPhone,
-            duration: 12000
-        });
+        if (res.success) {
+            showSMSNotification({
+                title: "✅ PATIENT SMS DELIVERED",
+                message: `Automated SMS delivered to Patient (+${res.recipient_phone}) via ${res.provider}! Ref ID: ${res.sid}. Check patient's phone inbox.`,
+                channel: "sms",
+                phone: pPhone,
+                duration: 12000
+            });
+        } else {
+            showSMSNotification({
+                title: "⚠️ FAST2SMS GATEWAY NOTICE",
+                message: res.error || res.notice || "Fast2SMS requires completing a one-time ₹100 recharge to unlock automated API sending.",
+                channel: "sms",
+                phone: pPhone,
+                duration: 12000
+            });
+        }
     } catch (err) {
         showSMSNotification({
             title: "⚠️ SMS DISPATCH FAILED",
@@ -146,13 +156,23 @@ async function testCaretakerSMS() {
             phone: cPhone,
             name: cName
         });
-        showSMSNotification({
-            title: "✅ CARETAKER SMS DELIVERED",
-            message: `Automated SMS delivered to Caretaker (+${res.recipient_phone}) via ${res.provider}! Ref ID: ${res.sid}. Check caretaker's phone inbox.`,
-            channel: "sms",
-            phone: cPhone,
-            duration: 12000
-        });
+        if (res.success) {
+            showSMSNotification({
+                title: "✅ CARETAKER SMS DELIVERED",
+                message: `Automated SMS delivered to Caretaker (+${res.recipient_phone}) via ${res.provider}! Ref ID: ${res.sid}. Check caretaker's phone inbox.`,
+                channel: "sms",
+                phone: cPhone,
+                duration: 12000
+            });
+        } else {
+            showSMSNotification({
+                title: "⚠️ FAST2SMS GATEWAY NOTICE",
+                message: res.error || res.notice || "Fast2SMS requires completing a one-time ₹100 recharge to unlock automated API sending.",
+                channel: "sms",
+                phone: cPhone,
+                duration: 12000
+            });
+        }
     } catch (err) {
         showSMSNotification({
             title: "⚠️ SMS DISPATCH FAILED",
