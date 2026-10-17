@@ -3,8 +3,11 @@ const API = {
     BASE_URL: (() => {
         try {
             const loc = window.location;
-            // When run via VS Code Live Server (5500, 5501), dev servers (3000, 5000), or file protocol, point to FastAPI backend on port 8000
-            if (loc.port === '5500' || loc.port === '5501' || loc.port === '3000' || loc.port === '5000' || loc.protocol === 'file:') {
+            // When run via VS Code Live Server (any port other than 8000), file protocol, or dev servers, point to FastAPI backend on port 8000
+            if (loc.port && loc.port !== '8000') {
+                return `http://${loc.hostname || '127.0.0.1'}:8000`;
+            }
+            if (loc.protocol === 'file:') {
                 return 'http://127.0.0.1:8000';
             }
         } catch (_) {}
@@ -64,7 +67,7 @@ const API = {
                 this.clearAuth();
                 if (window.location.pathname.includes('/patient')) {
                     try {
-                        const relogin = await fetch('/api/auth/login', {
+                        const relogin = await fetch(`${this.BASE_URL}/api/auth/login`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ email: 'patient@example.com', password: 'patient123' })
@@ -86,8 +89,13 @@ const API = {
 
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                const message = data.detail || (Array.isArray(data.detail) ? data.detail[0].msg : "Request failed");
-                throw new Error(message);
+                const message = (typeof data === 'string' && data) ||
+                    data.detail ||
+                    (Array.isArray(data.detail) ? data.detail[0]?.msg : null) ||
+                    data.message ||
+                    data.error ||
+                    `HTTP ${res.status}: ${res.statusText || 'Server Error'}`;
+                throw new Error(message || "Request failed");
             }
             return data;
         } catch (err) {

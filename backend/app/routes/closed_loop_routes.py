@@ -32,6 +32,7 @@ def compute_sha256(data: str) -> str:
 
 from ..config import PROJECT_ROOT
 from ..sms_service import send_sms, check_sms_service_health, sanitize_indian_mobile_number
+from ..whatsapp_service import send_whatsapp
 
 def send_live_sms_message(
     recipient_phone: str,
@@ -65,7 +66,7 @@ from ..models import (
     ClinicalTimelineEntry, AdaptiveDiagnosticSession,
     ClinicalDisagreementRecord, ClinicalOutcomeRecord, ContextualQRToken
 )
-from ..auth import get_current_user
+from ..auth import get_current_user, get_optional_current_user
 from ..schemas import (
     UncertaintyAssessmentRequest, NextQuestionRequest,
     MinimumTestOptimizationRequest, ClinicalDisagreementCreate,
@@ -804,7 +805,7 @@ def evaluate_caregiver_alert(
 @router.post("/caregiver/dispatch-automated-sms")
 def dispatch_automated_caretaker_sms(
     payload: Dict[str, Any] = Body(...),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Direct endpoint to dispatch an automatic WhatsApp notification to the caretaker.
@@ -813,9 +814,10 @@ def dispatch_automated_caretaker_sms(
     recipient_phone = payload.get("recipient_phone", "+918618912755")
     alert_title = payload.get("title", "HEALTH VITAL ALERT")
     message = payload.get("message", "Abnormal vitals recorded.")
+    patient_name = (current_user.full_name if current_user else None) or "Patient"
 
     msg_text = (
-        f"NeuroCare Health Alert: {alert_title} for {current_user.full_name or 'Patient'}. "
+        f"NeuroCare Health Alert: {alert_title} for {patient_name}. "
         f"{message}. Please check on patient."
     )
 
@@ -831,6 +833,8 @@ def dispatch_automated_caretaker_sms(
         "provider": wa_res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
         "channel": "whatsapp",
         "direct_whatsapp_url": wa_res.get("direct_whatsapp_url"),
+        "direct_api_url": wa_res.get("direct_api_url"),
+        "cellular_relay": wa_res.get("cellular_relay"),
         "delivered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({wa_res.get('phone', recipient_phone)})."
     }
@@ -838,13 +842,15 @@ def dispatch_automated_caretaker_sms(
 @router.post("/caregiver/save-notification-config")
 def save_notification_config(
     payload: Dict[str, Any] = Body(...),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Saves caretaker notification routing configuration and returns verified WhatsApp status.
     """
-    target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
-    test_msg = f"NeuroCare Health: Caretaker emergency WhatsApp alerts verified for patient {current_user.full_name or 'Patient'}."
+    patient_phone = (current_user.phone if current_user else None) or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
+    patient_name = (current_user.full_name if current_user else None) or "Patient"
+    target_phone = (payload.get("phone") or patient_phone).strip()
+    test_msg = f"NeuroCare Health: Caretaker emergency WhatsApp alerts verified for patient {patient_name}."
     res = send_whatsapp(target_phone, test_msg)
 
     return {
@@ -853,6 +859,8 @@ def save_notification_config(
         "provider": res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
         "target_phone": res.get("phone", target_phone),
         "direct_whatsapp_url": res.get("direct_whatsapp_url"),
+        "direct_api_url": res.get("direct_api_url"),
+        "cellular_relay": res.get("cellular_relay"),
         "error_details": res.get("error"),
         "verified_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "raw_response": res
@@ -899,18 +907,21 @@ def get_meta_cloud_status():
 @router.post("/test-sms")
 def test_whatsapp_endpoint(
     payload: Dict[str, Any] = Body(...),
-    current_user: User = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """
     Test WhatsApp Endpoint for Patient or Caretaker.
     Sends WhatsApp message automatically to the target mobile number.
     """
     recipient_type = (payload.get("recipient_type") or "patient").strip().lower()
-    target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
-    target_name = (payload.get("name") or current_user.full_name or ("Patient" if recipient_type == "patient" else "Caretaker")).strip()
+    user_name = (current_user.full_name if current_user else None) or "Patient"
+    user_phone = (current_user.phone if current_user else None) or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
+
+    target_phone = (payload.get("phone") or user_phone).strip()
+    target_name = (payload.get("name") or (user_name if recipient_type == "patient" else "Caretaker")).strip()
 
     if recipient_type == "caretaker":
-        msg_text = f"NeuroCare Health Alert: Caretaker emergency channel verified for patient {current_user.full_name or 'Patient'}. Real-time abnormal BP/HR alerts active."
+        msg_text = f"NeuroCare Health Alert: Caretaker emergency channel verified for patient {user_name}. Real-time abnormal BP/HR alerts active."
     else:
         msg_text = f"NeuroCare Health: Hello {target_name}, your patient WhatsApp notification channel is verified. Medication reminders will be delivered to this number."
 
@@ -929,6 +940,8 @@ def test_whatsapp_endpoint(
         "sid": res.get("sid"),
         "status": res.get("status", "delivered"),
         "direct_whatsapp_url": res.get("direct_whatsapp_url"),
+        "direct_api_url": res.get("direct_api_url"),
+        "cellular_relay": res.get("cellular_relay"),
         "notice": res.get("notice"),
         "error": res.get("error")
     }

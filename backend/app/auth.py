@@ -37,6 +37,8 @@ def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] 
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -45,17 +47,27 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id_str: str = payload.get("sub")
-        if user_id_str is None:
+        sub = payload.get("sub")
+        if sub is None:
             raise credentials_exception
-        user_id = int(user_id_str)
+        user = None
+        if str(sub).isdigit():
+            user = db.query(User).filter(User.id == int(sub)).first()
+        if not user:
+            user = db.query(User).filter(User.email == str(sub).lower().strip()).first()
+        if user is None:
+            raise credentials_exception
+        return user
     except Exception:
         raise credentials_exception
 
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
-        raise credentials_exception
-    return user
+def get_optional_current_user(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        return get_current_user(token=token, db=db)
+    except Exception:
+        return None
 
 def require_roles(*allowed_roles):
     """Dependency factory for role-gated routes. Does not change existing unscoped endpoints."""

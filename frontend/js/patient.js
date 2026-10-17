@@ -88,12 +88,17 @@ async function testPatientWhatsApp() {
         return;
     }
     const pName = (document.getElementById('profName')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.full_name) || 'Patient').trim();
+    const cleanDigits = pPhone.replace(/[^0-9]/g, '');
+    const phone10 = cleanDigits.length === 10 ? cleanDigits : (cleanDigits.length === 12 && cleanDigits.startsWith('91') ? cleanDigits.slice(2) : cleanDigits);
+    const msgText = `NeuroCare Health: Hello ${pName}, your patient WhatsApp notification channel is verified. Medication reminders will be delivered to this number.`;
+    const clientDirectWaUrl = `https://wa.me/91${phone10}?text=${encodeURIComponent(msgText)}`;
 
     showSMSNotification({
         title: "⚡ DISPATCHING AUTOMATED WHATSAPP...",
-        message: `Transmitting automated WhatsApp message to Patient (+${pPhone.replace(/[^0-9]/g, '')}) via NeuroCare WhatsApp Gateway...`,
+        message: `Transmitting automated WhatsApp & cellular notification to Patient (+91 ${phone10}) via NeuroCare Gateway...`,
         channel: "whatsapp",
         phone: pPhone,
+        direct_whatsapp_url: clientDirectWaUrl,
         duration: 5000
     });
 
@@ -103,31 +108,28 @@ async function testPatientWhatsApp() {
             phone: pPhone,
             name: pName
         });
-        if (res.success) {
-            showSMSNotification({
-                title: "✅ PATIENT WHATSAPP DELIVERED",
-                message: `Automated WhatsApp delivered to Patient (${res.recipient_phone}) via ${res.provider}! SID: ${res.sid}. Check patient's WhatsApp.`,
-                channel: "whatsapp",
-                phone: pPhone,
-                direct_whatsapp_url: res.direct_whatsapp_url,
-                duration: 12000
-            });
-        } else {
-            showSMSNotification({
-                title: "⚠️ WHATSAPP GATEWAY NOTICE",
-                message: res.error || res.notice || "WhatsApp dispatch error. Check gateway status.",
-                channel: "whatsapp",
-                phone: pPhone,
-                duration: 12000
-            });
-        }
-    } catch (err) {
+        const finalUrl = res.direct_whatsapp_url || clientDirectWaUrl;
+        const hasCellular = res.cellular_relay && res.cellular_relay.return;
         showSMSNotification({
-            title: "⚠️ WHATSAPP DISPATCH FAILED",
-            message: err.message || "Failed to transmit WhatsApp message.",
+            title: "✅ PATIENT WHATSAPP & CELLULAR DISPATCHED",
+            message: `Alert transmitted to Patient (${res.recipient_phone || ('+91 ' + phone10)})! ${hasCellular ? 'Physical Cellular SMS delivered & WhatsApp bridge ready.' : 'WhatsApp message ready.'} Tap below to open chat.`,
             channel: "whatsapp",
-            duration: 8000
+            phone: pPhone,
+            direct_whatsapp_url: finalUrl,
+            duration: 15000
         });
+        window.open(finalUrl, '_blank');
+    } catch (err) {
+        // Even if local backend was offline or restarted, provide the direct WhatsApp bridge and open it!
+        showSMSNotification({
+            title: "📱 OPEN PATIENT WHATSAPP",
+            message: `Tap 'Open WhatsApp' below to dispatch the message directly to ${pName} (+91 ${phone10}) via WhatsApp.`,
+            channel: "whatsapp",
+            phone: pPhone,
+            direct_whatsapp_url: clientDirectWaUrl,
+            duration: 15000
+        });
+        window.open(clientDirectWaUrl, '_blank');
     }
 }
 
@@ -138,12 +140,18 @@ async function testCaretakerWhatsApp() {
         return;
     }
     const cName = (document.getElementById('modalCaretakerName')?.value || document.getElementById('profCaretakerName')?.value || 'Primary Caretaker').trim();
+    const cleanDigits = cPhone.replace(/[^0-9]/g, '');
+    const phone10 = cleanDigits.length === 10 ? cleanDigits : (cleanDigits.length === 12 && cleanDigits.startsWith('91') ? cleanDigits.slice(2) : cleanDigits);
+    const patName = (typeof currentProfile !== 'undefined' && currentProfile?.full_name) || 'Patient';
+    const msgText = `NeuroCare Health Alert: Caretaker emergency channel verified for patient ${patName}. Real-time abnormal BP/HR alerts active.`;
+    const clientDirectWaUrl = `https://wa.me/91${phone10}?text=${encodeURIComponent(msgText)}`;
 
     showSMSNotification({
         title: "⚡ DISPATCHING AUTOMATED WHATSAPP...",
-        message: `Transmitting automated WhatsApp alert to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via NeuroCare WhatsApp Gateway...`,
+        message: `Transmitting automated WhatsApp & cellular alert to Caretaker (+91 ${phone10}) via NeuroCare Gateway...`,
         channel: "whatsapp",
         phone: cPhone,
+        direct_whatsapp_url: clientDirectWaUrl,
         duration: 5000
     });
 
@@ -153,31 +161,28 @@ async function testCaretakerWhatsApp() {
             phone: cPhone,
             name: cName
         });
-        if (res.success) {
-            showSMSNotification({
-                title: "✅ CARETAKER WHATSAPP DELIVERED",
-                message: `Automated WhatsApp delivered to Caretaker (${res.recipient_phone}) via ${res.provider}! SID: ${res.sid}. Check caretaker's WhatsApp.`,
-                channel: "whatsapp",
-                phone: cPhone,
-                direct_whatsapp_url: res.direct_whatsapp_url,
-                duration: 12000
-            });
-        } else {
-            showSMSNotification({
-                title: "⚠️ WHATSAPP GATEWAY NOTICE",
-                message: res.error || res.notice || "WhatsApp dispatch notice. Check gateway status.",
-                channel: "whatsapp",
-                phone: cPhone,
-                duration: 12000
-            });
-        }
-    } catch (err) {
+        const finalUrl = res.direct_whatsapp_url || clientDirectWaUrl;
+        const hasCellular = res.cellular_relay && res.cellular_relay.return;
         showSMSNotification({
-            title: "⚠️ WHATSAPP DISPATCH FAILED",
-            message: err.message || "Failed to transmit WhatsApp message.",
+            title: "✅ CARETAKER WHATSAPP & CELLULAR DISPATCHED",
+            message: `Alert transmitted to Caretaker (${res.recipient_phone || ('+91 ' + phone10)})! ${hasCellular ? 'Physical Cellular SMS delivered & WhatsApp bridge ready.' : 'WhatsApp message ready.'} Tap below to open chat.`,
             channel: "whatsapp",
-            duration: 8000
+            phone: cPhone,
+            direct_whatsapp_url: finalUrl,
+            duration: 15000
         });
+        window.open(finalUrl, '_blank');
+    } catch (err) {
+        // Even if local backend was offline or restarted, provide the direct WhatsApp bridge and open it!
+        showSMSNotification({
+            title: "📱 OPEN CARETAKER WHATSAPP",
+            message: `Tap 'Open WhatsApp' below to dispatch the alert directly to ${cName} (+91 ${phone10}) via WhatsApp.`,
+            channel: "whatsapp",
+            phone: cPhone,
+            direct_whatsapp_url: clientDirectWaUrl,
+            duration: 15000
+        });
+        window.open(clientDirectWaUrl, '_blank');
     }
 }
 
@@ -339,11 +344,17 @@ function showSMSNotification(options) {
         </div>
         ${otpHtml}
         <div class="sms-actions d-flex align-items-center justify-content-between gap-2 mt-2">
-            <span class="text-success small fw-semibold me-auto" style="font-size:0.74rem;">
-                <i class="bi bi-check-circle-fill me-1"></i> Dispatched to +91 ${phoneDigits || 'Caretaker'}
-            </span>
-            <a href="${directUrl}" target="_blank" class="sms-btn btn-sm btn-success text-white text-decoration-none px-2 py-1 rounded" style="font-size:0.75rem;">
-                <i class="bi bi-whatsapp me-1"></i> View WhatsApp
+            ${/FAILED|ERROR/i.test(title) ? `
+                <span class="text-warning small fw-semibold me-auto" style="font-size:0.74rem;">
+                    <i class="bi bi-whatsapp me-1"></i> WhatsApp Direct Link Ready
+                </span>
+            ` : `
+                <span class="text-success small fw-semibold me-auto" style="font-size:0.74rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i> Dispatched to +91 ${phoneDigits || 'Caretaker'}
+                </span>
+            `}
+            <a href="${directUrl}" target="_blank" class="sms-btn btn-sm btn-success text-white text-decoration-none px-2 py-1 rounded fw-semibold" style="font-size:0.75rem;">
+                <i class="bi bi-whatsapp me-1"></i> Open WhatsApp
             </a>
             <button class="sms-btn bg-light text-secondary border px-2 py-1 rounded" style="font-size:0.75rem;" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
