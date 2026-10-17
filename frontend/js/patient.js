@@ -81,7 +81,7 @@ function openContactSettingsModal() {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('contactSettingsModal')).show();
 }
 
-async function testPatientWhatsApp() {
+async function testPatientSMS() {
     const pPhone = (document.getElementById('modalPatientPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('profWhatsapp')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.phone) || '').trim();
     if (!pPhone) {
         alert("Please enter the Patient's Mobile Number first.");
