@@ -720,15 +720,41 @@ def send_medication_reminder_whatsapp(
     )
 
     res = send_live_whatsapp_message(target_phone, reminder_msg)
+    sms_res = send_sms_msg91(
+        target_phone,
+        f"NeuroCare Reminder: {patient_name}, scheduled {med_name} ({dosage}) is due now ({slot}). Please take prescribed dose.",
+        template_variables={"patient_name": patient_name, "medication_name": med_name, "time": slot}
+    )
 
     return {
         "success": res.get("live_sent", True),
-        "provider": res.get("provider"),
+        "provider": f"{res.get('provider')} & MSG91 SMS",
         "target_phone": res.get("phone", target_phone),
+        "sms_sent": sms_res.get("success", False),
+        "sms_id": sms_res.get("sid"),
         "direct_whatsapp_url": res.get("direct_whatsapp_url"),
         "direct_sms_url": res.get("direct_sms_url"),
         "error_details": None,
         "message": reminder_msg
+    }
+
+@router.post("/reminders/trigger-check")
+def trigger_due_medication_reminders(
+    current_time_str: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Checks active patient medication schedules from database.
+    Dispatches automated SMS via MSG91 to patients whose doses are due now,
+    persisting last_reminded_date to prevent duplicate reminders.
+    """
+    from ..medication_reminders import check_and_send_due_reminders
+    dispatched = check_and_send_due_reminders(db=db, current_time_str=current_time_str)
+    return {
+        "success": True,
+        "due_count": len(dispatched),
+        "dispatched": dispatched
     }
 
 # ========================================================

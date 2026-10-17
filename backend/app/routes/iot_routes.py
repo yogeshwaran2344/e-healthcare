@@ -195,3 +195,64 @@ def simulate_iot_stream(
         "caretaker_alert": caretaker_alert_info
     }
 
+@router.post("/vitals/record")
+def record_vital_reading(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Receives incoming vital telemetry reading (Blood Pressure or Heart Rate).
+    1. Validates the reading against physiological plausibility bounds.
+    2. Stores the reading in the IoTVitalReading ledger.
+    3. Evaluates against clinician-configured thresholds.
+    4. Automatically sends an SMS to the registered caretaker if abnormal.
+    5. Deduplicates repeated alerts within cooldown window.
+    """
+    from ..ml.iot_engine import evaluate_vital_thresholds
+    from ..health_alerts import evaluate_patient_latest_vitals
+
+    metric_type = payload.get("metric_type", "blood_pressure")
+    primary_val = float(payload.get("primary_value", 120.0))
+    secondary_val = float(payload.get("secondary_value", 80.0)) if payload.get("secondary_value") is not None else None
+
+    device = db.query(IoTDevice).filter(IoTDevice.patient_id == current_user.id).first()
+    dev_id = device.id if device else 1
+
+    thresh = evaluate_vital_thresholds(metric_type, primary_val, secondary_val)
+
+    reading = IoTVitalReading(
+        patient_id=current_user.id,
+        device_id=dev_id,
+        metric_type=metric_type,
+        primary_value=primary_val,
+        secondary_value=secondary_val,
+        unit="mmHg" if metric_type == "blood_pressure" else "bpm",
+        is_anomaly=thresh["is_anomaly"],
+        alert_severity=thresh["severity"],
+        alert_message=thresh["message"],
+        recorded_at=datetime.utcnow()
+    )
+    db.add(reading)
+    db.commit()
+    db.refresh(reading)
+
+    caretaker_alert_info = None
+    if reading.is_anomaly or reading.alert_severity in ("WARNING", "CRITICAL"):
+        try:
+            caretaker_alert_info = evaluate_patient_latest_vitals(patient_id=current_user.id, db=db)
+        except Exception as ex:
+            caretaker_alert_info = {"error": str(ex)}
+
+    return {
+        "status": "success",
+        "reading_id": reading.id,
+        "metric_type": reading.metric_type,
+        "primary_value": reading.primary_value,
+        "secondary_value": reading.secondary_value,
+        "alert_severity": reading.alert_severity,
+        "is_anomaly": reading.is_anomaly,
+        "caretaker_alert": caretaker_alert_info
+    }
+
+
