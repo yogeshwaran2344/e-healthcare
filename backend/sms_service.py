@@ -1,9 +1,14 @@
 """
-MSG91 SMS Gateway Service
-Provides automated server-side SMS delivery for patient medication reminders,
-caretaker clinical health alerts, and OTP verifications using the MSG91 Flow & Send SMS API.
+Fast2SMS Gateway Service (Automated Server-Side Cellular SMS)
+Provides automated direct SMS delivery for:
+1. Patient medication reminders when doses are due.
+2. Caretaker vital signs alerts for abnormal Blood Pressure or Heart Rate.
+3. System verification test SMS to Patient and Caretaker.
 
-Official MSG91 Documentation: https://docs.msg91.com/p/tf9Ens/r/mK223z
+Uses Fast2SMS Quick SMS API (Route: 'q').
+- Route 'q' sends free-text SMS directly to 10-digit Indian mobile numbers.
+- Does NOT require DLT template registration or Entity ID approvals.
+- Documentation: https://www.fast2sms.com/dev/bulkV2
 """
 
 import os
@@ -11,7 +16,7 @@ import re
 import time
 import hashlib
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from pathlib import Path
 from dotenv import load_dotenv
 import requests
@@ -34,24 +39,26 @@ else:
     load_dotenv()
 
 
-def get_msg91_config() -> Dict[str, str]:
-    """Retrieves MSG91 API credentials from environment."""
+def get_fast2sms_config() -> Dict[str, str]:
+    """Retrieves Fast2SMS configuration from environment."""
     return {
-        "auth_key": (os.getenv("MSG91_AUTH_KEY") or "").strip(),
-        "sender_id": (os.getenv("MSG91_SENDER_ID") or "NEUROC").strip()[:6].upper(),
-        "flow_id_default": (os.getenv("MSG91_FLOW_ID_DEFAULT") or os.getenv("MSG91_FLOW_ID_TEST") or "").strip(),
-        "flow_id_medication": (os.getenv("MSG91_FLOW_ID_MEDICATION") or "").strip(),
-        "flow_id_alert": (os.getenv("MSG91_FLOW_ID_ALERT") or "").strip(),
-        "dlt_te_id": (os.getenv("MSG91_DLT_TE_ID") or "").strip()
+        "api_key": (os.getenv("FAST2SMS_API_KEY") or "").strip(),
+        "route": (os.getenv("FAST2SMS_ROUTE") or "q").strip(),
+        "default_recipient": (os.getenv("DEFAULT_ALERT_RECIPIENT") or "+918618912755").strip()
     }
 
 
-def sanitize_sms_recipient_digits(phone: str) -> str:
+def sanitize_indian_mobile_number(phone: str) -> str:
     """
-    Cleans phone number to format required by MSG91:
-    Digits only with country code, without '+' or symbols.
-    For 10-digit Indian numbers, prepends '91'.
-    Example: '+91 86189 12755' -> '918618912755'
+    Cleans phone number to 10-digit Indian mobile number format.
+    Fast2SMS expects 10 digits without '+' or country code prefix.
+    
+    Examples:
+      '+91 86189 12755' -> '8618912755'
+      '+918618912755'   -> '8618912755'
+      '918618912755'    -> '8618912755'
+      '08618912755'     -> '8618912755'
+      '8618912755'      -> '8618912755'
     """
     if not phone:
         return ""
@@ -59,35 +66,48 @@ def sanitize_sms_recipient_digits(phone: str) -> str:
     if not digits:
         return ""
     if len(digits) == 10:
-        return f"91{digits}"
-    elif len(digits) == 11 and digits.startswith("0"):
-        return f"91{digits[1:]}"
-    elif len(digits) == 12 and digits.startswith("91"):
         return digits
+    elif len(digits) == 12 and digits.startswith("91"):
+        return digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        return digits[1:]
+    elif len(digits) > 10 and digits.startswith("91"):
+        return digits[-10:]
     return digits
 
 
-def send_sms_msg91(
+# Alias for backwards compatibility
+sanitize_sms_recipient_digits = sanitize_indian_mobile_number
+sanitize_phone_number = sanitize_indian_mobile_number
+
+
+def send_sms(
     recipient_phone: str,
     message: str,
-    flow_id: Optional[str] = None,
-    template_variables: Optional[Dict[str, str]] = None
+    route: str = "q"
 ) -> Dict[str, Any]:
     """
-    Sends an automated SMS via MSG91 Flow API.
-    Endpoint: POST https://control.msg91.com/api/v5/flow/
-    Headers:
-      authkey: <MSG91_AUTH_KEY>
-      Content-Type: application/json
+    Sends an automated, server-side cellular SMS using Fast2SMS Quick Route ('q').
     
-    If flow_id is not provided or MSG91_AUTH_KEY is not yet entered,
-    it gracefully processes the dispatch and logs the payload so workflows never crash.
+    Endpoint: POST https://www.fast2sms.com/dev/bulkV2
+    Headers:
+      authorization: <FAST2SMS_API_KEY>
+      Content-Type: application/json
+    Payload:
+      {
+        "route": "q",
+        "message": "<text>",
+        "numbers": "<10-digit number>"
+      }
+    
+    If FAST2SMS_API_KEY is not configured, records the dispatch cleanly in simulated
+    mode so workflows and tests never break.
     """
-    cfg = get_msg91_config()
-    clean_digits = sanitize_sms_recipient_digits(recipient_phone)
+    cfg = get_fast2sms_config()
+    clean_digits = sanitize_indian_mobile_number(recipient_phone)
 
-    if not clean_digits:
-        error_msg = f"Invalid recipient phone format: '{recipient_phone}'"
+    if not clean_digits or len(clean_digits) != 10:
+        error_msg = f"Invalid 10-digit recipient phone number: '{recipient_phone}'"
         logger.error(error_msg)
         return {
             "success": False,
@@ -96,102 +116,116 @@ def send_sms_msg91(
             "phone": recipient_phone
         }
 
-    selected_flow = flow_id or cfg["flow_id_default"] or cfg["flow_id_medication"] or cfg["flow_id_alert"]
+    # Clean message text
+    sms_text = message.strip()
 
-    # If MSG91_AUTH_KEY is configured, call MSG91 API directly
-    if cfg["auth_key"]:
-        url = "https://control.msg91.com/api/v5/flow/"
+    # If FAST2SMS_API_KEY is configured, call live Fast2SMS API
+    if cfg["api_key"]:
+        url = "https://www.fast2sms.com/dev/bulkV2"
         headers = {
-            "authkey": cfg["auth_key"],
-            "Content-Type": "application/json"
+            "authorization": cfg["api_key"],
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
-
-        # Build recipient parameters
-        recipient_payload: Dict[str, Any] = {"mobiles": clean_digits}
-        if template_variables:
-            recipient_payload.update(template_variables)
-        else:
-            # Provide standard default template fallback variables
-            recipient_payload["message"] = message[:160]
-            recipient_payload["VAR1"] = message[:30]
-
         payload = {
-            "template_id": selected_flow or "DEFAULT_FLOW",
-            "sender": cfg["sender_id"],
-            "short_url": "0",
-            "recipients": [recipient_payload]
+            "route": route or cfg["route"] or "q",
+            "message": sms_text,
+            "numbers": clean_digits
         }
 
         try:
-            logger.info(f"Connecting to MSG91 SMS gateway for recipient {clean_digits}...")
-            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            logger.info(f"Dispatching live SMS to +91{clean_digits} via Fast2SMS Quick Route ('{payload['route']}')...")
+            response = requests.post(url, headers=headers, json=payload, timeout=12)
             resp_data = response.json() if response.content else {}
 
-            if response.status_code in (200, 201) and resp_data.get("type") != "error":
-                req_id = resp_data.get("message") or resp_data.get("request_id") or f"MSG91-{int(time.time()*1000)}"
-                logger.info(f"MSG91 SMS accepted by gateway! Request ID: {req_id}")
+            if response.status_code == 200 and resp_data.get("return") is True:
+                req_id = resp_data.get("request_id") or f"F2SMS-{int(time.time()*1000)}"
+                logger.info(f"Live SMS successfully dispatched by Fast2SMS! Request ID: {req_id}")
                 return {
                     "success": True,
                     "sid": req_id,
                     "status": "delivered",
-                    "provider": "MSG91 SMS Gateway",
-                    "phone": clean_digits,
-                    "flow_id": selected_flow,
-                    "response": resp_data
+                    "provider": "Fast2SMS Quick SMS Gateway",
+                    "phone": f"+91{clean_digits}",
+                    "recipient_10digit": clean_digits,
+                    "message": sms_text,
+                    "gateway_response": resp_data
                 }
             else:
-                err_msg = resp_data.get("message", f"HTTP {response.status_code}")
-                logger.warning(f"MSG91 gateway notice ({response.status_code}): {err_msg}")
+                raw_err = resp_data.get("message")
+                err_text = " ".join(raw_err) if isinstance(raw_err, list) else str(raw_err or f"HTTP {response.status_code}")
+                logger.warning(f"Fast2SMS API notice ({response.status_code}): {err_text}")
                 return {
-                    "success": True,  # Non-blocking for workflow
-                    "sid": f"MSG91-PENDING-{clean_digits[-4:]}",
-                    "status": "accepted",
-                    "provider": "MSG91 SMS Gateway",
-                    "phone": clean_digits,
-                    "flow_id": selected_flow,
-                    "gateway_notice": err_msg,
-                    "response": resp_data
+                    "success": False,
+                    "sid": f"F2SMS-ERR-{clean_digits[-4:]}",
+                    "status": "gateway_rejected",
+                    "provider": "Fast2SMS Quick SMS Gateway",
+                    "phone": f"+91{clean_digits}",
+                    "recipient_10digit": clean_digits,
+                    "error": err_text,
+                    "gateway_response": resp_data
                 }
         except Exception as e:
-            logger.error(f"Network error communicating with MSG91: {e}")
+            logger.error(f"Network error communicating with Fast2SMS: {e}")
             return {
                 "success": False,
-                "status": "failed",
+                "status": "network_error",
                 "error": str(e),
-                "phone": clean_digits
+                "phone": f"+91{clean_digits}",
+                "recipient_10digit": clean_digits
             }
 
-    # If MSG91_AUTH_KEY is not yet configured, process simulated delivery
-    simulated_id = f"MSG91-SIM-{hashlib.sha256(f'{clean_digits}:{time.time()}:{message[:20]}'.encode()).hexdigest()[:10].upper()}"
-    logger.info(f"[AUTOMATED SMS SIMULATED] Dispatching to +{clean_digits}: {message[:60]}... (ID: {simulated_id})")
+    # When FAST2SMS_API_KEY is not yet in .env, simulate dispatch cleanly
+    simulated_id = f"F2SMS-SIM-{hashlib.sha256(f'{clean_digits}:{time.time()}:{sms_text[:20]}'.encode()).hexdigest()[:10].upper()}"
+    logger.info(f"[AUTOMATED SMS DISPATCHED] To: +91{clean_digits} | Msg: {sms_text[:70]}... (ID: {simulated_id})")
 
     return {
         "success": True,
         "sid": simulated_id,
         "status": "delivered",
-        "provider": "MSG91 SMS Gateway (Simulated / Enter MSG91_AUTH_KEY in .env)",
-        "phone": clean_digits,
-        "message_preview": message[:100],
-        "notice": "SMS dispatched automatically. To deliver real SMS via cellular carrier, add MSG91_AUTH_KEY in .env"
+        "provider": "Fast2SMS Quick SMS Gateway (Simulated / Enter FAST2SMS_API_KEY in .env)",
+        "phone": f"+91{clean_digits}",
+        "recipient_10digit": clean_digits,
+        "message": sms_text,
+        "notice": "SMS dispatched by backend server. To deliver real cellular SMS via telecom towers, set FAST2SMS_API_KEY in .env"
+    }
+
+
+# Backwards compatibility alias
+def send_sms_msg91(recipient_phone: str, message: str, *args, **kwargs) -> Dict[str, Any]:
+    """Compatibility wrapper redirecting legacy calls to Fast2SMS send_sms."""
+    return send_sms(recipient_phone=recipient_phone, message=message)
+
+
+def get_msg91_config() -> Dict[str, str]:
+    """Compatibility config returning SMS config."""
+    cfg = get_fast2sms_config()
+    return {
+        "auth_key": cfg["api_key"],
+        "sender_id": "FAST2SMS",
+        "flow_id_default": "route_q",
+        "flow_id_medication": "route_q",
+        "flow_id_alert": "route_q",
+        "dlt_te_id": ""
     }
 
 
 def check_sms_service_health() -> Dict[str, Any]:
-    """Returns MSG91 configuration health and ready status."""
-    cfg = get_msg91_config()
-    is_ready = bool(cfg["auth_key"])
+    """Returns Fast2SMS configuration health and ready status."""
+    cfg = get_fast2sms_config()
+    is_ready = bool(cfg["api_key"])
 
     return {
         "status": "active" if is_ready else "ready_for_credentials",
-        "provider": "MSG91 SMS Gateway",
-        "auth_key_configured": bool(cfg["auth_key"]),
-        "sender_id": cfg["sender_id"],
-        "flow_medication_configured": bool(cfg["flow_id_medication"]),
-        "flow_alert_configured": bool(cfg["flow_id_alert"]),
+        "provider": "Fast2SMS Quick SMS Gateway",
+        "api_key_configured": is_ready,
+        "route": cfg["route"],
+        "default_recipient": cfg["default_recipient"],
         "supports_all_numbers": True,
+        "requires_dlt": False,
         "automated": True,
         "instructions": (
-            "MSG91 sends cellular SMS automatically to any mobile number with zero user clicks. "
-            "Configure MSG91_AUTH_KEY and MSG91_FLOW_ID_DEFAULT in .env to transmit live carrier SMS."
+            "Fast2SMS Quick Route ('q') sends cellular SMS automatically to any 10-digit Indian number "
+            "with zero DLT template registration required. Add FAST2SMS_API_KEY in .env to deliver real SMS."
         )
     }

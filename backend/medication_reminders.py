@@ -1,14 +1,14 @@
 """
 Automated Patient Medication Reminders
-Workflow 1: Checks patient medication schedules in the database and dispatches
-automated WhatsApp reminders when doses are due, preventing duplicate alerts
-and supporting background scheduled execution via APScheduler.
+Checks patient medication schedules in the database and dispatches
+automated cellular SMS reminders to the patient when doses are due,
+preventing duplicate alerts and supporting background scheduled execution.
 """
 
 import sys
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -20,8 +20,7 @@ if str(_CURRENT_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from whatsapp_service import send_whatsapp, sanitize_phone_number
-from sms_service import send_sms_msg91
+from sms_service import send_sms, sanitize_indian_mobile_number
 
 # Configure logger
 logger = logging.getLogger("MedicationReminders")
@@ -43,59 +42,42 @@ def send_medication_reminder(
     patient_name: str = ""
 ) -> Dict[str, Any]:
     """
-    Sends an automated WhatsApp medication reminder to the patient.
+    Sends an automated cellular SMS medication reminder to the patient.
     
     Example Message:
-    "Reminder: Your scheduled Metformin 500mg (1 tablet) dose is due at 8:00 PM.
-     Please follow your prescribed medication plan."
+    "NeuroCare Reminder: Hello John, your scheduled dose of Metformin 500mg (1 tablet)
+     is due now (08:00 AM). Please follow your prescribed clinical plan."
     """
-    clean_phone = sanitize_phone_number(patient_phone)
-    if not clean_phone:
-        logger.error(f"Cannot send medication reminder: invalid phone '{patient_phone}'")
+    clean_phone = sanitize_indian_mobile_number(patient_phone)
+    if not clean_phone or len(clean_phone) != 10:
+        logger.error(f"Cannot send medication reminder: invalid 10-digit phone '{patient_phone}'")
         return {
             "success": False,
-            "error": f"Invalid phone number: '{patient_phone}'",
+            "error": f"Invalid 10-digit mobile number: '{patient_phone}'",
             "medication": medication_name,
             "scheduled_time": scheduled_time
         }
 
     dosage_str = f" ({dosage.strip()})" if dosage and dosage.strip() else ""
-    patient_greeting = f"Hello {patient_name.strip()},\n" if patient_name and patient_name.strip() else ""
+    p_name = patient_name.strip() if patient_name and patient_name.strip() else "Patient"
 
     message = (
-        f"{patient_greeting}"
-        f"Reminder: Your scheduled {medication_name.strip()}{dosage_str} dose is due at {scheduled_time.strip()}. "
-        f"Please follow your prescribed medication plan."
+        f"NeuroCare Reminder: Hello {p_name}, your scheduled dose of "
+        f"{medication_name.strip()}{dosage_str} is due now ({scheduled_time.strip()}). "
+        f"Please take your prescribed medication on time."
     )
 
-    logger.info(f"Dispatching medication reminder for '{medication_name}' to {clean_phone}...")
-    tmpl_name = os.getenv("WHATSAPP_TEMPLATE_MEDICATION_REMINDER")
-    tmpl_params = [f"{medication_name.strip()}{dosage_str}", scheduled_time.strip()] if tmpl_name else None
+    logger.info(f"Dispatching cellular SMS reminder for '{medication_name}' to +91{clean_phone}...")
 
-    res = send_whatsapp(
-        phone_number=clean_phone,
-        message=message,
-        template_name=tmpl_name,
-        template_params=tmpl_params
-    )
-
-    # Automated MSG91 SMS Dispatch to patient
-    sms_vars = {
-        "patient_name": patient_name or "Patient",
-        "medication_name": f"{medication_name.strip()}{dosage_str}",
-        "time": scheduled_time.strip(),
-        "message": message[:160]
-    }
-    sms_res = send_sms_msg91(
+    res = send_sms(
         recipient_phone=clean_phone,
-        message=message,
-        flow_id=os.getenv("MSG91_FLOW_ID_MEDICATION"),
-        template_variables=sms_vars
+        message=message
     )
-    res["sms_result"] = sms_res
+
     res["medication_name"] = medication_name
     res["scheduled_time"] = scheduled_time
     res["dosage"] = dosage
+    res["patient_name"] = p_name
     return res
 
 
@@ -103,7 +85,7 @@ def get_database_session():
     """Retrieves a SQLAlchemy session from backend.app.database if available."""
     try:
         from app.database import SessionLocal, engine, Base
-        import app.models  # ensure models are registered
+        import app.models
         Base.metadata.create_all(bind=engine)
         return SessionLocal()
     except Exception as e:
@@ -114,7 +96,7 @@ def get_database_session():
 def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Reads active medication schedules from the database, identifies doses due now,
-    and dispatches one reminder per due dose while preventing duplicate alerts.
+    and dispatches one SMS reminder per due dose while preventing duplicate alerts.
     
     Deduplication Rule:
     - Compares today's date (YYYY-MM-DD) against schedule.last_reminded_date.
@@ -137,24 +119,17 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
     try:
         from app.models import MedicationSchedule, User
 
-        # Query all active medication schedules
         schedules = db.query(MedicationSchedule).filter(MedicationSchedule.is_active == True).all()
 
         for sched in schedules:
-            # Parse scheduled time
             sched_time = (sched.scheduled_time or "").strip()
-            
-            # Match current hour/minute window (or close within +/- 5 minutes)
-            # Normalize e.g. "8:00" to "08:00"
             norm_sched = sched_time.zfill(5) if len(sched_time) == 4 and ":" in sched_time else sched_time
             norm_curr = current_hhmm.zfill(5) if len(current_hhmm) == 4 and ":" in current_hhmm else current_hhmm
 
-            # Check if due now and not yet reminded today
             is_due = (norm_sched == norm_curr)
             already_reminded_today = (sched.last_reminded_date == today_str)
 
             if is_due and not already_reminded_today:
-                # Find patient phone number
                 phone = sched.patient_phone
                 patient_name = "Patient"
                 if not phone and sched.patient_id:
@@ -164,7 +139,7 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
                         patient_name = user.full_name or "Patient"
 
                 if not phone:
-                    phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
+                    phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
 
                 result = send_medication_reminder(
                     patient_phone=phone,
@@ -174,7 +149,6 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
                     patient_name=patient_name
                 )
 
-                # Update schedule record to prevent duplicate reminders today
                 sched.last_reminded_date = today_str
                 sched.last_status = "SENT" if result.get("success") else "FAILED"
                 db.commit()
@@ -186,7 +160,7 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
                     "phone": phone,
                     "result": result
                 })
-                logger.info(f"Recorded reminder dispatch for schedule #{sched.id} ({sched.medication_name}).")
+                logger.info(f"Recorded SMS reminder dispatch for schedule #{sched.id} ({sched.medication_name}).")
 
     except Exception as e:
         logger.error(f"Error checking due medication schedules: {e}")
@@ -242,28 +216,29 @@ if __name__ == "__main__":
             pass
 
     print("=" * 70)
-    print("   AUTOMATED PATIENT MEDICATION REMINDER - TEST RUN")
+    print("   AUTOMATED PATIENT MEDICATION REMINDER - SMS TEST RUN")
     print("=" * 70)
 
-    test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
+    test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         test_phone = sys.argv[1].strip()
 
-    print(f"\n1. SENDING IMMEDIATE TEST REMINDER TO: {test_phone}")
+    print(f"\n1. SENDING IMMEDIATE SMS REMINDER TO: {test_phone}")
     res = send_medication_reminder(
         patient_phone=test_phone,
         medication_name="Metformin 500mg",
         scheduled_time="08:00 AM",
         dosage="1 tablet with breakfast",
-        patient_name="Yogesh"
+        patient_name="Patient"
     )
 
     print("\n2. DISPATCH RESULT:")
-    print(f"   * Success : {res.get('success')}")
-    print(f"   * Status  : {res.get('status')}")
-    print(f"   * SID     : {res.get('sid')}")
+    print(f"   * Success  : {res.get('success')}")
+    print(f"   * Status   : {res.get('status')}")
+    print(f"   * SID      : {res.get('sid')}")
+    print(f"   * Provider : {res.get('provider')}")
     if res.get("error"):
-        print(f"   * Error   : {res.get('error')}")
+        print(f"   * Error    : {res.get('error')}")
 
     print("\n3. CHECKING DATABASE SCHEDULES FOR DUE DOSES:")
     due = check_and_send_due_reminders()

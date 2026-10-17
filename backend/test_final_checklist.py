@@ -31,7 +31,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from app.database import SessionLocal
 from app.models import User, MedicationSchedule, CaretakerAlertConfig, IoTVitalReading
-from sms_service import send_sms_msg91, check_sms_service_health
+from sms_service import send_sms, check_sms_service_health
 from medication_reminders import (
     check_and_send_due_reminders,
     start_medication_scheduler,
@@ -92,10 +92,9 @@ def run_final_checklist():
         # CHECK 1: TEST SMS
         # ---------------------------------------------------------------------
         print("[CHECK 1] Direct SMS Gateway Dispatch")
-        res1 = send_sms_msg91(
+        res1 = send_sms(
             recipient_phone=test_phone,
-            message="NeuroCare Verification: Direct SMS path active.",
-            template_variables={"patient_name": patient.full_name, "message": "Verification test"}
+            message="NeuroCare Verification: Direct SMS path active."
         )
         assert res1.get("success") is True, f"Check 1 Failed: {res1}"
         print(f"  * Status: {res1.get('status')}")

@@ -82,60 +82,7 @@ function openContactSettingsModal() {
 }
 
 async function testDirectWhatsAppAlert() {
-    const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';
-    const targetPhone = document.getElementById('modalCaretakerPhone')?.value.trim() || document.getElementById('modalPatientPhone')?.value.trim() || defaultNum;
-
-    if (!targetPhone) {
-        alert("Please enter a valid mobile number in either Caretaker Mobile or Patient Mobile.");
-        return;
-    }
-
-    const cleanDigits = targetPhone.replace(/[^0-9]/g, '');
-    const waPhoneDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
-    const testMsg = `🚨 NEUROCARE SYSTEM VERIFICATION\n\nPatient: ${(typeof currentProfile !== 'undefined' && currentProfile && currentProfile.full_name) || 'Patient'}\nDirect WhatsApp & SMS notifications are active!\nMedication reminders & abnormal vital alerts will be received at this number.`;
-    const encoded = encodeURIComponent(testMsg);
-    const waDirectUrl = `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${encoded}`;
-
-    showSMSNotification({
-        title: "⚡ DISPATCHING WHATSAPP...",
-        message: `Connecting to Meta WhatsApp Cloud API for +${waPhoneDigits}...`,
-        channel: "whatsapp",
-        phone: targetPhone,
-        duration: 5000
-    });
-
-    try {
-        const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', {
-            phone: waPhoneDigits,
-            patient_name: (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.full_name) || 'Patient'
-        });
-
-        if (res.meta_configured && !res.error_details) {
-            showSMSNotification({
-                title: "✅ AUTOMATED CLOUD DISPATCHED",
-                message: `Automated WhatsApp message successfully transmitted in background to +${res.target_phone} via Meta WhatsApp Cloud API! (Ref: ${res.raw_response?.sid || 'Meta WAMID'}). Message sent automagically with zero user clicks!`,
-                channel: "whatsapp",
-                phone: targetPhone,
-                duration: 12000
-            });
-        } else {
-            showSMSNotification({
-                title: "⚡ BACKGROUND DISPATCH PROCESSED",
-                message: `System prepared automated alert for +${res.target_phone || waPhoneDigits}. ` +
-                         `Tip: To send 100% silently in the background without opening WhatsApp, configure WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID in your .env file.`,
-                channel: "whatsapp",
-                phone: targetPhone,
-                duration: 14000
-            });
-        }
-    } catch (err) {
-        showSMSNotification({
-            title: "⚠️ DISPATCH STATUS",
-            message: err.message || "Failed to reach backend WhatsApp dispatch service.",
-            channel: "whatsapp",
-            duration: 8000
-        });
-    }
+    return testCaretakerSMS();
 }
 
 async function testPatientSMS() {
@@ -147,8 +94,8 @@ async function testPatientSMS() {
     const pName = (document.getElementById('profName')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.full_name) || 'Patient').trim();
 
     showSMSNotification({
-        title: "⚡ DISPATCHING TEST SMS...",
-        message: `Sending automated test SMS to Patient (+${pPhone.replace(/[^0-9]/g, '')}) via MSG91 Gateway...`,
+        title: "⚡ DISPATCHING CELLULAR SMS...",
+        message: `Transmitting automated SMS to Patient (+${pPhone.replace(/[^0-9]/g, '')}) via Fast2SMS Cellular Gateway...`,
         channel: "sms",
         phone: pPhone,
         duration: 5000
@@ -162,7 +109,7 @@ async function testPatientSMS() {
         });
         showSMSNotification({
             title: "✅ PATIENT SMS DELIVERED",
-            message: `Automated SMS delivered to Patient (+${res.recipient_phone}) via ${res.provider}. Reference ID: ${res.sid}. Check patient's mobile inbox!`,
+            message: `Automated SMS delivered to Patient (+${res.recipient_phone}) via ${res.provider}! Ref ID: ${res.sid}. Check patient's phone inbox.`,
             channel: "sms",
             phone: pPhone,
             duration: 12000
@@ -186,8 +133,8 @@ async function testCaretakerSMS() {
     const cName = (document.getElementById('modalCaretakerName')?.value || document.getElementById('profCaretakerName')?.value || 'Primary Caretaker').trim();
 
     showSMSNotification({
-        title: "⚡ DISPATCHING TEST SMS...",
-        message: `Sending automated test SMS to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via MSG91 Gateway...`,
+        title: "⚡ DISPATCHING CELLULAR SMS...",
+        message: `Transmitting automated SMS to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via Fast2SMS Cellular Gateway...`,
         channel: "sms",
         phone: cPhone,
         duration: 5000
@@ -201,7 +148,7 @@ async function testCaretakerSMS() {
         });
         showSMSNotification({
             title: "✅ CARETAKER SMS DELIVERED",
-            message: `Automated SMS delivered to Caretaker (+${res.recipient_phone}) via ${res.provider}. Reference ID: ${res.sid}. Check caretaker's mobile inbox!`,
+            message: `Automated SMS delivered to Caretaker (+${res.recipient_phone}) via ${res.provider}! Ref ID: ${res.sid}. Check caretaker's phone inbox.`,
             channel: "sms",
             phone: cPhone,
             duration: 12000
@@ -332,17 +279,14 @@ function showSMSNotification(options) {
         </div>
     ` : '';
 
-    const targetPhone = (options && options.phone) || (options && options.caretakerAlert ? cfg.caretakerPhone : (cfg.patientWhatsapp || cfg.patientPhone || cfg.caretakerPhone)) || "";
+    const targetPhone = (options && options.phone) || (options && options.caretakerAlert ? cfg.caretakerPhone : (cfg.patientPhone || cfg.caretakerPhone)) || "";
     const cleanDigits = targetPhone.replace(/[^0-9]/g, '');
-    const waPhoneDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
-    const waEncodedMsg = encodeURIComponent(`🚨 EMERGENCY MEDICAL CARE ALERT: ${title}\n\n${msg}${otp ? '\n\n🔐 Verification OTP: ' + otp : ''}\n\n⚠️ Immediate Clinical Action: Check patient condition, ensure rest, and administer emergency assistance if needed.`);
-    const waDirectUrl = waPhoneDigits ? `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${waEncodedMsg}` : '#';
-    const smsDirectUrl = waPhoneDigits ? `sms:+${waPhoneDigits}?body=${waEncodedMsg}` : '#';
+    const phoneDigits = cleanDigits.length === 10 ? cleanDigits : (cleanDigits.length === 12 && cleanDigits.startsWith('91') ? cleanDigits.slice(2) : cleanDigits);
 
-    // Directly trigger backend automated WhatsApp relay in the background
-    if (channel === 'whatsapp' || options.caretakerAlert) {
+    // Directly trigger backend automated SMS relay in the background if caretaker alert
+    if (options && options.caretakerAlert) {
         try {
-            API.post('/api/closed-loop/caregiver/dispatch-automated-whatsapp', {
+            API.post('/api/closed-loop/caregiver/dispatch-automated-sms', {
                 recipient_name: cfg.caretakerName,
                 recipient_phone: targetPhone || cfg.caretakerPhone,
                 title: title,
@@ -351,10 +295,10 @@ function showSMSNotification(options) {
         } catch (_) {}
     }
 
-    const deliveryStatusHtml = (channel === 'whatsapp' || options.caretakerAlert) ? `
-        <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-success-subtle text-success border border-success-subtle rounded-2 small">
-            <span class="fw-bold"><i class="bi bi-shield-check me-1"></i> Background Automated Dispatch Active</span>
-            <span class="badge bg-success text-white" style="font-size:0.7rem;">Meta Cloud API</span>
+    const deliveryStatusHtml = (options && options.caretakerAlert) ? `
+        <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-primary-subtle text-primary border border-primary-subtle rounded-2 small">
+            <span class="fw-bold"><i class="bi bi-broadcast me-1"></i> Fast2SMS Automated Cellular Dispatch</span>
+            <span class="badge bg-primary text-white" style="font-size:0.7rem;">Route 'q' Active</span>
         </div>
     ` : '';
 
@@ -370,8 +314,8 @@ function showSMSNotification(options) {
         </div>
         ${otpHtml}
         <div class="sms-actions">
-            <span class="text-success small fw-semibold me-auto" style="font-size:0.74rem;">
-                <i class="bi bi-broadcast me-1"></i> Sent automatically to +${waPhoneDigits || 'Caretaker'}
+            <span class="text-primary small fw-semibold me-auto" style="font-size:0.74rem;">
+                <i class="bi bi-check-circle-fill me-1"></i> Dispatched to +91 ${phoneDigits || 'Caretaker'}
             </span>
             <button class="sms-btn bg-light text-secondary border" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
@@ -5368,53 +5312,5 @@ loadDigitalHealthTimeline = async function() {
 
 
 async function testLiveWhatsAppPing() {
-    const cfg = getContactSettings();
-    const phoneInput = document.getElementById('profCaretakerPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('modalCaretakerPhone')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.phone);
-    const defaultPhone = (phoneInput || cfg.caretakerPhone || cfg.patientPhone || "").trim();
-    
-    if (!defaultPhone) {
-        alert("Please enter a caretaker or patient phone number to test WhatsApp dispatch.");
-        return;
-    }
-    
-    const rawDigits = defaultPhone.replace(/[^0-9]/g, '');
-    const cleanPhoneDigits = rawDigits.length === 10 ? ('91' + rawDigits) : rawDigits;
-
-    showSMSNotification({
-        title: "⚡ AUTOMATED WHATSAPP DISPATCHING...",
-        message: `Transmitting real-time automated medical alert to +${cleanPhoneDigits} via Direct WhatsApp Gateway...`,
-        channel: "whatsapp",
-        phone: defaultPhone,
-        duration: 5000
-    });
-
-    try {
-        const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
-        const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', {
-            phone: cleanPhoneDigits,
-            patient_name: pName
-        });
-        if (res.success) {
-            showSMSNotification({
-                title: "✅ AUTOMATED WHATSAPP DELIVERED",
-                message: `Automated alert message successfully delivered to +${res.target_phone} via ${res.provider || 'Direct Gateway'}. Ref: ${res.raw_response?.sid || 'Live Dispatch'}.`,
-                channel: "whatsapp",
-                duration: 12000
-            });
-        } else {
-            showSMSNotification({
-                title: "⚠️ DISPATCH STATUS",
-                message: res.error_details || "Automated dispatch attempted.",
-                channel: "whatsapp",
-                duration: 10000
-            });
-        }
-    } catch (err) {
-        showSMSNotification({
-            title: "⚠️ DISPATCH ERROR",
-            message: err.message || "Failed to reach backend.",
-            channel: "whatsapp",
-            duration: 8000
-        });
-    }
+    return testCaretakerSMS();
 }

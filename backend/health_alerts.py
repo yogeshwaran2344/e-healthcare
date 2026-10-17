@@ -1,8 +1,8 @@
 """
 Caretaker Health Alerts Engine
-Workflow 2: Evaluates patient vital signs (Blood Pressure & Heart Rate) against
+Evaluates patient vital signs (Blood Pressure & Heart Rate) against
 clinician-configured thresholds, validates sensor readings against artifacts,
-and dispatches real-time WhatsApp alerts to registered caretakers with smart
+and dispatches real-time cellular SMS alerts to registered caretakers with smart
 deduplication and critical escalation support.
 """
 
@@ -22,8 +22,7 @@ if str(_CURRENT_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from whatsapp_service import send_whatsapp, sanitize_phone_number
-from sms_service import send_sms_msg91
+from sms_service import send_sms, sanitize_indian_mobile_number
 
 # Configure logger
 logger = logging.getLogger("HealthAlerts")
@@ -126,11 +125,7 @@ def check_vitals(
 ) -> Dict[str, Any]:
     """
     Evaluates patient vital signs against configured clinical thresholds.
-    If thresholds are breached, dispatches a real-time WhatsApp alert to the registered caretaker.
-    
-    Example Message:
-    "Health alert for patient Yogesh (ID: 5): Blood pressure is outside the configured range (165/102 mmHg);
-     Heart rate is outside the configured range (112 bpm). Please check on the patient and follow the patient's clinical care plan."
+    If thresholds are breached, dispatches a real-time cellular SMS alert to the registered caretaker.
     """
     # 1. Validate data integrity
     is_valid, validation_error = validate_vital_reading(systolic_bp, diastolic_bp, heart_rate)
@@ -200,7 +195,7 @@ def check_vitals(
     if not bypass_cooldown:
         suppress, reason = should_suppress_duplicate_alert(pid_str, severity, systolic_bp, heart_rate)
         if suppress:
-            logger.info(f"Caretaker alert suppressed for patient {patient_id}: {reason}")
+            logger.info(f"Caretaker SMS alert suppressed for patient {patient_id}: {reason}")
             return {
                 "alert_required": True,
                 "suppressed": True,
@@ -209,42 +204,24 @@ def check_vitals(
                 "alerts": alerts
             }
 
-    # 4. Construct WhatsApp Message Body
+    # 4. Construct SMS Message Body
     p_name = patient_name.strip() if patient_name else f"#{patient_id}"
     alerts_summary = "; ".join(alerts)
     message = (
-        f"Health alert for patient {p_name} (ID: {patient_id}): "
-        f"{alerts_summary}. "
-        f"Please check on the patient and follow the patient's clinical care plan."
+        f"NeuroCare Health Alert [{severity}]: Patient {p_name} vitals out of range: "
+        f"{alerts_summary}. Please check on the patient immediately."
     )
 
-    clean_caretaker_phone = sanitize_phone_number(caretaker_phone)
+    clean_caretaker_phone = sanitize_indian_mobile_number(caretaker_phone)
     if not clean_caretaker_phone:
-        clean_caretaker_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
+        clean_caretaker_phone = sanitize_indian_mobile_number(os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755"))
 
-    # 5. Send Live WhatsApp Alert via Meta Cloud API or direct fallback
-    logger.warning(f"Dispatching [{severity}] caretaker health alert for patient {patient_id} to {clean_caretaker_phone}...")
-    tmpl_name = os.getenv("WHATSAPP_TEMPLATE_HEALTH_ALERT")
-    tmpl_params = [p_name] if tmpl_name else None
+    # 5. Send Live SMS Alert via Fast2SMS
+    logger.warning(f"Dispatching [{severity}] caretaker SMS health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
 
-    dispatch_res = send_whatsapp(
-        phone_number=clean_caretaker_phone,
-        message=message,
-        template_name=tmpl_name,
-        template_params=tmpl_params
-    )
-
-    # Automated MSG91 SMS Dispatch to caretaker
-    sms_vars = {
-        "patient_name": p_name,
-        "vital_details": alerts_summary[:50],
-        "message": message[:160]
-    }
-    sms_res = send_sms_msg91(
+    dispatch_res = send_sms(
         recipient_phone=clean_caretaker_phone,
-        message=message,
-        flow_id=os.getenv("MSG91_FLOW_ID_ALERT"),
-        template_variables=sms_vars
+        message=message
     )
 
     # 6. Update Episode Cache
@@ -254,7 +231,7 @@ def check_vitals(
         "systolic": systolic_bp,
         "hr": heart_rate,
         "last_status": dispatch_res.get("status"),
-        "sms_status": sms_res.get("status")
+        "sms_status": dispatch_res.get("status")
     }
 
     return {
@@ -264,7 +241,7 @@ def check_vitals(
         "alerts": alerts,
         "message": message,
         "notification": dispatch_res,
-        "sms_notification": sms_res,
+        "sms_notification": dispatch_res,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
@@ -291,7 +268,6 @@ def evaluate_patient_latest_vitals(patient_id: int, db=None) -> Dict[str, Any]:
         if not user:
             return {"error": f"Patient #{patient_id} not found."}
 
-        # Find registered caretaker phone
         caretaker_phone = None
         caretaker_name = "Primary Caretaker"
         bp_limits = DEFAULT_BP_LIMITS
@@ -305,14 +281,13 @@ def evaluate_patient_latest_vitals(patient_id: int, db=None) -> Dict[str, Any]:
             hr_limits = (cfg.heart_rate_min, cfg.heart_rate_max)
 
         if not caretaker_phone:
-            # Check family members
             fm = db.query(FamilyMember).filter(FamilyMember.user_id == patient_id).first()
-            if fm and (fm.whatsapp or fm.phone):
-                caretaker_phone = fm.whatsapp or fm.phone
+            if fm and (fm.phone or fm.whatsapp):
+                caretaker_phone = fm.phone or fm.whatsapp
                 caretaker_name = fm.full_name
 
         if not caretaker_phone:
-            caretaker_phone = user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
+            caretaker_phone = user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
 
         # Get latest BP and HR readings
         bp_reading = (
@@ -355,10 +330,10 @@ if __name__ == "__main__":
             pass
 
     print("=" * 70)
-    print("   CARETAKER VITAL SIGNS HEALTH ALERT - TEST RUN")
+    print("   CARETAKER VITAL SIGNS SMS HEALTH ALERT - TEST RUN")
     print("=" * 70)
 
-    test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
+    test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         test_phone = sys.argv[1].strip()
 
@@ -389,8 +364,9 @@ if __name__ == "__main__":
     print(f"   * Severity       : {res_abnormal.get('severity')}")
     print(f"   * Triggered Rules: {res_abnormal.get('alerts')}")
     notification = res_abnormal.get("notification", {})
-    print(f"   * WhatsApp Status: {notification.get('status')}")
+    print(f"   * SMS Status     : {notification.get('status')}")
     print(f"   * SID            : {notification.get('sid')}")
+    print(f"   * Provider       : {notification.get('provider')}")
     if notification.get("error"):
         print(f"   * Error Details  : {notification.get('error')}")
 
