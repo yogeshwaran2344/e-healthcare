@@ -225,10 +225,10 @@ def check_vitals(
     if not clean_caretaker_phone:
         clean_caretaker_phone = sanitize_indian_mobile_number(os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755"))
 
-    # 5. Send Live Cellular SMS Alert to Caretaker
-    logger.warning(f"Dispatching [{severity}] caretaker cellular SMS health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
+    # 5. Send Live Automated WhatsApp Alert to Caretaker
+    logger.warning(f"Dispatching [{severity}] caretaker automated WhatsApp health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
 
-    dispatch_res = send_sms(
+    dispatch_wa = send_whatsapp(
         recipient_phone=clean_caretaker_phone,
         message=message
     )
@@ -239,9 +239,9 @@ def check_vitals(
         "severity": severity,
         "systolic": systolic_bp,
         "hr": heart_rate,
-        "last_status": dispatch_res.get("status"),
-        "sms_status": dispatch_res.get("status"),
-        "whatsapp_status": dispatch_res.get("status")
+        "last_status": dispatch_wa.get("status"),
+        "whatsapp_status": dispatch_wa.get("status"),
+        "sms_status": dispatch_wa.get("status")
     }
 
     return {
@@ -250,10 +250,10 @@ def check_vitals(
         "severity": severity,
         "alerts": alerts,
         "message": message,
-        "channel": "sms",
-        "notification": dispatch_res,
-        "sms_notification": dispatch_res,
-        "whatsapp_notification": dispatch_res,
+        "channel": "whatsapp",
+        "notification": dispatch_wa,
+        "whatsapp_notification": dispatch_wa,
+        "sms_notification": dispatch_wa,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
@@ -374,7 +374,7 @@ if __name__ == "__main__":
         systolic_bp=118.0,
         diastolic_bp=76.0,
         heart_rate=72.0,
-        patient_name="Rahul Verma"
+        patient_name="Yogesh"
     )
     print(f"   * Alert Required: {res_normal.get('alert_required')} (Expected: False)")
 
@@ -386,7 +386,7 @@ if __name__ == "__main__":
         systolic_bp=168.0,
         diastolic_bp=104.0,
         heart_rate=118.0,
-        patient_name="Rahul Verma",
+        patient_name="Yogesh",
         bypass_cooldown=True
     )
     print(f"   * Alert Required : {res_abnormal.get('alert_required')}")

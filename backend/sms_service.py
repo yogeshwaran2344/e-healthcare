@@ -100,8 +100,14 @@ from whatsapp_service import (
     send_whatsapp,
     format_whatsapp_recipient,
     format_whatsapp_url,
-    format_whatsapp_display
+    format_whatsapp_display,
+    check_whatsapp_service_health
 )
+
+def check_sms_service_health() -> Dict[str, Any]:
+    """Compatibility health check: returns automated WhatsApp gateway status."""
+    return check_whatsapp_service_health()
+
 
 def send_sms(
     recipient_phone: str,
@@ -109,10 +115,10 @@ def send_sms(
     route: str = "q"
 ) -> Dict[str, Any]:
     """
-    Unified notification dispatch: delivers real cellular SMS directly via Fast2SMS Quick Route ('q').
-    Zero redirects, zero template requirements.
+    Unified notification dispatch: delivers exclusively via automated WhatsApp gateway.
+    SMS delivery has been completely disabled as per user instruction.
     """
-    return send_cellular_sms(recipient_phone=recipient_phone, message=message, route=route)
+    return send_whatsapp(recipient_phone=recipient_phone, message=message)
 
 
 def send_cellular_sms(
@@ -121,96 +127,10 @@ def send_cellular_sms(
     route: str = "q"
 ) -> Dict[str, Any]:
     """
-    Direct cellular SMS dispatch using Fast2SMS Quick Route ('q').
+    Redirects legacy cellular SMS requests directly to automated WhatsApp dispatch.
+    Physical cellular SMS transmission is disabled.
     """
-    cfg = get_fast2sms_config()
-    clean_digits = sanitize_indian_mobile_number(recipient_phone)
-
-    if not clean_digits or len(clean_digits) != 10:
-        error_msg = f"Invalid 10-digit recipient phone number: '{recipient_phone}'"
-        logger.error(error_msg)
-        return {
-            "success": False,
-            "status": "failed",
-            "error": error_msg,
-            "phone": recipient_phone
-        }
-
-    # Clean message text
-    sms_text = message.strip()
-
-    # If FAST2SMS_API_KEY is configured, call live Fast2SMS API
-    if cfg["api_key"]:
-        url = "https://www.fast2sms.com/dev/bulkV2"
-        headers = {
-            "authorization": cfg["api_key"],
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-        payload = {
-            "route": route or cfg["route"] or "q",
-            "message": sms_text,
-            "numbers": clean_digits
-        }
-
-        try:
-            logger.info(f"Dispatching live SMS to +91{clean_digits} via Fast2SMS Quick Route ('{payload['route']}')...")
-            response = requests.post(url, headers=headers, json=payload, timeout=12)
-            resp_data = response.json() if response.content else {}
-
-            if response.status_code == 200 and resp_data.get("return") is True:
-                req_id = resp_data.get("request_id") or f"F2SMS-{int(time.time()*1000)}"
-                logger.info(f"Live SMS successfully dispatched by Fast2SMS! Request ID: {req_id}")
-                return {
-                    "success": True,
-                    "sid": req_id,
-                    "status": "delivered",
-                    "provider": "Fast2SMS Quick SMS Gateway",
-                    "phone": f"+91{clean_digits}",
-                    "recipient_10digit": clean_digits,
-                    "message": sms_text,
-                    "gateway_response": resp_data
-                }
-            else:
-                raw_err = resp_data.get("message")
-                err_text = " ".join(raw_err) if isinstance(raw_err, list) else str(raw_err or f"HTTP {response.status_code}")
-                if resp_data.get("status_code") == 999:
-                    err_text = "Fast2SMS requires completing a one-time recharge of ₹100 ('ADD CREDIT' button in Fast2SMS dashboard) to unlock automated API sending."
-                logger.warning(f"Fast2SMS API notice ({response.status_code}): {err_text}")
-                return {
-                    "success": False,
-                    "sid": f"F2SMS-ERR-{clean_digits[-4:]}",
-                    "status": "activation_needed" if resp_data.get("status_code") == 999 else "gateway_rejected",
-                    "provider": "Fast2SMS Quick SMS Gateway",
-                    "phone": f"+91{clean_digits}",
-                    "recipient_10digit": clean_digits,
-                    "error": err_text,
-                    "gateway_response": resp_data
-                }
-        except Exception as e:
-            logger.error(f"Network error communicating with Fast2SMS: {e}")
-            return {
-                "success": False,
-                "status": "network_error",
-                "error": str(e),
-                "phone": f"+91{clean_digits}",
-                "recipient_10digit": clean_digits
-            }
-
-    # When FAST2SMS_API_KEY is not yet in .env, simulate dispatch cleanly
-    simulated_id = f"F2SMS-SIM-{hashlib.sha256(f'{clean_digits}:{time.time()}:{sms_text[:20]}'.encode()).hexdigest()[:10].upper()}"
-    logger.info(f"[AUTOMATED SMS DISPATCHED] To: +91{clean_digits} | Msg: {sms_text[:70]}... (ID: {simulated_id})")
-
-    return {
-        "success": True,
-        "sid": simulated_id,
-        "status": "delivered",
-        "provider": "Fast2SMS Quick SMS Gateway (Simulated / Enter FAST2SMS_API_KEY in .env)",
-        "phone": f"+91{clean_digits}",
-        "recipient_10digit": clean_digits,
-        "message": sms_text,
-        "notice": "SMS dispatched by backend server. To deliver real cellular SMS via telecom towers, set FAST2SMS_API_KEY in .env"
-    }
+    return send_whatsapp(recipient_phone=recipient_phone, message=message)
 
 
 # Backwards compatibility alias
@@ -231,23 +151,3 @@ def get_msg91_config() -> Dict[str, str]:
         "dlt_te_id": ""
     }
 
-
-def check_sms_service_health() -> Dict[str, Any]:
-    """Returns Fast2SMS configuration health and ready status."""
-    cfg = get_fast2sms_config()
-    is_ready = bool(cfg["api_key"])
-
-    return {
-        "status": "active" if is_ready else "ready_for_credentials",
-        "provider": "Fast2SMS Quick SMS Gateway",
-        "api_key_configured": is_ready,
-        "route": cfg["route"],
-        "default_recipient": cfg["default_recipient"],
-        "supports_all_numbers": True,
-        "requires_dlt": False,
-        "automated": True,
-        "instructions": (
-            "Fast2SMS Quick Route ('q') sends cellular SMS automatically to any 10-digit Indian number "
-            "with zero DLT template registration required. Add FAST2SMS_API_KEY in .env to deliver real SMS."
-        )
-    }

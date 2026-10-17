@@ -225,14 +225,14 @@ if __name__ == "__main__":
             pass
 
     print("=" * 70)
-    print("   AUTOMATED PATIENT MEDICATION REMINDER - SMS TEST RUN")
+    print("   AUTOMATED PATIENT MEDICATION REMINDER - WHATSAPP TEST RUN")
     print("=" * 70)
 
     test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         test_phone = sys.argv[1].strip()
 
-    print(f"\n1. SENDING IMMEDIATE SMS REMINDER TO: {test_phone}")
+    print(f"\n1. SENDING IMMEDIATE WHATSAPP REMINDER TO: {test_phone}")
     res = send_medication_reminder(
         patient_phone=test_phone,
         medication_name="Metformin 500mg",
