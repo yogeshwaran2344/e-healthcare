@@ -23,6 +23,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from whatsapp_service import send_whatsapp, sanitize_phone_number
+from sms_service import send_sms_msg91
 
 # Configure logger
 logger = logging.getLogger("HealthAlerts")
@@ -233,13 +234,27 @@ def check_vitals(
         template_params=tmpl_params
     )
 
+    # Automated MSG91 SMS Dispatch to caretaker
+    sms_vars = {
+        "patient_name": p_name,
+        "vital_details": alerts_summary[:50],
+        "message": message[:160]
+    }
+    sms_res = send_sms_msg91(
+        recipient_phone=clean_caretaker_phone,
+        message=message,
+        flow_id=os.getenv("MSG91_FLOW_ID_ALERT"),
+        template_variables=sms_vars
+    )
+
     # 6. Update Episode Cache
     _ALERT_EPISODE_CACHE[pid_str] = {
         "timestamp": datetime.now(timezone.utc),
         "severity": severity,
         "systolic": systolic_bp,
         "hr": heart_rate,
-        "last_status": dispatch_res.get("status")
+        "last_status": dispatch_res.get("status"),
+        "sms_status": sms_res.get("status")
     }
 
     return {
@@ -249,6 +264,7 @@ def check_vitals(
         "alerts": alerts,
         "message": message,
         "notification": dispatch_res,
+        "sms_notification": sms_res,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 

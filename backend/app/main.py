@@ -98,9 +98,8 @@ app = FastAPI(
     title="NeuroCare | Intelligent Health Passport & Medical Platform",
     description="Adaptive AI health triage, IoT vitals telemetry, blockchain health ledger, predictive care, indoor hospital navigation, emergency response, and automated reminders.",
     version="3.0.0",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
+    docs_url="/docs",
+    openapi_url="/openapi.json",
     lifespan=lifespan
 )
 

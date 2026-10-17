@@ -138,6 +138,84 @@ async function testDirectWhatsAppAlert() {
     }
 }
 
+async function testPatientSMS() {
+    const pPhone = (document.getElementById('modalPatientPhone')?.value || document.getElementById('profPhone')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.phone) || '').trim();
+    if (!pPhone) {
+        alert("Please enter the Patient's Mobile Number first.");
+        return;
+    }
+    const pName = (document.getElementById('profName')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.full_name) || 'Patient').trim();
+
+    showSMSNotification({
+        title: "⚡ DISPATCHING TEST SMS...",
+        message: `Sending automated test SMS to Patient (+${pPhone.replace(/[^0-9]/g, '')}) via MSG91 Gateway...`,
+        channel: "sms",
+        phone: pPhone,
+        duration: 5000
+    });
+
+    try {
+        const res = await API.post('/api/closed-loop/test-sms', {
+            recipient_type: "patient",
+            phone: pPhone,
+            name: pName
+        });
+        showSMSNotification({
+            title: "✅ PATIENT SMS DELIVERED",
+            message: `Automated SMS delivered to Patient (+${res.recipient_phone}) via ${res.provider}. Reference ID: ${res.sid}. Check patient's mobile inbox!`,
+            channel: "sms",
+            phone: pPhone,
+            duration: 12000
+        });
+    } catch (err) {
+        showSMSNotification({
+            title: "⚠️ SMS DISPATCH FAILED",
+            message: err.message || "Failed to transmit SMS.",
+            channel: "sms",
+            duration: 8000
+        });
+    }
+}
+
+async function testCaretakerSMS() {
+    const cPhone = (document.getElementById('modalCaretakerPhone')?.value || document.getElementById('profCaretakerPhone')?.value || '').trim();
+    if (!cPhone) {
+        alert("Please enter the Caretaker's Mobile Number first.");
+        return;
+    }
+    const cName = (document.getElementById('modalCaretakerName')?.value || document.getElementById('profCaretakerName')?.value || 'Primary Caretaker').trim();
+
+    showSMSNotification({
+        title: "⚡ DISPATCHING TEST SMS...",
+        message: `Sending automated test SMS to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via MSG91 Gateway...`,
+        channel: "sms",
+        phone: cPhone,
+        duration: 5000
+    });
+
+    try {
+        const res = await API.post('/api/closed-loop/test-sms', {
+            recipient_type: "caretaker",
+            phone: cPhone,
+            name: cName
+        });
+        showSMSNotification({
+            title: "✅ CARETAKER SMS DELIVERED",
+            message: `Automated SMS delivered to Caretaker (+${res.recipient_phone}) via ${res.provider}. Reference ID: ${res.sid}. Check caretaker's mobile inbox!`,
+            channel: "sms",
+            phone: cPhone,
+            duration: 12000
+        });
+    } catch (err) {
+        showSMSNotification({
+            title: "⚠️ SMS DISPATCH FAILED",
+            message: err.message || "Failed to transmit SMS.",
+            channel: "sms",
+            duration: 8000
+        });
+    }
+}
+
 function saveContactSettings(e) {
     if (e) e.preventDefault();
     const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';

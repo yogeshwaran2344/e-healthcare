@@ -1,0 +1,25 @@
+"""
+Backend App SMS Service Bridge
+Exposes MSG91 SMS capabilities from backend.sms_service
+"""
+
+import sys
+from pathlib import Path
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
+
+from sms_service import (
+    send_sms_msg91,
+    sanitize_sms_recipient_digits,
+    get_msg91_config,
+    check_sms_service_health
+)
+
+__all__ = [
+    "send_sms_msg91",
+    "sanitize_sms_recipient_digits",
+    "get_msg91_config",
+    "check_sms_service_health"
+]

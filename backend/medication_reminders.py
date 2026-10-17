@@ -21,6 +21,7 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from whatsapp_service import send_whatsapp, sanitize_phone_number
+from sms_service import send_sms_msg91
 
 # Configure logger
 logger = logging.getLogger("MedicationReminders")
@@ -77,6 +78,21 @@ def send_medication_reminder(
         template_name=tmpl_name,
         template_params=tmpl_params
     )
+
+    # Automated MSG91 SMS Dispatch to patient
+    sms_vars = {
+        "patient_name": patient_name or "Patient",
+        "medication_name": f"{medication_name.strip()}{dosage_str}",
+        "time": scheduled_time.strip(),
+        "message": message[:160]
+    }
+    sms_res = send_sms_msg91(
+        recipient_phone=clean_phone,
+        message=message,
+        flow_id=os.getenv("MSG91_FLOW_ID_MEDICATION"),
+        template_variables=sms_vars
+    )
+    res["sms_result"] = sms_res
     res["medication_name"] = medication_name
     res["scheduled_time"] = scheduled_time
     res["dosage"] = dosage

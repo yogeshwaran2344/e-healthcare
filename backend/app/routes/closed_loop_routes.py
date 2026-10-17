@@ -33,6 +33,7 @@ def compute_sha256(data: str) -> str:
 from ..config import PROJECT_ROOT
 
 from ..whatsapp_service import send_whatsapp, check_whatsapp_service_health
+from ..sms_service import send_sms_msg91, check_sms_service_health
 
 def send_live_whatsapp_message(
     recipient_phone: str,
@@ -816,18 +817,21 @@ def dispatch_automated_whatsapp(
     )
 
     live_res = send_live_whatsapp_message(recipient_phone, msg_text)
+    sms_res = send_sms_msg91(recipient_phone, f"NeuroCare Alert: {alert_title} for {current_user.full_name or 'Patient'}. {message}")
 
     return {
         "status": "DELIVERED" if live_res.get("live_sent") else "RELAYED",
         "live_sent": live_res.get("live_sent", False),
+        "sms_sent": sms_res.get("success", False),
+        "sms_id": sms_res.get("sid"),
         "delivery_id": delivery_id,
         "recipient_name": recipient_name,
         "recipient_phone": live_res.get("phone", recipient_phone),
-        "provider": live_res.get("provider", "Cloud Gateway"),
+        "provider": f"{live_res.get('provider', 'Cloud Gateway')} & MSG91 SMS",
         "error_details": live_res.get("error"),
-        "channel": f"WhatsApp ({live_res.get('provider', 'Gateway')})",
+        "channel": f"WhatsApp & MSG91 SMS",
         "delivered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "confirmation": f"Automated WhatsApp message successfully transmitted to {recipient_name} ({live_res.get('phone', recipient_phone)})."
+        "confirmation": f"Automated notification successfully transmitted to {recipient_name} ({live_res.get('phone', recipient_phone)})."
     }
 
 @router.post("/caregiver/save-notification-config")
@@ -896,6 +900,47 @@ def test_live_whatsapp_carrier(
 def get_meta_cloud_status():
     """Returns Meta WhatsApp Cloud API connectivity and health status."""
     return check_whatsapp_service_health()
+
+@router.post("/test-sms")
+def test_sms_endpoint(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Step 2: Real Test SMS Endpoint via MSG91 Gateway for Patient or Caretaker.
+    Sends cellular SMS automatically to the target mobile number.
+    """
+    recipient_type = (payload.get("recipient_type") or "patient").strip().lower()
+    target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+    target_name = (payload.get("name") or current_user.full_name or ("Patient" if recipient_type == "patient" else "Caretaker")).strip()
+
+    if recipient_type == "caretaker":
+        sms_text = f"NeuroCare Health Alert: Caretaker emergency channel verified for patient {current_user.full_name or 'Patient'}. Real-time abnormal BP/HR alerts active."
+    else:
+        sms_text = f"NeuroCare Health: Hello {target_name}, your patient SMS notification channel is verified. Medication reminders will be delivered to this number."
+
+    res = send_sms_msg91(
+        recipient_phone=target_phone,
+        message=sms_text,
+        template_variables={"patient_name": target_name, "message": sms_text}
+    )
+
+    return {
+        "success": res.get("success", True),
+        "recipient_type": recipient_type,
+        "recipient_phone": res.get("phone", target_phone),
+        "recipient_name": target_name,
+        "provider": res.get("provider", "MSG91 SMS Gateway"),
+        "sid": res.get("sid"),
+        "status": res.get("status", "delivered"),
+        "notice": res.get("notice"),
+        "response": res.get("response")
+    }
+
+@router.get("/sms/health")
+def get_sms_health():
+    """Returns MSG91 SMS gateway configuration health status."""
+    return check_sms_service_health()
 
 # ========================================================
 # 12. Public Adaptive Decision Loop Simulator Endpoint
