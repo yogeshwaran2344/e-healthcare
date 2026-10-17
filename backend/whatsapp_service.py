@@ -230,7 +230,13 @@ def send_whatsapp(
         elif code == 21211:
             help_tip = f"Invalid 'To' number: {to_formatted}. Verify country code and phone digits."
         elif code == 21654:
-            help_tip = "WhatsApp Business 24-hour customer care window has elapsed. Outside the 24h window, you must use pre-approved WhatsApp Templates."
+            clean_from = from_formatted.replace("whatsapp:", "")
+            help_tip = (
+                f"WhatsApp 24-Hour Session Window Required: Outside an active 24-hour conversation window, WhatsApp prevents freeform outbound messages. "
+                f"To re-open the window, open WhatsApp on the recipient's phone ({to_formatted}), "
+                f"send a quick message (e.g. 'join twilio-trial' or 'Hi') to your Twilio number {clean_from}. "
+                f"Once sent, the 24-hour window is active and all automated reminders and vital alerts will deliver instantly!"
+            )
 
         logger.error(f"Twilio WhatsApp Error ({code}): {msg}")
         return {
