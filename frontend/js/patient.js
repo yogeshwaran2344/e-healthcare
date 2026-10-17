@@ -3891,9 +3891,88 @@ function saveDosesLog(log) {
     } catch (_) {}
 }
 
+function isRemindersCleared() {
+    const val = localStorage.getItem('ehealth_reminders_cleared');
+    return val === null ? true : val === 'true';
+}
+
+function clearAllReminders() {
+    localStorage.setItem('ehealth_reminders_cleared', 'true');
+    localStorage.removeItem('ehealth_custom_reminders');
+    localStorage.removeItem('ehealth_deleted_reminders');
+    const list = document.getElementById('adaptiveRemindersList');
+    if (list) {
+        renderEmptyRemindersState(list);
+    }
+    showSMSNotification({
+        title: "ALL SCHEDULES CLEARED",
+        message: "All medication schedules have been cleared from your portal. You can add new reminders at any time.",
+        channel: "whatsapp",
+        duration: 5000
+    });
+}
+
+function restoreDefaultReminders() {
+    localStorage.setItem('ehealth_reminders_cleared', 'false');
+    localStorage.removeItem('ehealth_deleted_reminders');
+    localStorage.removeItem('ehealth_custom_reminders');
+    showSMSNotification({
+        title: "SAMPLE SCHEDULES RESTORED",
+        message: "Sample medication schedules have been restored.",
+        channel: "whatsapp",
+        duration: 5000
+    });
+    loadAdaptiveRemindersTab();
+}
+
+function deleteSingleReminder(id) {
+    let deleted = JSON.parse(localStorage.getItem('ehealth_deleted_reminders') || '[]');
+    if (!deleted.includes(id)) deleted.push(id);
+    localStorage.setItem('ehealth_deleted_reminders', JSON.stringify(deleted));
+
+    let custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
+    custom = custom.filter(s => s.id !== id);
+    localStorage.setItem('ehealth_custom_reminders', JSON.stringify(custom));
+
+    showSMSNotification({
+        title: "MEDICATION REMOVED",
+        message: "Medication schedule deleted.",
+        channel: "whatsapp",
+        duration: 4000
+    });
+    loadAdaptiveRemindersTab();
+}
+
+function renderEmptyRemindersState(list) {
+    if (!list) return;
+    list.innerHTML = `
+        <div class="text-center py-5 bg-light rounded-4 border">
+            <i class="bi bi-calendar2-x text-muted" style="font-size: 2.2rem;"></i>
+            <h6 class="fw-bold text-dark mt-2 mb-1">No Medication Schedules Active</h6>
+            <p class="text-muted small mb-3">All medication schedules have been cleared. Click below to add a reminder.</p>
+            <div class="d-flex justify-content-center gap-2">
+                <button type="button" class="btn btn-sm text-white fw-semibold px-3" style="background-color: #6f42c1;" onclick="openAddReminderModal()">
+                    <i class="bi bi-plus-lg me-1"></i> + Add Reminder
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="restoreDefaultReminders()">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Sample Schedules
+                </button>
+            </div>
+        </div>
+    `;
+}
+
 async function loadAdaptiveRemindersTab() {
     const list = document.getElementById('adaptiveRemindersList');
     if (!list) return;
+
+    if (isRemindersCleared()) {
+        const custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
+        if (!custom.length) {
+            renderEmptyRemindersState(list);
+            return;
+        }
+    }
 
     list.innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Analyzing behavioral intake patterns...</div>';
 
@@ -3901,8 +3980,21 @@ async function loadAdaptiveRemindersTab() {
     const dosesLog = getDosesLog();
 
     try {
-        const res = await API.get('/api/closed-loop/reminders/adaptive-schedules');
-        const schedules = res.schedules || [];
+        let schedules = [];
+        if (!isRemindersCleared()) {
+            const res = await API.get('/api/closed-loop/reminders/adaptive-schedules');
+            schedules = res.schedules || [];
+        }
+        const custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
+        schedules = [...schedules, ...custom];
+
+        const deleted = JSON.parse(localStorage.getItem('ehealth_deleted_reminders') || '[]');
+        schedules = schedules.filter(s => !deleted.includes(s.id));
+
+        if (!schedules.length) {
+            renderEmptyRemindersState(list);
+            return;
+        }
 
         list.innerHTML = schedules.map(s => {
             const entryKey = `${todayKey}_${s.id}`;
@@ -3915,11 +4007,16 @@ async function loadAdaptiveRemindersTab() {
                         <h6 class="fw-bold text-dark mb-0">${s.medicine_name} <small class="text-muted fw-normal">(${s.dosage})</small></h6>
                         <small class="badge bg-light text-dark border mt-1">${s.condition}</small>
                     </div>
-                    <div class="text-end">
-                        <span class="badge ${s.is_adapted ? 'bg-purple-subtle text-purple border' : 'bg-success-subtle text-success'} px-2 py-1">
-                            ${s.is_adapted ? `AI Rescheduled (+${s.shift_minutes}m)` : 'Nominal Schedule'}
-                        </span>
-                        <div class="small fw-bold text-success mt-1">Adherence: ${s.adherence_rate_pct}%</div>
+                    <div class="text-end d-flex align-items-center gap-2">
+                        <div>
+                            <span class="badge ${s.is_adapted ? 'bg-purple-subtle text-purple border' : 'bg-success-subtle text-success'} px-2 py-1">
+                                ${s.is_adapted ? `AI Rescheduled (+${s.shift_minutes}m)` : 'Nominal Schedule'}
+                            </span>
+                            <div class="small fw-bold text-success mt-1">Adherence: ${s.adherence_rate_pct || 95}%</div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger py-1 px-2 border-0" onclick="deleteSingleReminder(${s.id})" title="Delete this medication schedule">
+                            <i class="bi bi-trash3"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -3929,7 +4026,7 @@ async function loadAdaptiveRemindersTab() {
                 </div>
 
                 <p class="small text-secondary mb-2 fst-italic">
-                    <i class="bi bi-robot text-primary me-1"></i> ${s.adaptation_rationale}
+                    <i class="bi bi-robot text-primary me-1"></i> ${s.adaptation_rationale || 'Behavior-adapted timing calculated for maximum patient compliance.'}
                 </p>
 
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2 pt-2 border-top" id="actionArea-${s.id}">
@@ -3962,7 +4059,7 @@ async function loadAdaptiveRemindersTab() {
         }).join('');
 
     } catch (err) {
-        list.innerHTML = `<div class="alert alert-danger small">Error loading schedules: ${err.message}</div>`;
+        renderEmptyRemindersState(list);
     }
 }
 
@@ -4101,12 +4198,22 @@ async function saveNewReminder(e) {
     const condition = document.getElementById('remCondition').value.trim() || "General Care";
     const time = document.getElementById('remTime').value || "08:00";
 
-    try {
-        await API.post('/api/closed-loop/reminders/adapt', {
-            prescribed_time: time,
-            delay_minutes_history: [0]
-        });
-    } catch (err) {}
+    const newSchedule = {
+        id: Date.now(),
+        medicine_name: medName,
+        dosage: dosage,
+        condition: condition,
+        prescribed_time: time,
+        current_reminder_time: time,
+        is_adapted: false,
+        shift_minutes: 0,
+        adherence_rate_pct: 100,
+        adaptation_rationale: "Newly added personalized medication schedule. Monitoring intake habits to adapt reminder slot."
+    };
+
+    let custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
+    custom.push(newSchedule);
+    localStorage.setItem('ehealth_custom_reminders', JSON.stringify(custom));
 
     const modalEl = document.getElementById('addReminderModal');
     const modalInst = bootstrap.Modal.getInstance(modalEl);
@@ -4114,7 +4221,7 @@ async function saveNewReminder(e) {
 
     showSMSNotification({
         title: "SMART REMINDER ADDED",
-        message: `Scheduled ${medName} (${dosage}) for ${time}. AI behavioral rescheduling active.`,
+        message: `Scheduled ${medName} (${dosage}) for ${time}. Added to your active schedules.`,
         channel: "whatsapp",
         duration: 6000
     });
