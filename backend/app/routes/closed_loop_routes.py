@@ -877,14 +877,18 @@ def test_live_whatsapp_carrier(
     )
 
     res = send_live_whatsapp_message(target_phone, test_msg)
+    health = check_whatsapp_service_health()
+    meta_is_ready = bool(health.get("access_token_configured") and health.get("phone_number_id_configured"))
     
     return {
         "success": True,
-        "provider": res.get("provider", "Direct Universal WhatsApp Gateway"),
+        "meta_configured": meta_is_ready,
+        "provider": res.get("provider", "Meta WhatsApp Cloud API"),
         "target_phone": res.get("phone", target_phone),
         "direct_whatsapp_url": res.get("direct_whatsapp_url"),
         "direct_sms_url": res.get("direct_sms_url"),
-        "error_details": None,
+        "meta_status": res.get("meta_status"),
+        "error_details": res.get("error"),
         "raw_response": res
     }
 
