@@ -172,6 +172,15 @@ def simulate_iot_stream(
     db.commit()
     db.refresh(reading)
 
+    # Workflow 2: Automated Caretaker Health Alert if vital reading is outside configured limits
+    caretaker_alert_info = None
+    if reading.is_anomaly or reading.alert_severity in ("WARNING", "CRITICAL"):
+        try:
+            from ..health_alerts import evaluate_patient_latest_vitals
+            caretaker_alert_info = evaluate_patient_latest_vitals(patient_id=current_user.id, db=db)
+        except Exception as ex:
+            caretaker_alert_info = {"error": str(ex)}
+
     return {
         "status": "success",
         "device_name": device.device_name,
@@ -182,5 +191,7 @@ def simulate_iot_stream(
         "alert_severity": reading.alert_severity,
         "alert_message": reading.alert_message,
         "is_critical": reading.alert_severity == "CRITICAL",
-        "ecg_points": synth["ecg_waveform_points"]
+        "ecg_points": synth["ecg_waveform_points"],
+        "caretaker_alert": caretaker_alert_info
     }
+

@@ -16,5 +16,6 @@ from .emergency_routes import router as emergency_router
 from .community_preventive_routes import router as community_preventive_router
 from .closed_loop_routes import router as closed_loop_router
 from .contact_routes import router as contact_router
+from .notification_routes import router as notification_router
 
 

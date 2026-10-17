@@ -23,7 +23,8 @@ from .routes import (
     emergency_router,
     community_preventive_router,
     closed_loop_router,
-    contact_router
+    contact_router,
+    notification_router
 )
 
 # Initialize database tables
@@ -82,7 +83,16 @@ def auto_migrate():
     except Exception as e:
         print(f"Startup clean/doctor sync notice: {e}")
 
-auto_migrate()
+from contextlib import asynccontextmanager
+from .medication_reminders import start_medication_scheduler, stop_medication_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Launch background medication schedule monitoring worker
+    scheduler = start_medication_scheduler(interval_seconds=60)
+    yield
+    # Shutdown: Gracefully stop background worker
+    stop_medication_scheduler()
 
 app = FastAPI(
     title="NeuroCare | Intelligent Health Passport & Medical Platform",
@@ -90,7 +100,8 @@ app = FastAPI(
     version="3.0.0",
     docs_url=None,
     redoc_url=None,
-    openapi_url=None
+    openapi_url=None,
+    lifespan=lifespan
 )
 
 # CORS configuration
@@ -120,6 +131,7 @@ app.include_router(emergency_router)
 app.include_router(community_preventive_router)
 app.include_router(closed_loop_router)
 app.include_router(contact_router)
+app.include_router(notification_router)
 
 
 

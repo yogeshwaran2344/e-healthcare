@@ -540,5 +540,51 @@ class ContactMessage(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
+class MedicationSchedule(Base):
+    """Patient medication schedules for automated WhatsApp reminders."""
+    __tablename__ = "medication_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    medication_name = Column(String(150), nullable=False)
+    dosage = Column(String(100), default="1 Dose")
+    condition = Column(String(150), nullable=True)
+    scheduled_time = Column(String(10), nullable=False)  # e.g. "08:00", "13:00", "20:00"
+    patient_phone = Column(String(30), nullable=True)
+    is_active = Column(Boolean, default=True)
+    last_reminded_date = Column(String(20), nullable=True)  # "YYYY-MM-DD" prevents double dispatch
+    last_status = Column(String(50), default="SCHEDULED")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    patient = orm_relationship("User")
+
+
+class CaretakerAlertConfig(Base):
+    """Configured clinical vitals thresholds and registered caretaker phone for automated alerts."""
+    __tablename__ = "caretaker_alert_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    patient_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    caretaker_name = Column(String(100), default="Primary Caregiver")
+    caretaker_phone = Column(String(30), nullable=False)
+    relationship = Column(String(50), default="Guardian")
+    
+    # Clinician-Configured Vital Safety Limits
+    systolic_min = Column(Float, default=90.0)
+    systolic_max = Column(Float, default=140.0)
+    diastolic_min = Column(Float, default=60.0)
+    diastolic_max = Column(Float, default=90.0)
+    heart_rate_min = Column(Float, default=50.0)
+    heart_rate_max = Column(Float, default=100.0)
+    
+    is_active = Column(Boolean, default=True)
+    last_alert_at = Column(DateTime, nullable=True)
+    last_alert_severity = Column(String(30), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    patient = orm_relationship("User")
+
+
 
 
