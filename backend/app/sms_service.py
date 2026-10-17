@@ -12,6 +12,7 @@ if str(_BACKEND_DIR) not in sys.path:
 
 from sms_service import (
     send_sms,
+    send_cellular_sms,
     send_sms_msg91,
     sanitize_indian_mobile_number,
     sanitize_sms_recipient_digits,
@@ -23,6 +24,7 @@ from sms_service import (
 
 __all__ = [
     "send_sms",
+    "send_cellular_sms",
     "send_sms_msg91",
     "sanitize_indian_mobile_number",
     "sanitize_sms_recipient_digits",

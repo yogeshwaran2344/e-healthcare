@@ -109,9 +109,10 @@ def send_sms(
     route: str = "q"
 ) -> Dict[str, Any]:
     """
-    Unified notification dispatch: delivers via WhatsApp (as requested by user to replace SMS with WhatsApp).
+    Unified notification dispatch: delivers real cellular SMS directly via Fast2SMS Quick Route ('q').
+    Zero redirects, zero template requirements.
     """
-    return send_whatsapp(recipient_phone=recipient_phone, message=message)
+    return send_cellular_sms(recipient_phone=recipient_phone, message=message, route=route)
 
 
 def send_cellular_sms(
