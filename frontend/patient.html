@@ -1033,9 +1033,9 @@
                                     </div>
 
                                     <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Instant automated transmission via WhatsApp</small>
-                                        <button type="button" class="btn btn-sm btn-outline-success fw-semibold" onclick="testCaretakerWhatsApp()">
-                                            <i class="bi bi-whatsapp me-1"></i> Send Test WhatsApp to Caretaker
+                                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i> Instant automated transmission via Cellular SMS</small>
+                                        <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="testCaretakerSMS()">
+                                            <i class="bi bi-broadcast me-1"></i> Send Test SMS to Caretaker
                                         </button>
                                     </div>
                                 </div>
@@ -1251,7 +1251,7 @@
 
                                         </h5>
 
-                                        <small class="text-muted">Connect any Bluetooth watch or fitness band to stream real-time BP, Heart Rate &amp; SpO2 with automated WhatsApp alerts</small>
+                                        <small class="text-muted">Connect any Bluetooth watch or fitness band to stream real-time BP, Heart Rate &amp; SpO2 with automated cellular SMS alerts</small>
 
                                     </div>
 
@@ -1381,15 +1381,15 @@
 
                                         <div>
 
-                                            <strong class="text-dark small"><i class="bi bi-bell-fill text-danger me-1"></i>Automated WhatsApp Caretaker Alert Trigger</strong>
+                                            <strong class="text-dark small"><i class="bi bi-bell-fill text-danger me-1"></i>Automated Cellular SMS Caretaker Alert Trigger</strong>
 
                                             <span class="text-muted small d-block">Automatic alert message is dispatched whenever BP or Heart Rate is detected outside safe limits:</span>
 
                                         </div>
 
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
 
-                                            <i class="bi bi-whatsapp me-1"></i> WhatsApp Alerts Active
+                                            <i class="bi bi-broadcast me-1"></i> Cellular SMS Active
 
                                         </span>
 
@@ -1513,12 +1513,12 @@
 
                                         </button>
 
-                                        <button type="button" class="btn btn-sm btn-outline-success fw-semibold" onclick="testCaretakerWhatsApp()">
-                                            <i class="bi bi-whatsapp me-1"></i> Send Test WhatsApp to Caretaker
+                                        <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="testCaretakerSMS()">
+                                            <i class="bi bi-broadcast me-1"></i> Send Test SMS to Caretaker
                                         </button>
 
                                         <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="openContactSettingsModal()">
-                                            <i class="bi bi-gear-fill me-1"></i> WhatsApp Alerts Setup
+                                            <i class="bi bi-gear-fill me-1"></i> SMS Alerts Setup
                                         </button>
 
                                     </div>
@@ -3861,7 +3861,7 @@
 
                                 <div><strong>Contact:</strong> <span id="caregiverContactDisplay">+91 82175 15702</span></div>
 
-                                <div><strong>Notification Tier:</strong> Automated WhatsApp Urgent Alert Dispatch</div>
+                                <div><strong>Notification Tier:</strong> Automated Cellular SMS Alert Dispatch</div>
 
                             </div>
 
@@ -4484,19 +4484,19 @@
                 <div class="modal-header border-bottom bg-light">
 
                     <h5 class="modal-title fw-bold text-dark">
-                        <i class="bi bi-whatsapp text-success me-2"></i>Configure Automated WhatsApp Alert Routing
+                        <i class="bi bi-broadcast text-primary me-2"></i>Configure Automated Cellular SMS Alert Routing
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
                     <p class="small text-muted mb-3">
-                        Set verified phone numbers for automated background WhatsApp delivery of medication reminders, vital alerts, and emergency triage.
+                        Set verified phone numbers for automated background cellular SMS delivery of medication reminders, vital alerts, and emergency triage.
                     </p>
                     <form id="contactSettingsForm" onsubmit="saveContactSettings(event)">
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold text-dark">Patient Mobile Number (WhatsApp Recipient)</label>
+                            <label class="form-label small fw-semibold text-dark">Patient Mobile Number (SMS Recipient)</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-success-subtle text-success"><i class="bi bi-whatsapp"></i></span>
+                                <span class="input-group-text bg-primary-subtle text-primary"><i class="bi bi-broadcast"></i></span>
                                 <input type="tel" id="modalPatientPhone" class="form-control" required placeholder="+91 86189 12755">
                             </div>
                             <small class="text-secondary">Direct recipient for medication reminders, digital prescriptions, and vital status.</small>
@@ -4511,7 +4511,7 @@
                                 <input type="text" id="modalCaretakerName" class="form-control form-control-sm" required placeholder="e.g. Sarah Doe">
                             </div>
                             <div class="mb-2">
-                                <label class="form-label small fw-semibold">Caretaker Mobile (Emergency WhatsApp Alerts)</label>
+                                <label class="form-label small fw-semibold">Caretaker Mobile (Emergency SMS Alerts)</label>
                                 <input type="tel" id="modalCaretakerPhone" class="form-control form-control-sm" required placeholder="e.g. +91 86189 12755">
                             </div>
 
@@ -4672,9 +4672,9 @@
                                 <input type="tel" id="fMemPhone" class="form-control" placeholder="e.g. +91 98765 43210">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-semibold">Emergency WhatsApp Number</label>
+                                <label class="form-label small fw-semibold">Emergency SMS Number</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-success-subtle text-success"><i class="bi bi-whatsapp"></i></span>
+                                    <span class="input-group-text bg-primary-subtle text-primary"><i class="bi bi-broadcast"></i></span>
                                     <input type="tel" id="fMemWhatsapp" class="form-control" placeholder="e.g. +91 98765 43210">
                                 </div>
                             </div>
@@ -4752,8 +4752,8 @@
                 <div class="modal-footer bg-light p-3 border-top d-flex justify-content-between">
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-outline-success btn-sm fw-semibold" id="btnShareFamilyWhatsapp" onclick="shareFamilyEmergencyViaWhatsApp()">
-                            <i class="bi bi-whatsapp me-1"></i> Share to WhatsApp
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" id="btnShareFamilySMS" onclick="shareFamilyEmergencyViaSMS()">
+                            <i class="bi bi-broadcast me-1"></i> Share via SMS
                         </button>
                         <button type="button" class="btn btn-primary btn-sm fw-semibold" onclick="window.print()">
                             <i class="bi bi-printer me-1"></i> Print / Save

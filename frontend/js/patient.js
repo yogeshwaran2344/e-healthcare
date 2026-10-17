@@ -3373,7 +3373,7 @@ function startLiveBLETelemetryStream(deviceName, isHardwareConnected) {
                 <span class="badge bg-success"><i class="bi bi-broadcast me-1"></i> Live 2.4GHz BLE Active</span>
             </div>
             <div class="text-muted">
-                Battery: <strong>${bleBattery}%</strong> &bull; Signal: <strong>-48 dBm (Strong)</strong> &bull; Stream Rate: <strong>1 Hz Real-Time</strong> &bull; Channel: <strong>Automated WhatsApp Routing</strong>
+                Battery: <strong>${bleBattery}%</strong> &bull; Signal: <strong>-48 dBm (Strong)</strong> &bull; Stream Rate: <strong>1 Hz Real-Time</strong> &bull; Channel: <strong>Automated Cellular SMS Routing</strong>
             </div>
         </div>
     `;
@@ -3728,13 +3728,13 @@ async function submitManualVitals(e) {
 
         const autoDispatch = res.automated_whatsapp_dispatch || {};
 
-        // Always dispatch realistic Caretaker WhatsApp & SMS alert card on screen
+        // Always dispatch realistic Caretaker SMS alert card on screen
         if (bpSys >= 160 || bpDia >= 100) {
-            // Stage 2 Hypertensive Crisis: Direct Caretaker WhatsApp alert + Emergency dispatch
+            // Stage 2 Hypertensive Crisis: Direct Caretaker SMS alert + Emergency dispatch
             showSMSNotification({
-                title: "🚨 CRITICAL HYPERTENSION (BP 160) - AUTOMATED CARETAKER WHATSAPP DISPATCH",
-                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.delivery_id || 'WA-AUTO-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via automated WhatsApp Cloud Relay.`,
-                channel: "whatsapp",
+                title: "🚨 CRITICAL HYPERTENSION (BP 160) - AUTOMATED CARETAKER SMS DISPATCH",
+                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.delivery_id || 'F2SMS-LIVE-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Cellular SMS alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via Fast2SMS Route 'q'.`,
+                channel: "sms",
                 caretakerAlert: true,
                 duration: 12000
             });
@@ -3748,9 +3748,9 @@ async function submitManualVitals(e) {
             }, 600);
         } else if (bpSys >= 140 || bpDia >= 90 || res.tier_level >= 2) {
             showSMSNotification({
-                title: "⚠️ HIGH BP AUTOMATED CAREGIVER WHATSAPP ALERT",
-                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Automated WhatsApp notification sent to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
-                channel: "whatsapp",
+                title: "⚠️ HIGH BP AUTOMATED CAREGIVER SMS ALERT",
+                message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Automated cellular SMS notification sent to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
+                channel: "sms",
                 caretakerAlert: true,
                 duration: 9500
             });
@@ -3768,8 +3768,8 @@ async function submitManualVitals(e) {
         if (bpSys >= 140) {
             showSMSNotification({
                 title: bpSys >= 160 ? "🚨 CRITICAL HIGH BP (160 mmHg) AUTOMATED CARETAKER ALERT" : "⚠️ HIGH BP AUTOMATED ALERT",
-                message: `Blood Pressure of ${formattedBp} mmHg logged. Automated WhatsApp & SMS notification transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
-                channel: "whatsapp",
+                message: `Blood Pressure of ${formattedBp} mmHg logged. Automated Cellular SMS notification transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
+                channel: "sms",
                 caretakerAlert: true,
                 duration: 10000
             });
@@ -4026,8 +4026,8 @@ async function loadAdaptiveRemindersTab() {
                             <i class="bi bi-alarm me-1"></i> Due Today: ${s.current_reminder_time}
                         </span>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="sendMedicationReminderWhatsApp(${s.id}, '${s.medicine_name}', '${s.dosage}', '${s.condition}', '${s.current_reminder_time}')" title="Send WhatsApp alert to phone">
-                                <i class="bi bi-whatsapp text-success me-1"></i> Send WhatsApp Reminder
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="sendMedicationReminderSMS(${s.id}, '${s.medicine_name}', '${s.dosage}', '${s.condition}', '${s.current_reminder_time}')" title="Send SMS reminder to phone">
+                                <i class="bi bi-broadcast me-1"></i> Send SMS Reminder
                             </button>
                             <button type="button" class="btn btn-success btn-sm fw-semibold px-3" id="btnConfirmDose-${s.id}" onclick="confirmDoseTaken(${s.id}, '${s.medicine_name}', '${s.dosage}', '${s.current_reminder_time}')">
                                 <i class="bi bi-check2-circle me-1"></i> Confirm Dose Taken
@@ -4113,20 +4113,20 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
     }
 }
 
-async function sendMedicationReminderWhatsApp(scheduleId, medName, dosage, condition, slot) {
+async function sendMedicationReminderSMS(scheduleId, medName, dosage, condition, slot) {
     const cfg = getContactSettings();
     const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
 
     showSMSNotification({
-        title: "DISPATCHING WHATSAPP REMINDER...",
+        title: "DISPATCHING CELLULAR SMS REMINDER...",
         message: `Sending real-time intake reminder for ${medName} to ${cfg.patientPhone}...`,
-        channel: "whatsapp",
+        channel: "sms",
         phone: cfg.patientPhone,
         duration: 4000
     });
 
     try {
-        const res = await API.post('/api/closed-loop/reminders/send-reminder-whatsapp', {
+        const res = await API.post('/api/closed-loop/reminders/send-reminder-sms', {
             medicine_name: medName,
             dosage: dosage,
             condition: condition,
@@ -4137,9 +4137,9 @@ async function sendMedicationReminderWhatsApp(scheduleId, medName, dosage, condi
         });
 
         showSMSNotification({
-            title: "✅ WHATSAPP REMINDER TRANSMITTED",
+            title: "✅ CELLULAR SMS REMINDER TRANSMITTED",
             message: `Medication reminder for ${medName} (${slot}) dispatched to ${res.target_phone || cfg.patientPhone}.`,
-            channel: "whatsapp",
+            channel: "sms",
             phone: res.target_phone || cfg.patientPhone,
             duration: 9000
         });
@@ -4147,11 +4147,12 @@ async function sendMedicationReminderWhatsApp(scheduleId, medName, dosage, condi
         showSMSNotification({
             title: "⚠️ REMINDER RELAY NOTICE",
             message: err.message || "Reminder relayed.",
-            channel: "whatsapp",
+            channel: "sms",
             duration: 6000
         });
     }
 }
+const sendMedicationReminderWhatsApp = sendMedicationReminderSMS;
 
 function undoDoseTaken(scheduleId, medName) {
     const todayKey = new Date().toISOString().split('T')[0];
@@ -4823,9 +4824,9 @@ function renderFamilyMembersList(members) {
                                 <i class="bi bi-telephone me-1 text-primary"></i> ${escapeHtml(phone)}
                             </a>
                         ` : ''}
-                        ${whatsapp ? `
-                            <a href="https://wa.me/${escapeHtml(whatsapp.replace(/[^0-9]/g, ''))}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2 small" title="Open WhatsApp Chat">
-                                <i class="bi bi-whatsapp me-1"></i> WhatsApp
+                        ${whatsapp || phone ? `
+                            <a href="sms:${escapeHtml((whatsapp || phone).replace(/[^0-9+]/g, ''))}" class="btn btn-sm btn-outline-primary py-0 px-2 small" title="Send Emergency SMS">
+                                <i class="bi bi-broadcast me-1"></i> SMS
                             </a>
                         ` : ''}
                     </div>
@@ -5138,7 +5139,7 @@ function openFamilyEmergencyCard(memberId) {
     }
 }
 
-function shareFamilyEmergencyViaWhatsApp() {
+function shareFamilyEmergencyViaSMS() {
     const m = currentSelectedEmergencyMember;
     if (!m) return;
 
@@ -5146,20 +5147,18 @@ function shareFamilyEmergencyViaWhatsApp() {
     const guardian = user.full_name || 'Primary Guardian';
     const guardianPhone = user.phone || 'On file';
 
-    const text = `🚨 *NEUROCARE EMERGENCY MEDICAL PASSPORT* 🚨\n\n` +
-        `👤 *Patient:* ${m.full_name} (${m.relationship})\n` +
-        `🩸 *Blood Group:* ${m.blood_group || 'O+'}\n` +
-        `🎂 *Age / Gender:* ${m.age ? m.age + ' yrs' : 'N/A'} / ${m.gender || 'Other'}\n` +
-        `⚠️ *Allergies:* ${m.known_allergies || 'None reported'}\n` +
-        `🩺 *Chronic Conditions:* ${m.chronic_conditions || 'None'}\n` +
-        `💊 *Current Medications:* ${m.current_medications || 'None'}\n` +
-        `🔑 *Emergency Hashcode:* ${m.emergency_hashcode}\n` +
-        `📞 *Family Guardian (${guardian}):* ${guardianPhone}\n\n` +
-        `🔒 *Cryptographically verified by NeuroCare Emergency Network.*`;
+    const text = `🚨 NEUROCARE EMERGENCY PASSPORT: Patient ${m.full_name} (${m.relationship}), Blood: ${m.blood_group || 'O+'}, Hash: ${m.emergency_hashcode}, Guardian: ${guardian} (${guardianPhone}).`;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    showSMSNotification({
+        title: "EMERGENCY PASSPORT SMS",
+        message: text,
+        channel: "emergency",
+        phone: guardianPhone,
+        duration: 9000
+    });
 }
+
+const shareFamilyEmergencyViaWhatsApp = shareFamilyEmergencyViaSMS;
 
 function openFamilyEmergencyLookupModal() {
     const box = document.getElementById('emergencyLookupResultBox');
@@ -5245,6 +5244,7 @@ window.openEditFamilyMemberModal = openEditFamilyMemberModal;
 window.saveNewFamilyMember = saveNewFamilyMember;
 window.deleteFamilyMember = deleteFamilyMember;
 window.openFamilyEmergencyCard = openFamilyEmergencyCard;
+window.shareFamilyEmergencyViaSMS = shareFamilyEmergencyViaSMS;
 window.shareFamilyEmergencyViaWhatsApp = shareFamilyEmergencyViaWhatsApp;
 window.filterFamilyMembersList = filterFamilyMembersList;
 window.openFamilyEmergencyLookupModal = openFamilyEmergencyLookupModal;

@@ -48,7 +48,7 @@ def send_live_sms_message(
     clean_phone = res.get("phone", recipient_phone)
     return {
         "live_sent": res.get("success", True),
-        "provider": res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
+        "provider": res.get("provider", "Fast2SMS Quick SMS Gateway"),
         "phone": clean_phone,
         "target_phone": clean_phone,
         "sid": res.get("sid"),
@@ -687,12 +687,16 @@ def confirm_dose_taken(
         "status": "confirmed",
         "confirmed_at": now_str,
         "message": f"Dose intake for {med_name} confirmed.",
+        "sms_dispatch": {
+            "sent": live_res.get("live_sent", True),
+            "provider": live_res.get("provider", "Fast2SMS Quick SMS Gateway"),
+            "target": target_phone,
+            "error": None
+        },
         "whatsapp_dispatch": {
             "sent": live_res.get("live_sent", True),
-            "provider": live_res.get("provider"),
+            "provider": live_res.get("provider", "Fast2SMS Quick SMS Gateway"),
             "target": target_phone,
-            "direct_whatsapp_url": live_res.get("direct_whatsapp_url"),
-            "direct_sms_url": live_res.get("direct_sms_url"),
             "error": None
         }
     }
@@ -720,12 +724,12 @@ def send_medication_reminder_sms(
 
     return {
         "success": sms_res.get("success", True),
-        "channel": "whatsapp",
-        "provider": sms_res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
+        "channel": "sms",
+        "provider": sms_res.get("provider", "Fast2SMS Quick SMS Gateway"),
         "target_phone": sms_res.get("phone", target_phone),
-        "whatsapp_sent": sms_res.get("success", False),
+        "sms_sent": sms_res.get("success", False),
+        "whatsapp_sent": False,
         "sid": sms_res.get("sid"),
-        "direct_whatsapp_url": sms_res.get("direct_whatsapp_url"),
         "error_details": sms_res.get("error"),
         "message": reminder_msg
     }
@@ -781,23 +785,23 @@ def evaluate_caregiver_alert(
         f"{result.get('recommended_action', 'Check on patient immediately.')}"
     )
 
-    live_res = send_whatsapp(caretaker_phone, msg_body)
+    live_res = send_cellular_sms(caretaker_phone, msg_body)
 
-    result["automated_whatsapp_dispatch"] = {
+    result["automated_sms_dispatch"] = {
         "status": "DELIVERED" if live_res.get("success") else "FAILED",
         "sid": live_res.get("sid"),
-        "provider": live_res.get("provider", "NeuroCare Automated WhatsApp Gateway"),
-        "channel": "whatsapp",
+        "provider": live_res.get("provider", "Fast2SMS Quick SMS Gateway"),
+        "channel": "sms",
         "recipient_name": caretaker_name,
         "recipient_phone": live_res.get("phone", caretaker_phone),
         "delivered_at": now_iso,
         "is_automatic": True,
-        "direct_whatsapp_url": live_res.get("direct_whatsapp_url"),
+        "sms_sent": live_res.get("success", False),
         "message_body": msg_body
     }
 
     # Compatibility alias
-    result["automated_sms_dispatch"] = result["automated_whatsapp_dispatch"]
+    result["automated_whatsapp_dispatch"] = result["automated_sms_dispatch"]
 
     return result
 
