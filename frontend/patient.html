@@ -56,8 +56,8 @@
 
             <div class="ms-auto d-flex align-items-center gap-2">
 
-                <button class="btn btn-outline-success btn-sm fw-semibold rounded-pill d-none d-sm-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure WhatsApp Alerts &amp; Emergency Contacts">
-                    <i class="bi bi-whatsapp me-1 text-success"></i> WhatsApp Alerts Setup
+                <button class="btn btn-outline-primary btn-sm fw-semibold rounded-pill d-none d-sm-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure Cellular SMS Alerts &amp; Emergency Contacts">
+                    <i class="bi bi-broadcast me-1 text-primary"></i> SMS Alerts Setup
                 </button>
 
                 <button class="btn btn-danger btn-sm sos-btn-pulse px-3 me-1" onclick="activateTab('tab-emergency'); triggerOneTapSOS();">
@@ -270,9 +270,9 @@
 
                     <li class="nav-item border-top mt-2 pt-2">
                         <button class="sidebar-tab-btn nav-link" onclick="openContactSettingsModal(); toggleSidebar();" type="button">
-                            <i class="bi bi-whatsapp text-success"></i>
-                            <span class="tab-label">WhatsApp Alerts</span>
-                            <span class="badge bg-success-subtle text-success ms-auto">WhatsApp</span>
+                            <i class="bi bi-broadcast text-primary"></i>
+                            <span class="tab-label">SMS Alerts</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">Fast2SMS</span>
                         </button>
                     </li>
 
@@ -989,9 +989,9 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label small fw-semibold">Emergency WhatsApp Number (Alert Recipient)</label>
+                                        <label class="form-label small fw-semibold">Emergency SMS Number (Alert Recipient)</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-success-subtle text-success"><i class="bi bi-whatsapp"></i></span>
+                                            <span class="input-group-text bg-primary-subtle text-primary"><i class="bi bi-broadcast"></i></span>
                                             <input type="tel" id="profWhatsapp" class="form-control" placeholder="+91 86189 12755">
                                         </div>
                                     </div>
@@ -1000,12 +1000,12 @@
                                 <div class="card border border-warning-subtle bg-warning-subtle bg-opacity-10 p-3 rounded-3 mb-3">
                                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                                         <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-warning me-1"></i> Caretaker / Emergency Contact Routing</h6>
-                                        <button type="button" class="btn btn-sm btn-outline-success fw-semibold" onclick="openContactSettingsModal()">
-                                            <i class="bi bi-gear-fill me-1"></i> WhatsApp Alerts Setup
+                                        <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="openContactSettingsModal()">
+                                            <i class="bi bi-gear-fill me-1"></i> SMS Alerts Setup
                                         </button>
                                     </div>
 
-                                    <p class="small text-muted mb-3">Critical medical updates, prescription reminders, and abnormal vital alerts will automatically be dispatched via WhatsApp to this trusted contact.</p>
+                                    <p class="small text-muted mb-3">Critical medical updates, prescription reminders, and abnormal vital alerts will automatically be dispatched via cellular SMS to this trusted contact.</p>
 
                                     <div class="row g-3">
                                         <div class="col-md-4">
@@ -1014,7 +1014,7 @@
                                         </div>
 
                                         <div class="col-md-4">
-                                            <label class="form-label small fw-semibold">Caretaker Mobile (WhatsApp Alerts)</label>
+                                            <label class="form-label small fw-semibold">Caretaker Mobile (SMS Alerts)</label>
                                             <input type="tel" id="profCaretakerPhone" class="form-control" placeholder="e.g. +91 86189 12755">
                                         </div>
 
@@ -4543,7 +4543,7 @@
 
                                 <label class="form-check-label small text-muted" for="modalCaretakerDualAlert">
 
-                                    Simultaneously route real-time WhatsApp alerts &amp; prescriptions to Caretaker
+                                    Simultaneously route real-time cellular SMS alerts &amp; prescriptions to Caretaker
 
                                 </label>
 
@@ -4551,20 +4551,20 @@
 
                         </div>
 
-                        <div class="p-3 bg-success-subtle rounded-3 border border-success-subtle mb-3">
-                            <h6 class="fw-bold small text-success mb-2 d-flex align-items-center justify-content-between">
-                                <span><i class="bi bi-whatsapp me-1"></i> NeuroCare Automated WhatsApp Gateway</span>
-                                <span class="badge bg-success text-white small">Direct Route Active</span>
+                        <div class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle mb-3">
+                            <h6 class="fw-bold small text-primary mb-2 d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-broadcast me-1"></i> Fast2SMS Quick Gateway (Route 'q')</span>
+                                <span class="badge bg-primary text-white small">Direct Route Active</span>
                             </h6>
                             <p class="text-muted small mb-2" style="font-size:0.78rem;">
-                                Transmits automated WhatsApp notifications to any 10-digit mobile number for medication dose reminders &amp; vital alerts (BP/Heart Rate). Zero manual clicking or cellular SMS needed.
+                                Transmits automated cellular SMS directly to any 10-digit Indian mobile number for medication dose reminders &amp; vital alerts (BP/Heart Rate). Zero manual clicking required.
                             </p>
                             <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-sm flex-fill fw-semibold text-white" onclick="testPatientWhatsApp()">
-                                    <i class="bi bi-person-check-fill me-1"></i> Send Test WhatsApp to Patient
+                                <button type="button" class="btn btn-primary btn-sm flex-fill fw-semibold text-white" onclick="testPatientSMS()">
+                                    <i class="bi bi-person-check-fill me-1"></i> Send Test SMS to Patient
                                 </button>
-                                <button type="button" class="btn btn-danger btn-sm flex-fill fw-semibold text-white" onclick="testCaretakerWhatsApp()">
-                                    <i class="bi bi-heart-pulse-fill me-1"></i> Send Test WhatsApp to Caretaker
+                                <button type="button" class="btn btn-danger btn-sm flex-fill fw-semibold text-white" onclick="testCaretakerSMS()">
+                                    <i class="bi bi-heart-pulse-fill me-1"></i> Send Test SMS to Caretaker
                                 </button>
                             </div>
                         </div>

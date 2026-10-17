@@ -225,10 +225,10 @@ def check_vitals(
     if not clean_caretaker_phone:
         clean_caretaker_phone = sanitize_indian_mobile_number(os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755"))
 
-    # 5. Send Live Automated WhatsApp Alert to Caretaker
-    logger.warning(f"Dispatching [{severity}] caretaker automated WhatsApp health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
+    # 5. Send Live Cellular SMS Alert to Caretaker
+    logger.warning(f"Dispatching [{severity}] caretaker cellular SMS health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
 
-    dispatch_wa = send_whatsapp(
+    dispatch_sms = send_cellular_sms(
         recipient_phone=clean_caretaker_phone,
         message=message
     )
@@ -239,9 +239,8 @@ def check_vitals(
         "severity": severity,
         "systolic": systolic_bp,
         "hr": heart_rate,
-        "last_status": dispatch_wa.get("status"),
-        "whatsapp_status": dispatch_wa.get("status"),
-        "sms_status": dispatch_wa.get("status")
+        "last_status": dispatch_sms.get("status"),
+        "sms_status": dispatch_sms.get("status")
     }
 
     return {
@@ -250,10 +249,9 @@ def check_vitals(
         "severity": severity,
         "alerts": alerts,
         "message": message,
-        "channel": "whatsapp",
-        "notification": dispatch_wa,
-        "whatsapp_notification": dispatch_wa,
-        "sms_notification": dispatch_wa,
+        "channel": "sms",
+        "notification": dispatch_sms,
+        "sms_notification": dispatch_sms,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 

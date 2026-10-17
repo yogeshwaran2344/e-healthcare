@@ -20,12 +20,10 @@ if str(_CURRENT_DIR) not in sys.path:
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from whatsapp_service import (
-    send_whatsapp,
+from sms_service import (
+    send_cellular_sms,
     send_sms,
-    sanitize_indian_mobile_number,
-    format_whatsapp_recipient,
-    format_whatsapp_url
+    sanitize_indian_mobile_number
 )
 
 # Configure logger
@@ -48,7 +46,7 @@ def send_medication_reminder(
     patient_name: str = ""
 ) -> Dict[str, Any]:
     """
-    Sends an automated WhatsApp medication reminder to the patient.
+    Sends an automated cellular SMS medication reminder to the patient.
     
     Example Message:
     "NeuroCare Reminder: Hello John, your scheduled dose of Metformin 500mg (1 tablet)
@@ -62,7 +60,7 @@ def send_medication_reminder(
             "error": f"Invalid 10-digit mobile number: '{patient_phone}'",
             "medication": medication_name,
             "scheduled_time": scheduled_time,
-            "channel": "whatsapp"
+            "channel": "sms"
         }
 
     dosage_str = f" ({dosage.strip()})" if dosage and dosage.strip() else ""
@@ -74,9 +72,9 @@ def send_medication_reminder(
         f"Please take your prescribed medication on time."
     )
 
-    logger.info(f"Dispatching WhatsApp reminder for '{medication_name}' to +91{clean_phone}...")
+    logger.info(f"Dispatching cellular SMS reminder for '{medication_name}' to +91{clean_phone}...")
 
-    res = send_whatsapp(
+    res = send_cellular_sms(
         recipient_phone=clean_phone,
         message=message
     )
@@ -85,8 +83,8 @@ def send_medication_reminder(
     res["scheduled_time"] = scheduled_time
     res["dosage"] = dosage
     res["patient_name"] = p_name
-    res["channel"] = "whatsapp"
-    res["whatsapp_notification"] = dict(res)
+    res["channel"] = "sms"
+    res["sms_notification"] = dict(res)
     return res
 
 
