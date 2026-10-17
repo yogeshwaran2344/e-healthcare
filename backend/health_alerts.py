@@ -219,7 +219,7 @@ def check_vitals(
 
     clean_caretaker_phone = sanitize_phone_number(caretaker_phone)
     if not clean_caretaker_phone:
-        clean_caretaker_phone = os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")
+        clean_caretaker_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
 
     # 5. Send Live WhatsApp Alert
     logger.warning(f"Dispatching [{severity}] caretaker health alert for patient {patient_id} to {clean_caretaker_phone}...")
@@ -288,7 +288,7 @@ def evaluate_patient_latest_vitals(patient_id: int, db=None) -> Dict[str, Any]:
                 caretaker_name = fm.full_name
 
         if not caretaker_phone:
-            caretaker_phone = user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")
+            caretaker_phone = user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
 
         # Get latest BP and HR readings
         bp_reading = (
@@ -334,7 +334,7 @@ if __name__ == "__main__":
     print("   CARETAKER VITAL SIGNS HEALTH ALERT - TEST RUN")
     print("=" * 70)
 
-    test_phone = os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")
+    test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         test_phone = sys.argv[1].strip()
 

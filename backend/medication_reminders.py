@@ -140,7 +140,7 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
                         patient_name = user.full_name or "Patient"
 
                 if not phone:
-                    phone = os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")
+                    phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
 
                 result = send_medication_reminder(
                     patient_phone=phone,
@@ -221,7 +221,7 @@ if __name__ == "__main__":
     print("   AUTOMATED PATIENT MEDICATION REMINDER - TEST RUN")
     print("=" * 70)
 
-    test_phone = os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")
+    test_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")
     if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
         test_phone = sys.argv[1].strip()
 

@@ -78,77 +78,35 @@ function openContactSettingsModal() {
     document.getElementById('modalCaretakerPhone').value = cfg.caretakerPhone || defaultNum;
     document.getElementById('modalCaretakerRelation').value = cfg.caretakerRelation || 'Emergency Contact / Guardian';
     document.getElementById('modalCaretakerDualAlert').checked = cfg.dualAlert !== false;
-    
-    if (document.getElementById('modalTwilioSid')) {
-        document.getElementById('modalTwilioSid').value = localStorage.getItem('ehealth_twilio_sid') || '';
-    }
-    if (document.getElementById('modalTwilioAuth')) {
-        document.getElementById('modalTwilioAuth').value = localStorage.getItem('ehealth_twilio_auth') || '';
-    }
-    if (document.getElementById('modalTwilioFrom')) {
-        document.getElementById('modalTwilioFrom').value = localStorage.getItem('ehealth_twilio_from') || 'whatsapp:+17372508034';
-    }
-    if (document.getElementById('modalTwilioContentSid')) {
-        document.getElementById('modalTwilioContentSid').value = localStorage.getItem('ehealth_twilio_content_sid') || '';
-    }
     bootstrap.Modal.getOrCreateInstance(document.getElementById('contactSettingsModal')).show();
 }
 
-async function saveAndTestTwilioGateway() {
-    const sid = document.getElementById('modalTwilioSid')?.value.trim();
-    const auth = document.getElementById('modalTwilioAuth')?.value.trim();
-    const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
-    const contentSid = document.getElementById('modalTwilioContentSid')?.value.trim() || '';
+async function testDirectWhatsAppAlert() {
     const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';
     const targetPhone = document.getElementById('modalCaretakerPhone')?.value.trim() || document.getElementById('modalPatientPhone')?.value.trim() || defaultNum;
-
-    if (!sid || !auth) {
-        alert("Please enter both your Twilio Account SID (starts with AC...) and Auth Token to test.");
-        return;
-    }
 
     if (!targetPhone) {
         alert("Please enter a valid mobile number in either Caretaker Mobile or Patient Mobile.");
         return;
     }
 
-    localStorage.setItem('ehealth_twilio_sid', sid);
-    localStorage.setItem('ehealth_twilio_auth', auth);
-    localStorage.setItem('ehealth_twilio_from', fromNum);
-    if (contentSid) localStorage.setItem('ehealth_twilio_content_sid', contentSid);
+    const cleanDigits = targetPhone.replace(/[^0-9]/g, '');
+    const waPhoneDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
+    const testMsg = `🚨 NEUROCARE SYSTEM VERIFICATION\n\nPatient: ${(typeof currentProfile !== 'undefined' && currentProfile && currentProfile.full_name) || 'Patient'}\nDirect WhatsApp & SMS notifications are active!\nMedication reminders & abnormal vital alerts will be received at this number.`;
+    const encoded = encodeURIComponent(testMsg);
+    const waDirectUrl = `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${encoded}`;
 
     showSMSNotification({
-        title: "TESTING TWILIO GATEWAY...",
-        message: `Sending real-time handshake message to ${targetPhone} via Twilio API...`,
+        title: "✅ DIRECT WHATSAPP READY",
+        message: `Notification gateway active for +${waPhoneDigits}. Click Open in WhatsApp to send test message directly.`,
         channel: "whatsapp",
         phone: targetPhone,
-        duration: 5000
+        duration: 12000
     });
 
     try {
-        const res = await API.post('/api/closed-loop/caregiver/save-twilio-config', {
-            account_sid: sid,
-            auth_token: auth,
-            from_number: fromNum,
-            content_sid: contentSid,
-            phone: targetPhone
-        });
-
-        if (res.success) {
-            alert(`✅ TWILIO GATEWAY CONNECTED & VERIFIED!\n\nLive verification message dispatched to: ${res.target_phone}\nProvider: ${res.provider}\n\nCheck WhatsApp on your phone now!`);
-            showSMSNotification({
-                title: "✅ LIVE WHATSAPP CONNECTED",
-                message: `Twilio gateway active! Messages verified and sending to ${res.target_phone}.`,
-                channel: "whatsapp",
-                phone: targetPhone,
-                duration: 10000
-            });
-        } else {
-            alert(`⚠️ Twilio API Handshake Result:\n\nTarget: ${res.target_phone}\nError: ${res.error_details || 'Could not verify Twilio API.'}\n\nPlease check that Account SID and Auth Token are correct.`);
-        }
-    } catch (err) {
-        alert("Verification request failed: " + err.message);
-    }
+        window.open(waDirectUrl, '_blank');
+    } catch (_) {}
 }
 
 function saveContactSettings(e) {
@@ -156,13 +114,6 @@ function saveContactSettings(e) {
     const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';
     const pPhone = document.getElementById('modalPatientPhone').value.trim() || defaultNum;
     const cPhone = document.getElementById('modalCaretakerPhone').value.trim() || defaultNum;
-    const sid = document.getElementById('modalTwilioSid')?.value.trim() || '';
-    const auth = document.getElementById('modalTwilioAuth')?.value.trim() || '';
-    const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
-
-    if (sid) localStorage.setItem('ehealth_twilio_sid', sid);
-    if (auth) localStorage.setItem('ehealth_twilio_auth', auth);
-    if (fromNum) localStorage.setItem('ehealth_twilio_from', fromNum);
 
     const cfg = {
         patientPhone: pPhone,
@@ -170,23 +121,17 @@ function saveContactSettings(e) {
         caretakerName: document.getElementById('modalCaretakerName').value.trim() || "Primary Caregiver",
         caretakerPhone: cPhone,
         caretakerRelation: document.getElementById('modalCaretakerRelation').value,
-        dualAlert: document.getElementById('modalCaretakerDualAlert').checked,
-        twilioSid: sid,
-        twilioAuth: auth,
-        twilioFrom: fromNum
+        dualAlert: document.getElementById('modalCaretakerDualAlert').checked
     };
     localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
     initContactSettings();
 
-    // If Twilio credentials were entered, sync to backend
-    if (sid && auth) {
-        API.post('/api/closed-loop/caregiver/save-twilio-config', {
-            account_sid: sid,
-            auth_token: auth,
-            from_number: fromNum,
-            phone: cPhone
-        }).catch(() => {});
-    }
+    // Sync to backend
+    API.post('/api/closed-loop/caregiver/save-notification-config', {
+        phone: cPhone,
+        patient_phone: pPhone,
+        caretaker_name: cfg.caretakerName
+    }).catch(() => {});
 
     // Sync into profile form if open
     const profPhone = document.getElementById('profPhone');
@@ -204,11 +149,12 @@ function saveContactSettings(e) {
     const modalInst = bootstrap.Modal.getInstance(modalEl);
     if (modalInst) modalInst.hide();
 
-    // Trigger verified SMS OTP card
+    // Trigger verified SMS card
     showSMSNotification({
-        title: "ROUTING & TWILIO SAVED",
+        title: "ROUTING CONFIGURATION SAVED",
         message: `Alert channels configured! Prescriptions & vital spike alerts will now be routed directly to ${cfg.patientPhone} and Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
         channel: "whatsapp",
+        phone: cfg.caretakerPhone,
         otp: Math.floor(100000 + Math.random() * 900000).toString(),
         duration: 8000
     });
@@ -289,17 +235,11 @@ function showSMSNotification(options) {
     // Directly trigger backend automated WhatsApp relay in the background
     if (channel === 'whatsapp' || options.caretakerAlert) {
         try {
-            const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
-            const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
-            const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
             API.post('/api/closed-loop/caregiver/dispatch-automated-whatsapp', {
                 recipient_name: cfg.caretakerName,
                 recipient_phone: targetPhone || cfg.caretakerPhone,
                 title: title,
-                message: msg,
-                twilio_sid: sid,
-                twilio_auth: auth,
-                twilio_from: fromNum
+                message: msg
             }).catch(() => {});
         } catch (_) {}
     }
@@ -3449,9 +3389,6 @@ async function submitManualVitals(e) {
 
     try {
         const cfg = getContactSettings();
-        const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
-        const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
-        const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
         const vitals = { hr, spo2, bp_sys: bpSys, bp_dia: bpDia, temp };
         const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
         const res = await API.post('/api/closed-loop/caregiver/evaluate-alert', {
@@ -3459,10 +3396,7 @@ async function submitManualVitals(e) {
             missed_doses_count: 0,
             patient_name: pName,
             caretaker_name: cfg.caretakerName,
-            caretaker_phone: cfg.caretakerPhone,
-            twilio_sid: sid,
-            twilio_auth: auth,
-            twilio_from: fromNum
+            caretaker_phone: cfg.caretakerPhone
         });
         updateCaregiverAlertUI(res);
 
@@ -3709,9 +3643,6 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
 
     const cfg = getContactSettings();
     const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
-    const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
-    const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
-    const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
 
     try {
         const res = await API.post('/api/closed-loop/reminders/confirm-dose', {
@@ -3721,10 +3652,7 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
             scheduled_slot: reminderTime || "Morning Slot",
             patient_name: pName,
             phone: cfg.patientPhone,
-            caretaker_phone: cfg.caretakerPhone,
-            twilio_sid: sid,
-            twilio_auth: auth,
-            twilio_from: fromNum
+            caretaker_phone: cfg.caretakerPhone
         });
 
         // Update UI in place immediately
@@ -3747,6 +3675,7 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
             title: "MEDICATION DOSE LOGGED",
             message: `Confirmed ${medName} taken at ${timeStr}. Behavioral adherence updated to 95%. Automated WhatsApp confirmation dispatched to ${cfg.patientPhone}.`,
             channel: "whatsapp",
+            phone: cfg.patientPhone,
             duration: 9000
         });
 
@@ -3755,6 +3684,7 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
             title: "DOSE RECORDED LOCALLY",
             message: `Dose for ${medName} logged at ${timeStr}. Adherence score updated.`,
             channel: "whatsapp",
+            phone: cfg.patientPhone,
             duration: 7000
         });
     }
@@ -3763,14 +3693,12 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
 async function sendMedicationReminderWhatsApp(scheduleId, medName, dosage, condition, slot) {
     const cfg = getContactSettings();
     const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
-    const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
-    const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
-    const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
 
     showSMSNotification({
         title: "DISPATCHING WHATSAPP REMINDER...",
         message: `Sending real-time intake reminder for ${medName} to ${cfg.patientPhone}...`,
         channel: "whatsapp",
+        phone: cfg.patientPhone,
         duration: 4000
     });
 
@@ -3782,16 +3710,14 @@ async function sendMedicationReminderWhatsApp(scheduleId, medName, dosage, condi
             scheduled_slot: slot,
             patient_name: pName,
             phone: cfg.patientPhone,
-            caretaker_phone: cfg.caretakerPhone,
-            twilio_sid: sid,
-            twilio_auth: auth,
-            twilio_from: fromNum
+            caretaker_phone: cfg.caretakerPhone
         });
 
         showSMSNotification({
             title: "✅ WHATSAPP REMINDER TRANSMITTED",
             message: `Medication reminder for ${medName} (${slot}) dispatched to ${res.target_phone || cfg.patientPhone}.`,
             channel: "whatsapp",
+            phone: res.target_phone || cfg.patientPhone,
             duration: 9000
         });
     } catch (err) {
@@ -5358,35 +5284,29 @@ async function testLiveWhatsAppPing() {
 
     showSMSNotification({
         title: "⚡ AUTOMATED WHATSAPP DISPATCHING...",
-        message: `Transmitting real-time automated medical alert to +${cleanPhoneDigits} via Twilio Carrier Gateway...`,
+        message: `Transmitting real-time automated medical alert to +${cleanPhoneDigits} via Direct WhatsApp Gateway...`,
         channel: "whatsapp",
         phone: defaultPhone,
         duration: 5000
     });
 
     try {
-        const sid = localStorage.getItem('ehealth_twilio_sid') || cfg.twilioSid || '';
-        const auth = localStorage.getItem('ehealth_twilio_auth') || cfg.twilioAuth || '';
-        const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
         const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
         const res = await API.post('/api/closed-loop/caregiver/test-live-whatsapp', {
             phone: cleanPhoneDigits,
-            patient_name: pName,
-            twilio_sid: sid,
-            twilio_auth: auth,
-            twilio_from: fromNum
+            patient_name: pName
         });
         if (res.success) {
             showSMSNotification({
                 title: "✅ AUTOMATED WHATSAPP DELIVERED",
-                message: `Automated alert message successfully delivered to +${res.target_phone} via ${res.provider}. Ref: ${res.raw_response?.sid || 'Live Carrier Dispatch'}.`,
+                message: `Automated alert message successfully delivered to +${res.target_phone} via ${res.provider || 'Direct Gateway'}. Ref: ${res.raw_response?.sid || 'Live Dispatch'}.`,
                 channel: "whatsapp",
                 duration: 12000
             });
         } else {
             showSMSNotification({
-                title: "⚠️ TWILIO CARRIER STATUS",
-                message: res.error_details || "Automated carrier dispatch attempted.",
+                title: "⚠️ DISPATCH STATUS",
+                message: res.error_details || "Automated dispatch attempted.",
                 channel: "whatsapp",
                 duration: 10000
             });

@@ -15,7 +15,6 @@ from whatsapp_service import (
     send_whatsapp,
     sanitize_phone_number,
     format_whatsapp_recipient,
-    get_twilio_credentials,
     check_whatsapp_service_health,
     DEFAULT_SANDBOX_FROM
 )
@@ -24,7 +23,6 @@ __all__ = [
     "send_whatsapp",
     "sanitize_phone_number",
     "format_whatsapp_recipient",
-    "get_twilio_credentials",
     "check_whatsapp_service_health",
     "DEFAULT_SANDBOX_FROM"
 ]
