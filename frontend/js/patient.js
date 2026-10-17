@@ -39,13 +39,18 @@ function playSmsChime() {
 function getContactSettings() {
     const saved = localStorage.getItem('ehealth_contact_routing');
     if (saved) {
-        try { return JSON.parse(saved); } catch (e) {}
+        try { 
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed === 'object') return parsed;
+        } catch (e) {}
     }
+    const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
+    const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || (user && user.phone) || "";
     return {
-        patientPhone: (currentProfile && currentProfile.phone) || "+91 86189 12755",
-        patientWhatsapp: "+91 86189 12755",
+        patientPhone: defaultNum,
+        patientWhatsapp: defaultNum,
         caretakerName: "Primary Caregiver",
-        caretakerPhone: "+91 86189 12755",
+        caretakerPhone: defaultNum,
         caretakerRelation: "Emergency Contact / Guardian",
         dualAlert: true
     };
@@ -58,17 +63,19 @@ function initContactSettings() {
     const cPhoneElem = document.getElementById('displayCaretakerPhone');
     const cRelElem = document.getElementById('displayCaretakerRelation');
 
-    if (pElem) pElem.textContent = cfg.patientPhone || cfg.patientWhatsapp;
-    if (cNameElem) cNameElem.textContent = cfg.caretakerName;
-    if (cPhoneElem) cPhoneElem.textContent = cfg.caretakerPhone;
-    if (cRelElem) cRelElem.textContent = cfg.caretakerRelation;
+    if (pElem) pElem.textContent = cfg.patientPhone || cfg.patientWhatsapp || "Not Set";
+    if (cNameElem) cNameElem.textContent = cfg.caretakerName || "Primary Caregiver";
+    if (cPhoneElem) cPhoneElem.textContent = cfg.caretakerPhone || "Not Set";
+    if (cRelElem) cRelElem.textContent = cfg.caretakerRelation || "Guardian";
 }
 
 function openContactSettingsModal() {
     const cfg = getContactSettings();
-    document.getElementById('modalPatientPhone').value = cfg.patientPhone || cfg.patientWhatsapp || '+91 86189 12755';
+    const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
+    const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || (user && user.phone) || '';
+    document.getElementById('modalPatientPhone').value = cfg.patientPhone || cfg.patientWhatsapp || defaultNum;
     document.getElementById('modalCaretakerName').value = cfg.caretakerName || 'Primary Caregiver';
-    document.getElementById('modalCaretakerPhone').value = cfg.caretakerPhone || '+91 86189 12755';
+    document.getElementById('modalCaretakerPhone').value = cfg.caretakerPhone || defaultNum;
     document.getElementById('modalCaretakerRelation').value = cfg.caretakerRelation || 'Emergency Contact / Guardian';
     document.getElementById('modalCaretakerDualAlert').checked = cfg.dualAlert !== false;
     
@@ -92,10 +99,16 @@ async function saveAndTestTwilioGateway() {
     const auth = document.getElementById('modalTwilioAuth')?.value.trim();
     const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
     const contentSid = document.getElementById('modalTwilioContentSid')?.value.trim() || '';
-    const targetPhone = document.getElementById('modalCaretakerPhone')?.value.trim() || document.getElementById('modalPatientPhone')?.value.trim() || '+91 86189 12755';
+    const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';
+    const targetPhone = document.getElementById('modalCaretakerPhone')?.value.trim() || document.getElementById('modalPatientPhone')?.value.trim() || defaultNum;
 
     if (!sid || !auth) {
         alert("Please enter both your Twilio Account SID (starts with AC...) and Auth Token to test.");
+        return;
+    }
+
+    if (!targetPhone) {
+        alert("Please enter a valid mobile number in either Caretaker Mobile or Patient Mobile.");
         return;
     }
 
@@ -108,6 +121,7 @@ async function saveAndTestTwilioGateway() {
         title: "TESTING TWILIO GATEWAY...",
         message: `Sending real-time handshake message to ${targetPhone} via Twilio API...`,
         channel: "whatsapp",
+        phone: targetPhone,
         duration: 5000
     });
 
@@ -121,25 +135,16 @@ async function saveAndTestTwilioGateway() {
         });
 
         if (res.success) {
-            alert(`✅ TWILIO GATEWAY CONNECTED & VERIFIED!
-
-Live verification message dispatched to: ${res.target_phone}
-Provider: ${res.provider}
-
-Check WhatsApp on your phone now!`);
+            alert(`✅ TWILIO GATEWAY CONNECTED & VERIFIED!\n\nLive verification message dispatched to: ${res.target_phone}\nProvider: ${res.provider}\n\nCheck WhatsApp on your phone now!`);
             showSMSNotification({
                 title: "✅ LIVE WHATSAPP CONNECTED",
                 message: `Twilio gateway active! Messages verified and sending to ${res.target_phone}.`,
                 channel: "whatsapp",
+                phone: targetPhone,
                 duration: 10000
             });
         } else {
-            alert(`⚠️ Twilio API Handshake Result:
-
-Target: ${res.target_phone}
-Error: ${res.error_details || 'Could not verify Twilio API.'}
-
-Please check that Account SID and Auth Token are correct.`);
+            alert(`⚠️ Twilio API Handshake Result:\n\nTarget: ${res.target_phone}\nError: ${res.error_details || 'Could not verify Twilio API.'}\n\nPlease check that Account SID and Auth Token are correct.`);
         }
     } catch (err) {
         alert("Verification request failed: " + err.message);
@@ -148,8 +153,9 @@ Please check that Account SID and Auth Token are correct.`);
 
 function saveContactSettings(e) {
     if (e) e.preventDefault();
-    const pPhone = document.getElementById('modalPatientPhone').value.trim() || "+91 86189 12755";
-    const cPhone = document.getElementById('modalCaretakerPhone').value.trim() || "+91 86189 12755";
+    const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';
+    const pPhone = document.getElementById('modalPatientPhone').value.trim() || defaultNum;
+    const cPhone = document.getElementById('modalCaretakerPhone').value.trim() || defaultNum;
     const sid = document.getElementById('modalTwilioSid')?.value.trim() || '';
     const auth = document.getElementById('modalTwilioAuth')?.value.trim() || '';
     const fromNum = document.getElementById('modalTwilioFrom')?.value.trim() || 'whatsapp:+17372508034';
@@ -251,11 +257,13 @@ function showSMSNotification(options) {
         channelBadge = `<span class="sms-app-badge text-danger"><i class="bi bi-broadcast"></i> Priority SOS Alert</span>`;
     }
 
+    const ptDisplay = cfg.patientPhone || cfg.patientWhatsapp || 'Patient';
+    const ctDisplay = cfg.caretakerPhone ? `${cfg.caretakerName} (${cfg.caretakerPhone})` : 'Primary Caregiver';
     const recipientsHtml = `
         <div class="sms-recipient-pill">
-            <i class="bi bi-person-check-fill text-primary"></i> <strong>Pt:</strong> ${cfg.patientPhone}
+            <i class="bi bi-person-check-fill text-primary"></i> <strong>Pt:</strong> ${ptDisplay}
             <span class="mx-1 text-muted">|</span>
-            <i class="bi bi-heart-fill text-danger"></i> <strong>Caretaker:</strong> ${cfg.caretakerName} (${cfg.caretakerPhone})
+            <i class="bi bi-heart-fill text-danger"></i> <strong>Caretaker:</strong> ${ctDisplay}
         </div>
     `;
 
@@ -271,11 +279,12 @@ function showSMSNotification(options) {
         </div>
     ` : '';
 
-    const cleanCaretakerPhone = (cfg.caretakerPhone || '+918618912755').replace(/[^0-9]/g, '');
-    const cleanPtPhone = (cfg.patientWhatsapp || cfg.patientPhone || '+918618912755').replace(/[^0-9]/g, '');
-    const waPhoneDigits = cleanCaretakerPhone.length === 10 ? ('91' + cleanCaretakerPhone) : cleanCaretakerPhone;
+    const targetPhone = (options && options.phone) || (options && options.caretakerAlert ? cfg.caretakerPhone : (cfg.patientWhatsapp || cfg.patientPhone || cfg.caretakerPhone)) || "";
+    const cleanDigits = targetPhone.replace(/[^0-9]/g, '');
+    const waPhoneDigits = cleanDigits.length === 10 ? ('91' + cleanDigits) : cleanDigits;
     const waEncodedMsg = encodeURIComponent(`🚨 EMERGENCY MEDICAL CARE ALERT: ${title}\n\n${msg}${otp ? '\n\n🔐 Verification OTP: ' + otp : ''}\n\n⚠️ Immediate Clinical Action: Check patient condition, ensure rest, and administer emergency assistance if needed.`);
-    const waDirectUrl = `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${waEncodedMsg}`;
+    const waDirectUrl = waPhoneDigits ? `https://api.whatsapp.com/send?phone=${waPhoneDigits}&text=${waEncodedMsg}` : '#';
+    const smsDirectUrl = waPhoneDigits ? `sms:+${waPhoneDigits}?body=${waEncodedMsg}` : '#';
 
     // Directly trigger backend automated WhatsApp relay in the background
     if (channel === 'whatsapp' || options.caretakerAlert) {
@@ -285,7 +294,7 @@ function showSMSNotification(options) {
             const fromNum = localStorage.getItem('ehealth_twilio_from') || cfg.twilioFrom || '';
             API.post('/api/closed-loop/caregiver/dispatch-automated-whatsapp', {
                 recipient_name: cfg.caretakerName,
-                recipient_phone: cfg.caretakerPhone,
+                recipient_phone: targetPhone || cfg.caretakerPhone,
                 title: title,
                 message: msg,
                 twilio_sid: sid,
@@ -297,10 +306,12 @@ function showSMSNotification(options) {
 
     const deliveryStatusHtml = (channel === 'whatsapp' || options.caretakerAlert) ? `
         <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-success-subtle text-success border border-success-subtle rounded-2 small">
-            <span class="fw-bold"><i class="bi bi-check2-all me-1"></i> Auto-Sent to ${cfg.caretakerName} (${cfg.caretakerPhone})</span>
+            <span class="fw-bold"><i class="bi bi-check2-all me-1"></i> Auto-Sent to ${targetPhone || 'Registered Recipient'}</span>
+            ${waPhoneDigits ? `
             <a href="${waDirectUrl}" target="_blank" class="btn btn-sm btn-success text-white fw-bold py-0 px-2" style="font-size:0.75rem;">
                 <i class="bi bi-whatsapp me-1"></i> Open in WhatsApp
             </a>
+            ` : ''}
         </div>
     ` : '';
 
@@ -316,9 +327,14 @@ function showSMSNotification(options) {
         </div>
         ${otpHtml}
         <div class="sms-actions">
-            <a href="${waDirectUrl}" target="_blank" class="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center me-auto" style="font-size:0.75rem; text-decoration:none;">
-                <i class="bi bi-whatsapp me-1"></i> Open WhatsApp Message
+            ${waPhoneDigits ? `
+            <a href="${waDirectUrl}" target="_blank" class="btn btn-sm btn-success text-white fw-bold d-inline-flex align-items-center me-1" style="font-size:0.75rem; text-decoration:none;">
+                <i class="bi bi-whatsapp me-1"></i> WhatsApp (+${waPhoneDigits})
             </a>
+            <a href="${smsDirectUrl}" class="btn btn-sm btn-outline-primary fw-bold d-inline-flex align-items-center me-auto" style="font-size:0.75rem; text-decoration:none;">
+                <i class="bi bi-chat-dots-fill me-1"></i> Send SMS
+            </a>
+            ` : ''}
             <button class="sms-btn bg-light text-secondary border" onclick="this.closest('.sms-otp-card').remove()">
                 Dismiss
             </button>
@@ -5329,8 +5345,13 @@ loadDigitalHealthTimeline = async function() {
 
 async function testLiveWhatsAppPing() {
     const cfg = getContactSettings();
-    const phoneInput = document.getElementById('profCaretakerPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('modalCaretakerPhone')?.value;
-    const defaultPhone = (phoneInput || cfg.caretakerPhone || "+918618912755").trim();
+    const phoneInput = document.getElementById('profCaretakerPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('modalCaretakerPhone')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.phone);
+    const defaultPhone = (phoneInput || cfg.caretakerPhone || cfg.patientPhone || "").trim();
+    
+    if (!defaultPhone) {
+        alert("Please enter a caretaker or patient phone number to test WhatsApp dispatch.");
+        return;
+    }
     
     const rawDigits = defaultPhone.replace(/[^0-9]/g, '');
     const cleanPhoneDigits = rawDigits.length === 10 ? ('91' + rawDigits) : rawDigits;
@@ -5339,6 +5360,7 @@ async function testLiveWhatsAppPing() {
         title: "⚡ AUTOMATED WHATSAPP DISPATCHING...",
         message: `Transmitting real-time automated medical alert to +${cleanPhoneDigits} via Twilio Carrier Gateway...`,
         channel: "whatsapp",
+        phone: defaultPhone,
         duration: 5000
     });
 

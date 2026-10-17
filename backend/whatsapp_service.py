@@ -169,13 +169,20 @@ def send_whatsapp(
             "help_tip": "Provide non-empty text body for the notification."
         }
 
+    import urllib.parse
+    clean_e164 = sanitize_phone_number(phone_number)
+    digits_only = clean_e164.replace("+", "")
+    encoded_body = urllib.parse.quote(message)
+    direct_wa_url = f"https://api.whatsapp.com/send?phone={digits_only}&text={encoded_body}"
+    direct_sms_url = f"sms:{clean_e164}?body={encoded_body}"
+
     # Verify Twilio credentials
     if is_placeholder_credential(sid) or is_placeholder_credential(token):
         tip = (
             "Twilio credentials not configured. In your .env file or environment, set:\n"
             "TWILIO_ACCOUNT_SID=your_actual_sid\n"
             "TWILIO_AUTH_TOKEN=your_actual_auth_token\n"
-            "TWILIO_WHATSAPP_FROM=whatsapp:+14155238886\n"
+            "TWILIO_WHATSAPP_FROM=whatsapp:+17372508034\n"
             "Get free test credentials at https://www.twilio.com/try-twilio"
         )
         logger.warning(f"Twilio credentials missing or placeholder. Message simulated to {to_formatted}.")
@@ -187,6 +194,8 @@ def send_whatsapp(
             "to": to_formatted,
             "from": from_formatted,
             "message_preview": message[:100] + ("..." if len(message) > 100 else ""),
+            "direct_whatsapp_url": direct_wa_url,
+            "direct_sms_url": direct_sms_url,
             "error": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be configured in .env",
             "help_tip": tip
         }
@@ -209,6 +218,8 @@ def send_whatsapp(
             "status": result.status,
             "to": to_formatted,
             "from": from_formatted,
+            "direct_whatsapp_url": direct_wa_url,
+            "direct_sms_url": direct_sms_url,
             "error": None,
             "date_created": str(getattr(result, "date_created", "")),
             "help_tip": None
@@ -223,7 +234,8 @@ def send_whatsapp(
             help_tip = (
                 f"Twilio WhatsApp Sandbox Enrollment Required: Recipient {to_formatted} has not joined your Sandbox. "
                 f"On the recipient's phone, open WhatsApp, message {from_formatted.replace('whatsapp:', '')}, "
-                f"and send your sandbox joining code (found in Twilio Console -> Messaging -> Try WhatsApp)."
+                f"and send your sandbox joining code (found in Twilio Console -> Messaging -> Try WhatsApp). "
+                f"Alternatively, click the Direct WhatsApp link below to dispatch directly."
             )
         elif code == 20003:
             help_tip = "Twilio Authentication Error: Your TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN is invalid. Verify them in Twilio Console."
@@ -235,7 +247,7 @@ def send_whatsapp(
                 f"WhatsApp 24-Hour Session Window Required: Outside an active 24-hour conversation window, WhatsApp prevents freeform outbound messages. "
                 f"To re-open the window, open WhatsApp on the recipient's phone ({to_formatted}), "
                 f"send a quick message (e.g. 'join twilio-trial' or 'Hi') to your Twilio number {clean_from}. "
-                f"Once sent, the 24-hour window is active and all automated reminders and vital alerts will deliver instantly!"
+                f"Alternatively, click the Direct WhatsApp link to send to any mobile number instantly!"
             )
 
         logger.error(f"Twilio WhatsApp Error ({code}): {msg}")
@@ -246,6 +258,8 @@ def send_whatsapp(
             "error_code": code,
             "to": to_formatted,
             "from": from_formatted,
+            "direct_whatsapp_url": direct_wa_url,
+            "direct_sms_url": direct_sms_url,
             "error": msg,
             "help_tip": help_tip or "Check your Twilio console logs for delivery status."
         }
@@ -258,6 +272,8 @@ def send_whatsapp(
             "status": "error",
             "to": to_formatted,
             "from": from_formatted,
+            "direct_whatsapp_url": direct_wa_url,
+            "direct_sms_url": direct_sms_url,
             "error": str(general_error),
             "help_tip": "Ensure python packages 'twilio' and 'python-dotenv' are installed."
         }

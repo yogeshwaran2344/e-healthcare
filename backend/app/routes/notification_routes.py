@@ -48,7 +48,7 @@ def test_whatsapp_message(
     """
     Direct diagnostic endpoint to test WhatsApp message dispatch to a specified phone number.
     """
-    phone = payload.get("phone", current_user.phone or "+918618912755").strip()
+    phone = (payload.get("phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
     message = payload.get("message", "Test notification from NeuroCare Platform: WhatsApp gateway connection verified.").strip()
     
     result = send_whatsapp(phone, message)
@@ -74,13 +74,13 @@ def trigger_immediate_medication_reminder(
         "medication_name": "Metformin 500mg",
         "dosage": "1 tablet",
         "scheduled_time": "8:00 PM",
-        "patient_phone": "+918618912755"
+        "patient_phone": "+91XXXXXXXXXX"
     }
     """
     med_name = payload.get("medication_name", "Prescribed Medication")
     dosage = payload.get("dosage", "")
     time_str = payload.get("scheduled_time", datetime.now().strftime("%I:%M %p"))
-    patient_phone = payload.get("patient_phone", current_user.phone or "+918618912755")
+    patient_phone = (payload.get("patient_phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
     patient_name = payload.get("patient_name", current_user.full_name or "Patient")
 
     res = send_medication_reminder(
@@ -225,7 +225,7 @@ def evaluate_vitals_and_alert(
         hr_limits = (cfg.heart_rate_min, cfg.heart_rate_max)
 
     if not caretaker_phone:
-        caretaker_phone = current_user.phone or "+918618912755"
+        caretaker_phone = current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")
 
     # Allow custom limit overrides from payload if provided
     if "bp_limits" in payload and len(payload["bp_limits"]) == 4:
@@ -262,7 +262,7 @@ def get_caretaker_config(
             "configured": False,
             "patient_id": current_user.id,
             "caretaker_name": "Primary Caregiver",
-            "caretaker_phone": current_user.phone or "+918618912755",
+            "caretaker_phone": current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755"),
             "bp_limits": list(DEFAULT_BP_LIMITS),
             "heart_rate_limits": list(DEFAULT_HR_LIMITS),
             "is_active": True
@@ -298,7 +298,7 @@ def save_caretaker_config(
         db.add(cfg)
 
     cfg.caretaker_name = payload.get("caretaker_name", cfg.caretaker_name or "Primary Caregiver")
-    cfg.caretaker_phone = payload.get("caretaker_phone", cfg.caretaker_phone or current_user.phone or "+918618912755")
+    cfg.caretaker_phone = payload.get("caretaker_phone", cfg.caretaker_phone or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755"))
     cfg.relationship = payload.get("relationship", cfg.relationship or "Guardian")
 
     if "bp_limits" in payload and len(payload["bp_limits"]) == 4:

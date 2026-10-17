@@ -113,6 +113,11 @@ def send_live_whatsapp_message(
     else:
         clean_phone = clean_digits
 
+    # Pre-generate direct multi-channel URLs so any phone number can be reached directly
+    encoded_text = urllib.parse.quote(text)
+    direct_wa_url = f"https://api.whatsapp.com/send?phone={clean_phone}&text={encoded_text}"
+    direct_sms_url = f"sms:+{clean_phone}?body={encoded_text}"
+
     # 1. Meta WhatsApp Business Cloud API
     meta_token = os.getenv("WHATSAPP_API_TOKEN", "").strip().strip('"').strip("'")
     meta_phone_id = os.getenv("WHATSAPP_PHONE_ID", "").strip().strip('"').strip("'")
@@ -132,14 +137,35 @@ def send_live_whatsapp_message(
             req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
             with urllib.request.urlopen(req, timeout=10) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
-                return {"live_sent": True, "provider": "Meta WhatsApp Cloud API", "response": res_data, "phone": clean_phone}
+                return {
+                    "live_sent": True,
+                    "provider": "Meta WhatsApp Cloud API",
+                    "response": res_data,
+                    "phone": clean_phone,
+                    "direct_whatsapp_url": direct_wa_url,
+                    "direct_sms_url": direct_sms_url
+                }
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
             logger.error(f"Meta WhatsApp API Error ({e.code}): {err_body}")
-            return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": f"HTTP {e.code}: {err_body}", "phone": clean_phone}
+            return {
+                "live_sent": False,
+                "provider": "Meta WhatsApp Cloud API",
+                "error": f"HTTP {e.code}: {err_body}",
+                "phone": clean_phone,
+                "direct_whatsapp_url": direct_wa_url,
+                "direct_sms_url": direct_sms_url
+            }
         except Exception as e:
             logger.error(f"Meta WhatsApp Exception: {e}")
-            return {"live_sent": False, "provider": "Meta WhatsApp Cloud API", "error": str(e), "phone": clean_phone}
+            return {
+                "live_sent": False,
+                "provider": "Meta WhatsApp Cloud API",
+                "error": str(e),
+                "phone": clean_phone,
+                "direct_whatsapp_url": direct_wa_url,
+                "direct_sms_url": direct_sms_url
+            }
 
     # 2. Twilio WhatsApp API
     import time
@@ -203,7 +229,9 @@ def send_live_whatsapp_message(
                     "sid": res_data.get("sid"),
                     "status": res_data.get("status"),
                     "response": res_data,
-                    "phone": clean_phone
+                    "phone": clean_phone,
+                    "direct_whatsapp_url": direct_wa_url,
+                    "direct_sms_url": direct_sms_url
                 }
 
         # 2. Standard Body message on primary sender (+17372508034)
@@ -220,7 +248,9 @@ def send_live_whatsapp_message(
                 "sid": res_data.get("sid"),
                 "status": res_data.get("status"),
                 "response": res_data,
-                "phone": clean_phone
+                "phone": clean_phone,
+                "direct_whatsapp_url": direct_wa_url,
+                "direct_sms_url": direct_sms_url
             }
 
         # 3. If Twilio requires ContentSid (Error 21654), resolve template and send cleanly
@@ -257,7 +287,9 @@ def send_live_whatsapp_message(
                             "sid": res_data.get("sid"),
                             "status": res_data.get("status"),
                             "response": res_data,
-                            "phone": clean_phone
+                            "phone": clean_phone,
+                            "direct_whatsapp_url": direct_wa_url,
+                            "direct_sms_url": direct_sms_url
                         }
                     time.sleep(0.3)
 
@@ -277,7 +309,9 @@ def send_live_whatsapp_message(
                     "sid": res_data.get("sid"),
                     "status": res_data.get("status"),
                     "response": res_data,
-                    "phone": clean_phone
+                    "phone": clean_phone,
+                    "direct_whatsapp_url": direct_wa_url,
+                    "direct_sms_url": direct_sms_url
                 }
 
         try:
@@ -295,13 +329,22 @@ def send_live_whatsapp_message(
         else:
             err_msg = f"HTTP {res_body.get('code', 400)}: {raw_msg}"
 
-        return {"live_sent": False, "provider": f"Twilio WhatsApp API ({primary_sender})", "error": err_msg, "phone": clean_phone}
+        return {
+            "live_sent": False,
+            "provider": f"Twilio WhatsApp API ({primary_sender})",
+            "error": err_msg,
+            "phone": clean_phone,
+            "direct_whatsapp_url": direct_wa_url,
+            "direct_sms_url": direct_sms_url
+        }
 
     return {
         "live_sent": False,
         "provider": "Direct Cloud Gateway Relay (Demo Mode)",
         "error": "TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN are not set in the backend environment. Configure them in .env or Settings modal to send real WhatsApp messages.",
-        "phone": clean_phone
+        "phone": clean_phone,
+        "direct_whatsapp_url": direct_wa_url,
+        "direct_sms_url": direct_sms_url
     }
 
 from ..database import get_db
@@ -912,7 +955,7 @@ def confirm_dose_taken(
     dosage = payload.get("dosage", "1 Dose")
     slot = payload.get("scheduled_slot", "Morning Slot")
     patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
-    target_phone = (payload.get("phone") or payload.get("caretaker_phone") or "+918618912755").strip()
+    target_phone = (payload.get("phone") or payload.get("caretaker_phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
 
     custom_sid = payload.get("twilio_sid", "")
     custom_auth = payload.get("twilio_auth", "")
@@ -960,7 +1003,7 @@ def send_medication_reminder_whatsapp(
     condition = payload.get("condition", "Type 2 Diabetes")
     slot = payload.get("scheduled_slot", "09:15 AM")
     patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
-    target_phone = (payload.get("phone") or payload.get("caretaker_phone") or "+918618912755").strip()
+    target_phone = (payload.get("phone") or payload.get("caretaker_phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
 
     custom_sid = payload.get("twilio_sid", "")
     custom_auth = payload.get("twilio_auth", "")
@@ -1008,7 +1051,7 @@ def evaluate_caregiver_alert(
     missed_doses = int(payload.get("missed_doses_count", 0))
     patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
     caretaker_name = (payload.get("caretaker_name") or "Primary Caregiver").strip()
-    caretaker_phone = (payload.get("caretaker_phone") or "+918618912755").strip()
+    caretaker_phone = (payload.get("caretaker_phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
 
     result = evaluate_contextual_caregiver_alert(
         vitals=vitals,
@@ -1122,7 +1165,7 @@ def save_twilio_config(
     auth = payload.get("auth_token", "").strip().strip('"').strip("'")
     from_num = payload.get("from_number", "").strip().strip('"').strip("'") or "+17372508034"
     content_sid = payload.get("content_sid", "").strip().strip('"').strip("'")
-    target_phone = payload.get("phone", "+918618912755").strip()
+    target_phone = (payload.get("phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
 
     if sid:
         os.environ["TWILIO_ACCOUNT_SID"] = sid
@@ -1181,7 +1224,7 @@ def test_live_whatsapp_carrier(
     """
     Diagnostic testing endpoint: tests live carrier transmission and returns exact server credentials status & API responses.
     """
-    target_phone = payload.get("phone", "+918618912755")
+    target_phone = (payload.get("phone") or current_user.phone or os.getenv("TWILIO_DEFAULT_RECIPIENT", "+918618912755")).strip()
     custom_sid = payload.get("twilio_sid", "").strip()
     custom_auth = payload.get("twilio_auth", "").strip()
     custom_from = payload.get("twilio_from", "").strip()

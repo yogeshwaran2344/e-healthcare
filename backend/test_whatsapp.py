@@ -79,16 +79,23 @@ def run_test():
         print(f"\n[DIAGNOSTIC GUIDANCE]")
         print(f"   {result.get('help_tip')}")
 
+    if result.get("direct_whatsapp_url"):
+        print(f"\n[MULTI-CHANNEL ROUTING LINKS FOR ANY MOBILE NUMBER]")
+        print(f"   * Direct WhatsApp URL: {result.get('direct_whatsapp_url')}")
+        print(f"   * Direct SMS URL     : {result.get('direct_sms_url')}")
+
     print("\n" + "=" * 70)
     if result.get("success"):
-        print("[SUCCESS] WhatsApp test message transmitted successfully!")
+        print("[SUCCESS] WhatsApp test message transmitted successfully via Twilio API!")
     elif result.get("simulated"):
-        print("[SIMULATED] Enter real Twilio credentials in .env to send live WhatsApp messages.")
+        print("[SIMULATED] Twilio credentials missing; click the Direct WhatsApp URL above to dispatch.")
     else:
-        print("[ACTION NEEDED] Check Twilio Sandbox enrollment or credentials above.")
+        print("[DIRECT ROUTING READY] Click the Direct WhatsApp URL above to dispatch to any number instantly,")
+        print("                        or check Twilio Sandbox enrollment for direct API delivery.")
     print("=" * 70)
 
     return result
 
 if __name__ == "__main__":
     run_test()
+
