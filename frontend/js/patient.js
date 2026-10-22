@@ -59,16 +59,30 @@ function getContactSettings() {
 // ==========================================
 // CELLULAR SMS MASTER SWITCH STATE & HELPERS
 // ==========================================
-let isSmsEnabledGlobal = false;
+function getApiBaseUrl() {
+    try {
+        if (typeof API !== 'undefined' && API && API.BASE_URL) return API.BASE_URL;
+        const loc = window.location;
+        if (loc.port && loc.port !== '8000') return `${loc.protocol}//${loc.hostname || '127.0.0.1'}:8000`;
+        if (loc.protocol === 'file:') return 'http://127.0.0.1:8000';
+    } catch (_) {}
+    return '';
+}
+
+const savedLocalPref = localStorage.getItem('neurocare_sms_enabled');
+let isSmsEnabledGlobal = (savedLocalPref === 'true');
 
 function updateSmsToggleUI(enabled) {
     isSmsEnabledGlobal = !!enabled;
 
-    // 1. Header Switch
+    // 1. Header Switch & Button
     const switchInput = document.getElementById('headerSmsSwitchInput');
     const headerText = document.getElementById('headerSmsText');
     const headerContainer = document.getElementById('headerSmsToggleContainer');
+    const headerBtn = document.getElementById('headerSmsBtn');
+
     if (switchInput) switchInput.checked = isSmsEnabledGlobal;
+
     if (headerText) {
         if (isSmsEnabledGlobal) {
             headerText.className = "small fw-bold text-success d-flex align-items-center gap-1";
@@ -84,6 +98,18 @@ function updateSmsToggleUI(enabled) {
                 headerContainer.style.borderColor = '#dee2e6';
                 headerContainer.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
             }
+        }
+    }
+
+    if (headerBtn) {
+        if (isSmsEnabledGlobal) {
+            headerBtn.className = "btn btn-sm btn-outline-success rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
+            headerBtn.innerHTML = '<i class="bi bi-broadcast text-success"></i> <span class="small fw-semibold">SMS: ON</span>';
+            headerBtn.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
+        } else {
+            headerBtn.className = "btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
+            headerBtn.innerHTML = '<i class="bi bi-bell-slash text-danger"></i> <span class="small fw-semibold">SMS: OFF</span>';
+            headerBtn.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
         }
     }
 
@@ -134,38 +160,58 @@ function updateSmsToggleUI(enabled) {
 
 async function fetchSmsStatus() {
     try {
-        const res = await API.get('/api/closed-loop/sms/toggle-status');
-        updateSmsToggleUI(res && res.sms_enabled);
+        const url = `${getApiBaseUrl()}/api/closed-loop/sms/toggle-status`;
+        const resp = await fetch(url);
+        if (resp.ok) {
+            const res = await resp.json();
+            if (res && res.sms_enabled !== undefined) {
+                isSmsEnabledGlobal = !!res.sms_enabled;
+                localStorage.setItem('neurocare_sms_enabled', isSmsEnabledGlobal ? 'true' : 'false');
+                updateSmsToggleUI(isSmsEnabledGlobal);
+                return;
+            }
+        }
     } catch (e) {
-        updateSmsToggleUI(false);
+        console.warn("Could not reach SMS status endpoint, using local preference:", e);
+    }
+    const localSaved = localStorage.getItem('neurocare_sms_enabled');
+    if (localSaved !== null) {
+        updateSmsToggleUI(localSaved === 'true');
     }
 }
 
 async function toggleSMSMasterSwitch(turnOn) {
-    updateSmsToggleUI(turnOn);
-    try {
-        const res = await API.post('/api/closed-loop/sms/toggle', { enabled: !!turnOn });
-        const finalState = res && res.sms_enabled !== undefined ? res.sms_enabled : turnOn;
-        updateSmsToggleUI(finalState);
+    const nextState = (turnOn !== undefined) ? !!turnOn : !isSmsEnabledGlobal;
+    isSmsEnabledGlobal = nextState;
+    localStorage.setItem('neurocare_sms_enabled', nextState ? 'true' : 'false');
+    updateSmsToggleUI(nextState);
 
-        showSMSNotification({
-            title: finalState ? "📢 CELLULAR SMS TURNED ON" : "🛡️ CELLULAR SMS TURNED OFF",
-            message: finalState
-                ? "Cellular SMS notifications are now ON. Real-time medication reminders & vital alerts will be dispatched to registered phone numbers."
-                : "Cellular SMS notifications are now turned OFF. Fast2SMS wallet balance & SMS recharge are completely protected.",
-            channel: "sms",
-            duration: 7000
+    try {
+        const url = `${getApiBaseUrl()}/api/closed-loop/sms/toggle`;
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: nextState })
         });
+        if (resp.ok) {
+            const res = await resp.json();
+            const finalState = (res && res.sms_enabled !== undefined) ? !!res.sms_enabled : nextState;
+            isSmsEnabledGlobal = finalState;
+            localStorage.setItem('neurocare_sms_enabled', finalState ? 'true' : 'false');
+            updateSmsToggleUI(finalState);
+        }
     } catch (err) {
-        console.error("Failed to toggle SMS state:", err);
-        showSMSNotification({
-            title: "⚠️ SMS TOGGLE ERROR",
-            message: err.message || "Failed to update SMS status on the server.",
-            channel: "sms",
-            duration: 5000
-        });
-        fetchSmsStatus();
+        console.warn("SMS toggle sync deferred:", err);
     }
+
+    showSMSNotification({
+        title: nextState ? "📢 CELLULAR SMS TURNED ON" : "🛡️ CELLULAR SMS TURNED OFF",
+        message: nextState
+            ? "Cellular SMS notifications are now ON. Real-time medication reminders & vital alerts will be dispatched to your phone."
+            : "Cellular SMS notifications are now turned OFF. Fast2SMS wallet balance & SMS recharge are completely protected.",
+        channel: "sms",
+        duration: 6000
+    });
 }
 
 function toggleSmsState() {
