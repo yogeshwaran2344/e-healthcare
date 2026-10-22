@@ -276,8 +276,8 @@
                     <i class="bi bi-broadcast me-1 text-primary"></i> SMS Alerts Setup
                 </button>
 
-                <button class="btn btn-danger btn-sm sos-btn-pulse px-2 px-sm-3 me-1 d-inline-flex align-items-center" onclick="activateTab('tab-emergency'); triggerOneTapSOS();" title="Emergency SOS">
-                    <i class="bi bi-broadcast me-1"></i> <span class="d-none d-sm-inline">1-Tap SOS Emergency</span><span class="d-inline d-sm-none fw-bold">SOS</span>
+                <button class="btn btn-outline-primary btn-sm px-2 px-sm-3 me-1 d-inline-flex align-items-center rounded-pill shadow-sm" onclick="activateTab('tab-emergency')" title="Dynamic Medical Passport">
+                    <i class="bi bi-qr-code-scan me-1 text-primary"></i> <span class="d-none d-sm-inline fw-semibold">Dynamic Passport</span><span class="d-inline d-sm-none fw-bold">Passport</span>
                 </button>
 
                 <span class="text-secondary small d-none d-lg-inline" id="userWelcomeText">Welcome</span>
@@ -386,11 +386,11 @@
 
                         <button class="sidebar-tab-btn nav-link" id="tab-emergency-btn" onclick="activateTab('tab-emergency')" type="button">
 
-                            <i class="bi bi-hospital text-danger"></i>
+                            <i class="bi bi-qr-code-scan text-primary"></i>
 
-                            <span class="tab-label">Emergency SOS</span>
+                            <span class="tab-label">Dynamic Passport</span>
 
-                            <span class="badge bg-danger-subtle text-danger ms-auto">SOS</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">QR</span>
 
                         </button>
 
@@ -1397,9 +1397,9 @@
 
                         </div>
 
-                        <button class="btn btn-danger fw-bold px-4" onclick="switchToTab('tab-emergency'); triggerOneTapSOS();">
+                        <button class="btn btn-primary fw-bold px-4" onclick="switchToTab('tab-emergency');">
 
-                            <i class="bi bi-broadcast me-1"></i> Dispatch 1-Tap SOS Now
+                            <i class="bi bi-qr-code-scan me-1"></i> View Dynamic Passport
 
                         </button>
 
@@ -3404,304 +3404,131 @@
 
             <div class="tab-pane fade" id="tab-emergency">
 
-                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-danger-subtle border border-danger-subtle">
-
+                <!-- Dynamic Health Passport Header Card -->
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-primary-subtle border border-primary-subtle">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-
                         <div>
-
-                            <h3 class="fw-bold text-danger mb-1"><i class="bi bi-broadcast me-2"></i>Rapid Emergency Response Dispatcher</h3>
-
-                            <p class="text-dark small mb-0">Autonomous transmission of emergency medical passport to Hospital ER trauma bay & live GPS ambulance dispatch.</p>
-
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="badge bg-primary px-3 py-1"><i class="bi bi-shield-check me-1"></i>Cryptographic Token</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-broadcast me-1"></i>Zero-Login Emergency Access</span>
+                            </div>
+                            <h3 class="fw-bold text-primary mb-1"><i class="bi bi-qr-code-scan me-2"></i>Dynamic Medical Passport</h3>
+                            <p class="text-dark small mb-0">Context-aware cryptographic medical passport with zero-login emergency access, time-bound consent, and role-based data isolation.</p>
                         </div>
-
-                        <button class="btn btn-danger btn-lg sos-btn-pulse px-4 py-3 fw-bold" onclick="triggerOneTapSOS()">
-
-                            <i class="bi bi-shield-fill-exclamation me-1"></i> TRIGGER 1-TAP SOS NOW
-
-                        </button>
-
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-3" onclick="loadLiveEmergencyPassport(); fetchAndRenderPassport(activePassportScope, true);">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Passport
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm fw-semibold rounded-pill px-3 text-white" onclick="window.print()">
+                                <i class="bi bi-printer-fill me-1"></i> Print / Export Card
+                            </button>
+                        </div>
                     </div>
-
                 </div>
 
                 <div class="row g-4">
-
-                    <div class="col-12">
-
-                        <div class="emergency-mode-card p-4 mb-0">
-
-                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-
-                                <div>
-
-                                    <span class="badge bg-danger mb-2">EMERGENCY MODE · READ ONLY</span>
-
-                                    <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-person-vcard-fill text-danger me-2"></i>Live Emergency Medical Passport</h5>
-
-                                    <p class="text-muted small mb-0">Assembled from your latest authorized records. Not a stored copy. Sharing is audited.</p>
-
-                                </div>
-
-                                <button type="button" class="btn btn-outline-danger btn-sm fw-semibold" onclick="loadLiveEmergencyPassport()">
-
-                                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh live profile
-
-                                </button>
-
-                            </div>
-
-                            <div id="liveEmergencyPassportBox" class="small">
-
-                                <div class="text-muted">Open this tab to load your live emergency profile.</div>
-
-                            </div>
-
-                            <div class="mt-3">
-
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-
-                                    <h6 class="fw-bold mb-0">Who accessed this emergency profile</h6>
-
-                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadPatientEmergencyAudit()">Refresh log</button>
-
-                                </div>
-
-                                <div class="table-responsive">
-
-                                    <table class="table table-sm mb-0">
-
-                                        <thead>
-
-                                            <tr>
-
-                                                <th>Time</th>
-
-                                                <th>Accessor</th>
-
-                                                <th>Role</th>
-
-                                                <th>Purpose</th>
-
-                                                <th>Info type</th>
-
-                                                <th>Mode</th>
-
-                                            </tr>
-
-                                        </thead>
-
-                                        <tbody id="patientEmergencyAuditBody">
-
-                                            <tr><td colspan="6" class="text-muted">Open this tab to load access events.</td></tr>
-
-                                        </tbody>
-
-                                    </table>
-
-                                </div>
-
-                                <p class="small text-muted mb-0 mt-1">Clinical values are omitted from this log.</p>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- Live Ambulance Telemetry HUD -->
-
-                    <div class="col-lg-7">
-
-                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-
-                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-truck text-danger me-2"></i>Dispatched Ambulance GPS Telemetry <span class="badge bg-warning-subtle text-warning border border-warning-subtle fs-6 ms-2">Dispatch Simulation Protocol</span></h5>
-
-                                <span class="badge bg-danger px-3 py-2" id="emergencyStatusBadge">Ambulance En Route</span>
-
-                            </div>
-
-                            <!-- Telemetry Detail Strip -->
-
-                            <div class="p-3 bg-light rounded-4 mb-3 border">
-
-                                <div class="row g-2 text-center">
-
-                                    <div class="col-4">
-
-                                        <small class="text-muted d-block">Estimated Arrival</small>
-
-                                        <h4 class="fw-bold text-danger mb-0" id="ambulanceEtaDisplay">7 Mins</h4>
-
-                                    </div>
-
-                                    <div class="col-4 border-start border-end">
-
-                                        <small class="text-muted d-block">Distance Remaining</small>
-
-                                        <h4 class="fw-bold text-dark mb-0" id="ambulanceDistanceDisplay">3.5 km</h4>
-
-                                    </div>
-
-                                    <div class="col-4">
-
-                                        <small class="text-muted d-block">Sirens & Transponder</small>
-
-                                        <span class="badge bg-success-subtle text-success mt-1">Active Priority</span>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <!-- Dynamic Route Map Simulation Container -->
-
-                            <div class="bg-dark rounded-4 p-4 text-white text-center mb-3 position-relative" style="min-height: 180px; background: #0f172a;">
-
-                                <div class="d-flex justify-content-between align-items-center mb-3 small text-muted">
-
-                                    <span><i class="bi bi-hospital text-danger me-1"></i>Apex Hospital ER</span>
-
-                                    <span class="badge bg-danger-subtle text-danger"><i class="bi bi-activity me-1"></i>Traffic-Optimized GPS</span>
-
-                                    <span><i class="bi bi-geo-alt-fill text-primary me-1"></i>Patient Location</span>
-
-                                </div>
-
-                                <div class="progress my-4" style="height: 14px;">
-
-                                    <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" id="ambulanceProgressBar" style="width: 25%;"></div>
-
-                                </div>
-
-                                <div class="fw-bold text-info" id="ambulanceStatusText">Ambulance dispatched. Traffic-cleared emergency corridor active.</div>
-
-                            </div>
-
-                            <!-- Paramedic & Receiving Hospital Contacts -->
-
-                            <div class="row g-3 small">
-
-                                <div class="col-md-6">
-
-                                    <div class="p-3 rounded-3 border bg-white">
-
-                                        <small class="text-muted d-block">Dispatched Unit:</small>
-
-                                        <strong id="ambulanceUnitName">ALS-Unit 07 (Cardiac Life Support)</strong>
-
-                                        <small class="text-muted d-block mt-1">Crew: Officer Vikram & EMT Priya</small>
-
-                                        <a href="tel:+919811122233" class="btn btn-outline-danger btn-sm mt-2 w-100"><i class="bi bi-telephone me-1"></i>Call Paramedics</a>
-
-                                    </div>
-
-                                </div>
-
-                                <div class="col-md-6">
-
-                                    <div class="p-3 rounded-3 border bg-white">
-
-                                        <small class="text-muted d-block">Reserved Trauma Bay:</small>
-
-                                        <strong class="text-danger" id="assignedTraumaBay">ER Trauma Bay #3 (Cardiac Resus)</strong>
-
-                                        <small class="text-muted d-block mt-1">Blood Bank: B+ Cross-Match Staged</small>
-
-                                        <button class="btn btn-outline-secondary btn-sm mt-2 w-100" onclick="resolveEmergencyAlert()"><i class="bi bi-check-circle me-1"></i>Stand Down Alert</button>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- Dynamic Context-Aware Emergency Medical Passport & Consent -->
-
+                    <!-- Left: Interactive Context-Aware Dynamic QR Code & Access Scopes -->
                     <div class="col-lg-5">
-
-                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-
-                                <h5 class="fw-bold mb-0"><i class="bi bi-qr-code-scan text-primary me-2"></i>Dynamic Emergency Passport</h5>
-
+                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-qr-code-scan text-primary me-2"></i>Dynamic QR Access</h5>
                                 <span class="badge bg-success" id="passportExpiryBadge">Active Token</span>
-
                             </div>
-
                             <p class="text-muted small mb-3">Context-aware QR code changes viewable data according to scanner role with time-bound consent.</p>
 
                             <!-- Role Context Selector -->
-
                             <div class="mb-3">
-
-                                <label class="form-label small fw-bold">Select Accessor Context Scope:</label>
-
+                                <label class="form-label small fw-bold text-dark">Select Accessor Context Scope:</label>
                                 <div class="btn-group btn-group-sm w-100" role="group">
-
                                     <input type="radio" class="btn-check" name="passportScopeRadio" id="scopePublic" value="PUBLIC_BASIC" checked onchange="switchPassportContext('PUBLIC_BASIC')">
-
                                     <label class="btn btn-outline-primary" for="scopePublic"><i class="bi bi-person me-1"></i> Public</label>
 
                                     <input type="radio" class="btn-check" name="passportScopeRadio" id="scopeParamedic" value="AMBULANCE_PARAMEDIC" onchange="switchPassportContext('AMBULANCE_PARAMEDIC')">
-
                                     <label class="btn btn-outline-danger" for="scopeParamedic"><i class="bi bi-truck me-1"></i> Paramedic</label>
 
                                     <input type="radio" class="btn-check" name="passportScopeRadio" id="scopeER" value="HOSPITAL_ER_TRAUMA" onchange="switchPassportContext('HOSPITAL_ER_TRAUMA')">
-
                                     <label class="btn btn-outline-dark" for="scopeER"><i class="bi bi-hospital me-1"></i> ER Trauma</label>
-
                                 </div>
-
                             </div>
 
                             <!-- QR Code & Token Info -->
-
                             <div class="text-center p-3 bg-light rounded-4 mb-3 border">
-
                                 <div id="passportQrContainer" class="mb-2">
-
-                                    <img id="passportQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://neurocare-health.com/emergency/token_preview" alt="Emergency QR Code" class="img-fluid rounded border p-2 bg-white" style="width: 140px; height: 140px;">
-
+                                    <img id="passportQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://neurocare-health.com/emergency/token_preview" alt="Emergency QR Code" class="img-fluid rounded border p-2 bg-white" style="width: 150px; height: 150px;">
                                 </div>
-
                                 <span class="badge bg-primary px-3 py-1" id="passportScopeLabel">Public First Responder</span>
-
                                 <div class="small text-danger fw-bold mt-1" id="passportCountdown"><i class="bi bi-clock-history me-1"></i>Access expires in: 14:59</div>
-
                                 <div class="small text-muted mt-1" id="passportRevocationNote"><i class="bi bi-shield-lock me-1"></i>Access automatically revoked after emergency window.</div>
-
                             </div>
 
                             <!-- Filtered Data Live Preview -->
-
                             <h6 class="fw-bold small text-dark mb-2"><i class="bi bi-eye me-1"></i> Data Granted to this Role:</h6>
-
                             <div class="p-3 bg-light rounded-3 border mb-3 small" id="passportDataPreviewBox">
-
                                 <!-- Dynamic fields rendered by JS -->
-
                             </div>
 
-                            <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="regeneratePassportToken()">
-
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100 rounded-pill fw-semibold mt-auto" onclick="regeneratePassportToken()">
                                 <i class="bi bi-arrow-repeat me-1"></i> Re-Issue Time-Bound Emergency Token
-
                             </button>
-
                         </div>
-
                     </div>
 
+                    <!-- Right: Live Verified Medical Passport Profile Card -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                                <div>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-2">LIVE VERIFIED PROFILE</span>
+                                    <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-person-vcard-fill text-primary me-2"></i>Live Emergency Medical Passport</h5>
+                                    <p class="text-muted small mb-0">Assembled in real-time from your authorized records with SHA-256 cryptographic proof.</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill" onclick="loadLiveEmergencyPassport()">
+                                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh live profile
+                                </button>
+                            </div>
+
+                            <div id="liveEmergencyPassportBox" class="p-3 bg-light rounded-4 border mb-3 small">
+                                <div class="text-muted">Loading live emergency medical passport...</div>
+                            </div>
+
+                            <!-- Sovereign Data Rights & Protection Guarantee -->
+                            <div class="p-3 rounded-3 border border-primary-subtle bg-primary-subtle bg-opacity-10 mb-3 small">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="bi bi-shield-check text-primary fs-5"></i>
+                                    <strong class="text-primary">Self-Sovereign Emergency Data Guarantee</strong>
+                                </div>
+                                <p class="text-muted mb-0 small">
+                                    Your full medical history remains private and encrypted. Only essential life-saving data (blood group, allergies, emergency contacts) is exposed to scanners, protected by time-bound revocable consent.
+                                </p>
+                            </div>
+
+                            <!-- Audit Section inside Passport -->
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-shield-lock-fill text-secondary me-1"></i>Who accessed this emergency profile</h6>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="loadPatientEmergencyAudit()">Refresh log</button>
+                                </div>
+                                <div class="table-responsive rounded-3 border">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Time</th>
+                                                <th>Accessor</th>
+                                                <th>Role</th>
+                                                <th>Purpose</th>
+                                                <th>Info type</th>
+                                                <th>Mode</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="patientEmergencyAuditBody">
+                                            <tr><td colspan="6" class="text-muted text-center py-3">Open this tab to load access events.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="small text-muted mb-0 mt-1" style="font-size: 0.75rem;">Clinical values are omitted from this log to protect accessor privacy.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </div>

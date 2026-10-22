@@ -2530,6 +2530,7 @@ function activateTab(tabId, scroll = true) {
         } else if (cleanId === 'tab-emergency') {
             if (typeof loadLiveEmergencyPassport === 'function') loadLiveEmergencyPassport().catch(() => {});
             if (typeof fetchAndRenderPassport === 'function') fetchAndRenderPassport('PUBLIC_BASIC').catch(() => {});
+            if (typeof loadPatientEmergencyAudit === 'function') loadPatientEmergencyAudit().catch(() => {});
         } else if (cleanId === 'tab-access-audit') {
             if (typeof loadPatientEmergencyAudit === 'function') loadPatientEmergencyAudit().catch(() => {});
             if (typeof loadAccessHistoryTab === 'function') loadAccessHistoryTab().catch(() => {});
@@ -3129,12 +3130,18 @@ async function loadEmergencyTab(options = {}) {
         if (!res.has_active_emergency || !res.telemetry) return;
 
         const tel = res.telemetry;
-        document.getElementById('ambulanceEtaDisplay').textContent = `${tel.eta_minutes} Mins`;
-        document.getElementById('ambulanceDistanceDisplay').textContent = `${tel.distance_remaining_km} km`;
-        document.getElementById('ambulanceStatusText').textContent = tel.status_text;
-        document.getElementById('ambulanceUnitName').textContent = tel.ambulance_unit;
-        document.getElementById('assignedTraumaBay').textContent = res.reserved_trauma_bay;
-        document.getElementById('emergencyStatusBadge').textContent = tel.status.toUpperCase();
+        const etaEl = document.getElementById('ambulanceEtaDisplay');
+        if (etaEl) etaEl.textContent = `${tel.eta_minutes} Mins`;
+        const distEl = document.getElementById('ambulanceDistanceDisplay');
+        if (distEl) distEl.textContent = `${tel.distance_remaining_km} km`;
+        const statEl = document.getElementById('ambulanceStatusText');
+        if (statEl) statEl.textContent = tel.status_text;
+        const unitEl = document.getElementById('ambulanceUnitName');
+        if (unitEl) unitEl.textContent = tel.ambulance_unit;
+        const bayEl = document.getElementById('assignedTraumaBay');
+        if (bayEl) bayEl.textContent = res.reserved_trauma_bay;
+        const badgeEl = document.getElementById('emergencyStatusBadge');
+        if (badgeEl) badgeEl.textContent = tel.status.toUpperCase();
 
         const progBar = document.getElementById('ambulanceProgressBar');
         if (progBar) {
@@ -3145,10 +3152,14 @@ async function loadEmergencyTab(options = {}) {
         // Medical passport preview
         if (res.shared_medical_passport) {
             const mp = res.shared_medical_passport;
-            document.getElementById('passportBloodGroup').textContent = mp.blood_group;
-            document.getElementById('passportAllergies').textContent = mp.severe_drug_allergies;
-            document.getElementById('passportConditions').textContent = mp.pre_existing_conditions;
-            document.getElementById('passportMeds').textContent = mp.current_medications;
+            const bgEl = document.getElementById('passportBloodGroup');
+            if (bgEl) bgEl.textContent = mp.blood_group;
+            const alEl = document.getElementById('passportAllergies');
+            if (alEl) alEl.textContent = mp.severe_drug_allergies;
+            const condEl = document.getElementById('passportConditions');
+            if (condEl) condEl.textContent = mp.pre_existing_conditions;
+            const medEl = document.getElementById('passportMeds');
+            if (medEl) medEl.textContent = mp.current_medications;
         }
 
     } catch (err) {
