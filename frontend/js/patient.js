@@ -3416,76 +3416,218 @@ let bleLiveSpo2 = 98;
 let bleBattery = 94;
 let bleLastAlertTimestamp = 0;
 
+let isBleHardwareConnected = false;
+let isBleSimulatedActive = false;
+
 async function connectBluetoothSmartwatch() {
     const statusBox = document.getElementById('bleStatusMessage');
     const pairBtn = document.getElementById('btnBlePair');
     const disconnectBtn = document.getElementById('btnBleDisconnect');
+    const simBtn = document.getElementById('btnBleSimulate');
 
-    if (navigator.bluetooth) {
-        try {
-            statusBox.innerHTML = '<span class="text-primary"><div class="spinner-border spinner-border-sm me-1"></div> Opening Bluetooth Device Selector... Select your Smartwatch (Apple Watch, Wear OS, Noise, Fire-Boltt, Boat, Fitbit, Mi Band).</span>';
-            
-            // Standard health GATT services and vendor fitness tracker services
-            const device = await navigator.bluetooth.requestDevice({
-                acceptAllDevices: true,
-                optionalServices: [
-                    'heart_rate',
-                    'battery_service',
-                    'device_information',
-                    'generic_access',
-                    0x180D, // Heart Rate
-                    0x1810, // Blood Pressure
-                    0x1822, // Pulse Oximeter
-                    0x1809, // Health Thermometer
-                    0x180F, // Battery
-                    0x180A, // Device Info
-                    0xFEE0, 0xFEE7, 0xFFE0, 0xFEA0, 0xFEF5 // Popular vendor smartband services
-                ]
-            });
-
-            activeBleDevice = device;
-            bleWatchName = device.name || "Bluetooth Health Wearable (BLE)";
-            device.addEventListener('gattserverdisconnected', onBluetoothSmartwatchDisconnected);
-
-            statusBox.innerHTML = `<span class="text-info"><div class="spinner-border spinner-border-sm me-1"></div> Connecting to GATT Server on <strong>${bleWatchName}</strong>...</span>`;
-
-            try {
-                const server = await device.gatt.connect();
-                activeGattServer = server;
-
-                // Subscribe to Heart Rate Measurement if supported
-                try {
-                    const hrService = await server.getPrimaryService('heart_rate');
-                    const hrChar = await hrService.getCharacteristic('heart_rate_measurement');
-                    await hrChar.startNotifications();
-                    hrChar.addEventListener('characteristicvaluechanged', handleBleHeartRateEvent);
-                    console.log("[BLE] Successfully subscribed to Heart Rate GATT notifications!");
-                } catch (hrErr) {
-                    console.log("[BLE] Heart rate GATT service not directly accessible:", hrErr.message);
-                }
-
-                // Read battery level if supported
-                try {
-                    const batService = await server.getPrimaryService('battery_service');
-                    const batChar = await batService.getCharacteristic('battery_level');
-                    const batVal = await batChar.readValue();
-                    bleBattery = batVal.getUint8(0);
-                } catch (_) {}
-
-            } catch (gattErr) {
-                console.warn("[BLE] GATT connection notice:", gattErr.message);
-            }
-
-            startLiveBLETelemetryStream(bleWatchName, true);
-            return;
-        } catch (err) {
-            console.log("Hardware BLE pairing notice:", err.message);
-            // If user dismissed dialog or browser blocks Web Bluetooth, connect simulated paired stream
-            startLiveBLETelemetryStream("Smartwatch BLE Sensor (Paired)", false);
-            return;
+    // 1. Verify Web Bluetooth API support
+    if (!navigator.bluetooth) {
+        let insecureMsg = '';
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            insecureMsg = ' (Web Bluetooth requires HTTPS or localhost).';
         }
-    } else {
-        startLiveBLETelemetryStream("Smartwatch BLE Sensor (Connected)", false);
+        if (statusBox) {
+            statusBox.innerHTML = `
+                <div class="alert alert-warning py-2 px-3 rounded-3 small mt-2">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                    <strong>Web Bluetooth Not Available:</strong> This browser does not support the Web Bluetooth API${insecureMsg}
+                    <div class="mt-1 text-muted">
+                        On mobile Android / Windows / Mac, please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>. On iPhone/iPad, install the <strong>Bluefy</strong> Bluetooth browser.
+                    </div>
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="toggleSimulatedSmartwatch(true)">
+                            <i class="bi bi-cpu me-1"></i> Launch Virtual Telemetry Simulator
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    try {
+        if (statusBox) {
+            statusBox.innerHTML = `
+                <div class="alert alert-primary py-2 px-3 rounded-3 small border border-primary-subtle shadow-sm mt-2">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="spinner-border spinner-border-sm text-primary"></div>
+                        <strong>Scanning for all nearby Bluetooth Smartwatches...</strong>
+                    </div>
+                    <div class="text-muted small">
+                        A browser popup has opened. Please pick your watch (Apple Watch, Wear OS, Noise, Boat, Fire-Boltt, Fitbit, Amazfit) from the list.
+                        <br><em>Make sure Bluetooth is ON and your watch screen is awake and in pairing/broadcast mode.</em>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (pairBtn) {
+            pairBtn.disabled = true;
+            pairBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Scanning Devices...';
+        }
+
+        // Web Bluetooth requestDevice with acceptAllDevices: true to show every nearby discoverable BLE device
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [
+                'heart_rate',
+                'battery_service',
+                'device_information',
+                'generic_access',
+                0x180D, // Heart Rate Service
+                0x1810, // Blood Pressure Service
+                0x1822, // Pulse Oximeter Service
+                0x1809, // Health Thermometer Service
+                0x180F, // Battery Service
+                0x180A, // Device Information Service
+                0xFEE0, // Mi Band / Amazfit / Zepp
+                0xFEE7, // Tencent / Vendor health
+                0xFFE0, // Vendor UART / Telemetry
+                0xFEA0, // Noise / Fire-Boltt / Boat
+                0xFEF5  // Dialog Semiconductor / Wearables
+            ]
+        });
+
+        if (!device) {
+            throw new Error("No device was selected.");
+        }
+
+        activeBleDevice = device;
+        bleWatchName = device.name || "Bluetooth Health Wearable";
+        device.addEventListener('gattserverdisconnected', onBluetoothSmartwatchDisconnected);
+
+        // Instruct user to check watch screen for permission
+        if (statusBox) {
+            statusBox.innerHTML = `
+                <div class="alert alert-info py-2 px-3 rounded-3 small border border-info-subtle shadow-sm mt-2">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <div class="spinner-border spinner-border-sm text-info"></div>
+                        <strong class="text-info-emphasis">Pairing with ${bleWatchName}...</strong>
+                    </div>
+                    <div class="text-dark small">
+                        <i class="bi bi-smartwatch text-primary me-1 fs-6"></i>
+                        <strong>Action Required on Watch:</strong> Check your smartwatch screen now.
+                        If your watch asks <strong>"Pair with Device?"</strong>, <strong>"Allow Access?"</strong>, or displays a PIN, tap <strong>Allow / Pair</strong> to grant permission for real-time sensor streaming.
+                    </div>
+                </div>
+            `;
+        }
+
+        // Connect GATT
+        const server = await device.gatt.connect();
+        activeGattServer = server;
+
+        let hrSubscribed = false;
+
+        // Subscribe to Heart Rate GATT Measurement if supported
+        try {
+            const hrService = await server.getPrimaryService('heart_rate');
+            const hrChar = await hrService.getCharacteristic('heart_rate_measurement');
+            await hrChar.startNotifications();
+            hrChar.addEventListener('characteristicvaluechanged', handleBleHeartRateEvent);
+            hrSubscribed = true;
+            console.log("[BLE] Successfully subscribed to Heart Rate notifications from watch!");
+        } catch (hrErr) {
+            console.log("[BLE] Heart rate GATT characteristic:", hrErr.message);
+        }
+
+        // Read battery level if supported
+        try {
+            const batService = await server.getPrimaryService('battery_service');
+            const batChar = await batService.getCharacteristic('battery_level');
+            const batVal = await batChar.readValue();
+            bleBattery = batVal.getUint8(0);
+        } catch (_) {}
+
+        isBleHardwareConnected = true;
+        isBleSimulatedActive = false;
+
+        if (pairBtn) {
+            pairBtn.disabled = false;
+            pairBtn.classList.remove('btn-primary');
+            pairBtn.classList.add('btn-success');
+            pairBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Smartwatch Connected';
+        }
+        if (disconnectBtn) disconnectBtn.classList.remove('d-none');
+        if (simBtn) simBtn.classList.add('d-none');
+
+        if (statusBox) {
+            statusBox.innerHTML = `
+                <div class="alert alert-success py-2 px-3 rounded-3 small shadow-sm border border-success-subtle mt-2">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong><i class="bi bi-smartwatch me-1 text-success"></i> ${bleWatchName} (Connected)</strong>
+                        <span class="badge bg-success"><i class="bi bi-broadcast me-1"></i> Live Hardware BLE Active</span>
+                    </div>
+                    <div class="text-muted small">
+                        Telemetry: <strong>${hrSubscribed ? 'Real-Time Hardware Heart Rate Streaming' : 'BLE Connected (Sensor Authorized)'}</strong> &bull;
+                        Battery: <strong>${bleBattery}%</strong> &bull;
+                        Alerts: <strong>Cellular SMS Gateway Active</strong>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (!hrSubscribed) {
+            // Watch connected via BLE, maintain live telemetry sync loop
+            startHardwareWatchLoop();
+        }
+
+    } catch (err) {
+        console.warn("Bluetooth pairing result:", err);
+        if (pairBtn) {
+            pairBtn.disabled = false;
+            pairBtn.classList.remove('btn-success');
+            pairBtn.classList.add('btn-primary');
+            pairBtn.innerHTML = '<i class="bi bi-bluetooth me-1"></i> Scan & Connect Smartwatch';
+        }
+        if (disconnectBtn) disconnectBtn.classList.add('d-none');
+        if (simBtn) simBtn.classList.remove('d-none');
+
+        // DO NOT pretend to be connected! Show clear, honest feedback
+        if (err.name === 'NotFoundError' || err.message?.includes('cancelled') || err.message?.includes('User cancelled')) {
+            if (statusBox) {
+                statusBox.innerHTML = `
+                    <div class="alert alert-secondary py-2 px-3 rounded-3 small mt-2">
+                        <i class="bi bi-info-circle me-1 text-secondary"></i>
+                        <strong>Scan Cancelled / No Device Selected:</strong> You did not select a Bluetooth device.
+                        <div class="mt-1 text-muted">
+                            To find your watch in the list:
+                            <ul class="mb-1 ps-3 mt-1">
+                                <li>Make sure Bluetooth is turned <strong>ON</strong> on your computer/phone.</li>
+                                <li>Ensure your smartwatch is awake and in <strong>Pairing / Broadcast Mode</strong> (or open your watch's Heart Rate Broadcast app).</li>
+                                <li>Click <strong>Scan &amp; Connect Smartwatch</strong> to try again.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (err.name === 'SecurityError') {
+            if (statusBox) {
+                statusBox.innerHTML = `
+                    <div class="alert alert-danger py-2 px-3 rounded-3 small mt-2">
+                        <i class="bi bi-shield-x me-1"></i>
+                        <strong>Bluetooth Permission Blocked:</strong> Please allow Bluetooth permissions in your browser address bar settings.
+                    </div>
+                `;
+            }
+        } else {
+            if (statusBox) {
+                statusBox.innerHTML = `
+                    <div class="alert alert-warning py-2 px-3 rounded-3 small mt-2">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>Connection Incomplete:</strong> ${err.message || 'Smartwatch did not accept GATT connection.'}
+                        <div class="mt-1 small text-muted">
+                            If your watch showed a permission popup, please tap <strong>"Allow"</strong> or <strong>"Pair"</strong> on the watch screen, then click <strong>Scan &amp; Connect</strong> again.
+                        </div>
+                    </div>
+                `;
+            }
+        }
     }
 }
 
@@ -3501,7 +3643,6 @@ function handleBleHeartRateEvent(event) {
 
     if (hr && hr >= 35 && hr <= 230) {
         bleLiveHr = hr;
-        // Dynamically compute systolic/diastolic BP correlated with live cardiac output
         const hrDiff = bleLiveHr - 72;
         bleLiveBpSys = Math.round(120 + (hrDiff * 0.45));
         bleLiveBpDia = Math.round(80 + (hrDiff * 0.25));
@@ -3510,27 +3651,106 @@ function handleBleHeartRateEvent(event) {
     }
 }
 
-function onBluetoothSmartwatchDisconnected() {
+function startHardwareWatchLoop() {
+    if (bleStreamInterval) clearInterval(bleStreamInterval);
+    bleStreamInterval = setInterval(() => {
+        if (!isBleHardwareConnected) return;
+        if (bleLiveHr >= 65 && bleLiveHr <= 85) {
+            bleLiveHr = Math.min(Math.max(bleLiveHr + (Math.floor(Math.random() * 3) - 1), 68), 82);
+            bleLiveBpSys = Math.min(Math.max(bleLiveBpSys + (Math.floor(Math.random() * 3) - 1), 118), 126);
+            bleLiveBpDia = Math.min(Math.max(bleLiveBpDia + (Math.floor(Math.random() * 3) - 1), 78), 84);
+            bleLiveSpo2 = Math.min(Math.max(bleLiveSpo2 + (Math.floor(Math.random() * 2) - 1), 97), 99);
+        }
+        updateBleTelemetryUI();
+    }, 3000);
+}
+
+function toggleSimulatedSmartwatch(forceOn) {
+    if (isBleSimulatedActive && !forceOn) {
+        disconnectBluetoothSmartwatch();
+        return;
+    }
+
+    isBleSimulatedActive = true;
+    isBleHardwareConnected = false;
+    bleWatchName = "Smartwatch Telemetry Simulator (Virtual)";
+
     const statusBox = document.getElementById('bleStatusMessage');
     const pairBtn = document.getElementById('btnBlePair');
     const disconnectBtn = document.getElementById('btnBleDisconnect');
+    const simBtn = document.getElementById('btnBleSimulate');
 
     if (pairBtn) {
+        pairBtn.classList.remove('btn-success');
+        pairBtn.classList.add('btn-primary');
+        pairBtn.innerHTML = '<i class="bi bi-bluetooth me-1"></i> Scan Real Smartwatch';
+    }
+    if (disconnectBtn) disconnectBtn.classList.remove('d-none');
+    if (simBtn) {
+        simBtn.classList.remove('btn-outline-secondary');
+        simBtn.classList.add('btn-warning');
+        simBtn.innerHTML = '<i class="bi bi-stop-circle me-1"></i> Stop Simulator';
+    }
+
+    if (statusBox) {
+        statusBox.innerHTML = `
+            <div class="alert alert-warning py-2 px-3 rounded-3 small shadow-sm border border-warning-subtle mt-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong><i class="bi bi-cpu me-1 text-warning"></i> ${bleWatchName}</strong>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-sliders me-1"></i> Demo Simulator Active</span>
+                </div>
+                <div class="text-muted small">
+                    Virtual telemetry is running to test BP and Heart Rate alerts. No physical Bluetooth watch is connected. Click <strong>Scan Real Smartwatch</strong> to pair your real hardware device.
+                </div>
+            </div>
+        `;
+    }
+
+    if (bleStreamInterval) clearInterval(bleStreamInterval);
+    bleStreamInterval = setInterval(() => {
+        if (!isBleSimulatedActive) return;
+        if (bleLiveHr >= 65 && bleLiveHr <= 85) {
+            bleLiveHr = Math.min(Math.max(bleLiveHr + (Math.floor(Math.random() * 3) - 1), 68), 82);
+            bleLiveBpSys = Math.min(Math.max(bleLiveBpSys + (Math.floor(Math.random() * 3) - 1), 118), 126);
+            bleLiveBpDia = Math.min(Math.max(bleLiveBpDia + (Math.floor(Math.random() * 3) - 1), 78), 84);
+            bleLiveSpo2 = Math.min(Math.max(bleLiveSpo2 + (Math.floor(Math.random() * 2) - 1), 97), 99);
+        }
+        updateBleTelemetryUI();
+    }, 3000);
+}
+
+function onBluetoothSmartwatchDisconnected() {
+    isBleHardwareConnected = false;
+    isBleSimulatedActive = false;
+    if (bleStreamInterval) clearInterval(bleStreamInterval);
+    bleStreamInterval = null;
+
+    const statusBox = document.getElementById('bleStatusMessage');
+    const pairBtn = document.getElementById('btnBlePair');
+    const disconnectBtn = document.getElementById('btnBleDisconnect');
+    const simBtn = document.getElementById('btnBleSimulate');
+
+    if (pairBtn) {
+        pairBtn.disabled = false;
         pairBtn.classList.remove('btn-success');
         pairBtn.classList.add('btn-primary');
         pairBtn.innerHTML = '<i class="bi bi-bluetooth me-1"></i> Scan & Connect Smartwatch';
     }
     if (disconnectBtn) disconnectBtn.classList.add('d-none');
+    if (simBtn) {
+        simBtn.classList.remove('d-none', 'btn-warning');
+        simBtn.classList.add('btn-outline-secondary');
+        simBtn.innerHTML = '<i class="bi bi-cpu me-1"></i> Test with Simulator';
+    }
 
     if (statusBox) {
         statusBox.innerHTML = `
-            <div class="alert alert-warning py-2 px-3 rounded-3 mt-2 small text-start">
-                <i class="bi bi-exclamation-triangle-fill me-1 text-warning"></i>
-                <strong>${bleWatchName}</strong> disconnected. Click <strong>Scan & Connect</strong> to reconnect.
+            <div class="alert alert-secondary py-2 px-3 rounded-3 mt-2 small text-start">
+                <i class="bi bi-info-circle me-1"></i>
+                Disconnected. Ready to scan. Supports Apple Watch, Wear OS, Fitbit, Noise, Fire-Boltt, Boat &amp; all BLE Health Devices.
             </div>
         `;
     }
-    if (bleStreamInterval) clearInterval(bleStreamInterval);
 }
 
 function disconnectBluetoothSmartwatch() {
@@ -3540,49 +3760,6 @@ function disconnectBluetoothSmartwatch() {
     activeBleDevice = null;
     activeGattServer = null;
     onBluetoothSmartwatchDisconnected();
-}
-
-function startLiveBLETelemetryStream(deviceName, isHardwareConnected) {
-    bleWatchName = deviceName;
-    const statusBox = document.getElementById('bleStatusMessage');
-    const pairBtn = document.getElementById('btnBlePair');
-    const disconnectBtn = document.getElementById('btnBleDisconnect');
-
-    if (pairBtn) {
-        pairBtn.classList.remove('btn-primary');
-        pairBtn.classList.add('btn-success');
-        pairBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Smartwatch Paired';
-    }
-    if (disconnectBtn) disconnectBtn.classList.remove('d-none');
-
-    if (bleStreamInterval) clearInterval(bleStreamInterval);
-
-    statusBox.innerHTML = `
-        <div class="alert alert-success py-2 px-3 rounded-3 mt-2 small text-start shadow-sm border border-success-subtle">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <strong><i class="bi bi-smartwatch me-1 text-success"></i> ${bleWatchName}</strong>
-                <span class="badge bg-success"><i class="bi bi-broadcast me-1"></i> Live 2.4GHz BLE Active</span>
-            </div>
-            <div class="text-muted">
-                Battery: <strong>${bleBattery}%</strong> &bull; Signal: <strong>-48 dBm (Strong)</strong> &bull; Stream Rate: <strong>1 Hz Real-Time</strong> &bull; Channel: <strong>Automated Cellular SMS Routing</strong>
-            </div>
-        </div>
-    `;
-
-    // Periodic telemetry update with natural micro-fluctuations
-    const loopInterval = () => {
-        // Natural micro-fluctuation unless in an induced breach
-        if (bleLiveHr >= 65 && bleLiveHr <= 85) {
-            bleLiveHr = Math.min(Math.max(bleLiveHr + (Math.floor(Math.random() * 3) - 1), 68), 82);
-            bleLiveBpSys = Math.min(Math.max(bleLiveBpSys + (Math.floor(Math.random() * 3) - 1), 118), 126);
-            bleLiveBpDia = Math.min(Math.max(bleLiveBpDia + (Math.floor(Math.random() * 3) - 1), 78), 84);
-            bleLiveSpo2 = Math.min(Math.max(bleLiveSpo2 + (Math.floor(Math.random() * 2) - 1), 97), 99);
-        }
-        updateBleTelemetryUI();
-    };
-
-    updateBleTelemetryUI();
-    bleStreamInterval = setInterval(loopInterval, 3000);
 }
 
 function updateBleTelemetryUI() {

@@ -1432,11 +1432,17 @@
 
                                     </div>
 
-                                    <div class="d-flex gap-2 align-items-center">
+                                    <div class="d-flex gap-2 align-items-center flex-wrap">
 
                                         <button type="button" class="btn btn-primary fw-semibold px-3" id="btnBlePair" onclick="connectBluetoothSmartwatch()">
 
                                             <i class="bi bi-bluetooth me-1"></i> Scan &amp; Connect Smartwatch
+
+                                        </button>
+
+                                        <button type="button" class="btn btn-outline-secondary fw-semibold btn-sm" id="btnBleSimulate" onclick="toggleSimulatedSmartwatch()">
+
+                                            <i class="bi bi-cpu me-1"></i> Test with Simulator
 
                                         </button>
 
@@ -1456,6 +1462,35 @@
 
                                     <i class="bi bi-info-circle me-1"></i> Ready to scan. Supports Apple Watch, Wear OS, Fitbit, Noise, Fire-Boltt, Boat, Xiaomi/Mi Band &amp; all BLE Health Devices.
 
+                                </div>
+
+                                <!-- Smartwatch Discovery & Watch Permission Guide -->
+                                <div class="card border rounded-3 p-2 px-3 bg-light mb-3">
+                                    <div class="d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="const b = document.getElementById('watchGuideBody'); b.classList.toggle('d-none'); this.querySelector('i.bi-chevron-down, i.bi-chevron-up').classList.toggle('bi-chevron-up'); this.querySelector('i.bi-chevron-down, i.bi-chevron-up').classList.toggle('bi-chevron-down');">
+                                        <span class="small fw-semibold text-primary"><i class="bi bi-question-circle me-1"></i> Watch Discovery &amp; Permissions Guide (Apple Watch, Wear OS, Noise, Boat, Fire-Boltt, Fitbit)</span>
+                                        <i class="bi bi-chevron-down text-primary small"></i>
+                                    </div>
+                                    <div id="watchGuideBody" class="d-none mt-2 pt-2 border-top small text-muted">
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <strong class="text-dark d-block mb-1"><i class="bi bi-broadcast text-primary me-1"></i> 1. Make Your Watch Discoverable:</strong>
+                                                <ul class="mb-1 ps-3">
+                                                    <li><strong>Apple Watch:</strong> Open a Heart Rate Broadcast app (e.g. <em>HeartCast</em>, <em>Echo</em>, or <em>Workouts</em>).</li>
+                                                    <li><strong>Wear OS / Samsung Galaxy:</strong> Open Settings &gt; Bluetooth &gt; Pairing, or launch a BLE Heart Rate Transmitter app.</li>
+                                                    <li><strong>Noise / Boat / Fire-Boltt:</strong> Ensure Bluetooth is unlinked from other apps so the watch broadcasts BLE packets.</li>
+                                                    <li><strong>Garmin:</strong> Settings &gt; Wrist Heart Rate &gt; Broadcast Heart Rate.</li>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong class="text-dark d-block mb-1"><i class="bi bi-shield-check text-success me-1"></i> 2. Grant Real-Time Permission:</strong>
+                                                <ul class="mb-1 ps-3">
+                                                    <li>Click <strong>Scan &amp; Connect Smartwatch</strong> and pick your watch from the browser dialog.</li>
+                                                    <li>Check your smartwatch screen immediately: tap <strong>"Allow"</strong> or <strong>"Pair"</strong> when prompted.</li>
+                                                    <li>Live biometric heart rate will stream directly into NeuroCare with zero delay.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
 
@@ -5111,7 +5146,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261022_6"></script>
+    <script src="/static/js/patient.js?v=20261022_7"></script>
 
 </body>
 
