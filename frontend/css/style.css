@@ -400,8 +400,71 @@ body {
     flex-direction: column;
     gap: 10px;
     pointer-events: none;
-    max-width: 360px;
+    max-width: 380px;
     width: calc(100vw - 32px);
+}
+
+@media (max-width: 576px) {
+    .sms-notification-wrapper {
+        top: 12px !important;
+        right: 50% !important;
+        transform: translateX(50%) !important;
+        width: calc(100vw - 24px) !important;
+        max-width: 420px !important;
+    }
+    .sms-otp-card {
+        padding: 10px 12px !important;
+        border-radius: 14px !important;
+    }
+    .sms-recipient-pill {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 3px !important;
+        border-radius: 8px !important;
+        padding: 5px 8px !important;
+        font-size: 0.68rem !important;
+    }
+    #stepperNav {
+        display: flex !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        padding-bottom: 6px !important;
+        justify-content: flex-start !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+    #stepperNav::-webkit-scrollbar {
+        display: none !important;
+    }
+    .wizard-step {
+        padding: 6px 12px !important;
+        font-size: 0.78rem !important;
+        flex-shrink: 0 !important;
+    }
+    #symptomCategoryFilters {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding-bottom: 6px !important;
+        scrollbar-width: none !important;
+    }
+    #symptomCategoryFilters::-webkit-scrollbar {
+        display: none !important;
+    }
+    .category-filter-btn {
+        flex-shrink: 0 !important;
+        white-space: nowrap !important;
+        font-size: 0.75rem !important;
+        padding: 4px 10px !important;
+    }
+    .symptom-chip {
+        padding: 6px 12px !important;
+        font-size: 0.8rem !important;
+        margin: 2px !important;
+        min-height: 38px !important;
+    }
 }
 
 .sms-otp-card {

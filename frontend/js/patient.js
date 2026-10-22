@@ -205,12 +205,10 @@ async function toggleSMSMasterSwitch(turnOn) {
     }
 
     showSMSNotification({
-        title: nextState ? "📢 CELLULAR SMS TURNED ON" : "🛡️ CELLULAR SMS TURNED OFF",
-        message: nextState
-            ? "Cellular SMS notifications are now ON. Real-time medication reminders & vital alerts will be dispatched to your phone."
-            : "Cellular SMS notifications are now turned OFF. Fast2SMS wallet balance & SMS recharge are completely protected.",
+        title: nextState ? "Notifications turned on" : "Notifications turned off",
+        message: "",
         channel: "sms",
-        duration: 6000
+        duration: 3500
     });
 }
 
@@ -271,7 +269,7 @@ async function testPatientSMS() {
 
     showSMSNotification({
         title: "⚡ DISPATCHING CELLULAR SMS...",
-        message: `Transmitting cellular SMS notification to Patient (+${pPhone.replace(/[^0-9]/g, '')}) via Fast2SMS Quick Route...`,
+        message: `Transmitting cellular SMS notification to Patient (+${pPhone.replace(/[^0-9]/g, '')}) via Cellular SMS Gateway...`,
         channel: "sms",
         phone: pPhone,
         duration: 5000
@@ -293,8 +291,8 @@ async function testPatientSMS() {
             });
         } else {
             showSMSNotification({
-                title: "⚠️ FAST2SMS NOTICE",
-                message: res.error || "Failed to deliver cellular SMS. Please verify mobile number and Fast2SMS wallet balance.",
+                title: "⚠️ SMS NOTIFICATION NOTICE",
+                message: res.error || "Failed to deliver cellular SMS. Please verify mobile number and cellular SMS connectivity.",
                 channel: "sms",
                 phone: pPhone,
                 duration: 10000
@@ -334,7 +332,7 @@ async function testCaretakerSMS() {
 
     showSMSNotification({
         title: "⚡ DISPATCHING CELLULAR SMS...",
-        message: `Transmitting cellular SMS alert to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via Fast2SMS Quick Route...`,
+        message: `Transmitting cellular SMS alert to Caretaker (+${cPhone.replace(/[^0-9]/g, '')}) via Cellular SMS Gateway...`,
         channel: "sms",
         phone: cPhone,
         duration: 5000
@@ -356,8 +354,8 @@ async function testCaretakerSMS() {
             });
         } else {
             showSMSNotification({
-                title: "⚠️ FAST2SMS NOTICE",
-                message: res.error || "Failed to deliver cellular SMS. Please verify mobile number and Fast2SMS wallet balance.",
+                title: "⚠️ SMS NOTIFICATION NOTICE",
+                message: res.error || "Failed to deliver cellular SMS. Please verify mobile number and cellular SMS connectivity.",
                 channel: "sms",
                 phone: cPhone,
                 duration: 10000
@@ -466,7 +464,7 @@ function showSMSNotification(options) {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    let channelBadge = `<span class="sms-app-badge text-primary"><i class="bi bi-broadcast"></i> Fast2SMS Cellular</span>`;
+    let channelBadge = `<span class="sms-app-badge text-primary"><i class="bi bi-chat-left-dots-fill"></i> SMS Notification</span>`;
     if (channel === 'emergency') {
         channelBadge = `<span class="sms-app-badge text-danger"><i class="bi bi-broadcast"></i> Priority SOS Alert</span>`;
     }
@@ -474,10 +472,10 @@ function showSMSNotification(options) {
     const ptDisplay = cfg.patientPhone || cfg.patientWhatsapp || 'Patient';
     const ctDisplay = cfg.caretakerPhone ? `${cfg.caretakerName} (${cfg.caretakerPhone})` : 'Primary Caregiver';
     const recipientsHtml = `
-        <div class="sms-recipient-pill">
-            <i class="bi bi-person-check-fill text-primary"></i> <strong>Pt:</strong> ${ptDisplay}
-            <span class="mx-1 text-muted">|</span>
-            <i class="bi bi-heart-fill text-danger"></i> <strong>Caretaker:</strong> ${ctDisplay}
+        <div class="sms-recipient-pill d-flex flex-wrap align-items-center gap-1">
+            <span class="text-nowrap"><i class="bi bi-person-check-fill text-primary"></i> <strong>Pt:</strong> ${ptDisplay}</span>
+            <span class="text-muted d-none d-sm-inline">|</span>
+            <span class="text-nowrap"><i class="bi bi-heart-fill text-danger"></i> <strong>Caretaker:</strong> ${ctDisplay}</span>
         </div>
     `;
 
@@ -511,8 +509,8 @@ function showSMSNotification(options) {
 
     const deliveryStatusHtml = (options && options.caretakerAlert) ? `
         <div class="d-flex align-items-center justify-content-between p-2 mb-2 bg-primary-subtle text-primary border border-primary-subtle rounded-2 small">
-            <span class="fw-bold"><i class="bi bi-broadcast me-1"></i> Fast2SMS Quick Gateway (Route 'q')</span>
-            <span class="badge bg-primary text-white" style="font-size:0.7rem;">Cellular SMS Delivered</span>
+            <span class="fw-bold"><i class="bi bi-broadcast me-1"></i> Cellular SMS Gateway</span>
+            <span class="badge bg-primary text-white" style="font-size:0.7rem;">SMS Sent</span>
         </div>
     ` : '';
 
@@ -524,7 +522,7 @@ function showSMSNotification(options) {
         ${recipientsHtml}
         ${deliveryStatusHtml}
         <div class="sms-body-text">
-            <strong>${title}:</strong> ${msg}
+            <strong>${title}</strong>${msg ? `: ${msg}` : ""}
         </div>
         ${otpHtml}
         <div class="sms-actions d-flex align-items-center justify-content-between gap-2 mt-2">
@@ -3692,7 +3690,7 @@ function updateBleTelemetryUI() {
                         <span class="badge bg-primary text-white"><i class="bi bi-broadcast me-1"></i>Cellular SMS</span>
                     </div>
                     <h4 class="fw-bold my-1 text-primary">Automated</h4>
-                    <small class="text-muted">Fast2SMS Caretaker Routing Active</small>
+                    <small class="text-muted">Cellular SMS Routing Active</small>
                 </div>
             </div>
         `;
@@ -3926,7 +3924,7 @@ async function submitManualVitals(e) {
             // Stage 2 Hypertensive Crisis: Direct Caretaker SMS alert + Emergency dispatch
             showSMSNotification({
                 title: "🚨 CRITICAL HYPERTENSION (BP 160) - AUTOMATED CARETAKER SMS DISPATCH",
-                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.delivery_id || 'F2SMS-LIVE-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Cellular SMS alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via Fast2SMS Route 'q'.`,
+                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.delivery_id || 'F2SMS-LIVE-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Cellular SMS alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via Cellular SMS Gateway.`,
                 channel: "sms",
                 caretakerAlert: true,
                 duration: 12000

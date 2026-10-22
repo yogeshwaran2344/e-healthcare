@@ -975,13 +975,9 @@ def get_sms_toggle_status_endpoint():
         "success": True,
         "sms_enabled": enabled,
         "status": "active" if enabled else "disabled",
-        "provider": "Fast2SMS Quick SMS Gateway",
+        "provider": "Cellular SMS Gateway",
         "route": "q",
-        "message": (
-            "Cellular SMS messages are ON. Automated SMS notifications are active."
-            if enabled else
-            "Cellular SMS messages are OFF. Balance & recharge protection is active."
-        )
+        "message": "Notifications turned on" if enabled else "Notifications turned off"
     }
 
 
@@ -994,12 +990,8 @@ def set_sms_toggle_endpoint(payload: Dict[str, Any] = Body(...)):
         "success": True,
         "sms_enabled": saved_state,
         "status": "active" if saved_state else "disabled",
-        "provider": "Fast2SMS Quick SMS Gateway",
-        "message": (
-            "Cellular SMS messages turned ON. Live SMS will now be dispatched."
-            if saved_state else
-            "Cellular SMS messages turned OFF. Fast2SMS balance is preserved."
-        )
+        "provider": "Cellular SMS Gateway",
+        "message": "Notifications turned on" if saved_state else "Notifications turned off"
     }
 
 

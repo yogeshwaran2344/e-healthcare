@@ -139,12 +139,10 @@
 
         if (typeof showSMSNotification === 'function') {
             showSMSNotification({
-                title: nextState ? "📢 CELLULAR SMS TURNED ON" : "🛡️ CELLULAR SMS TURNED OFF",
-                message: nextState
-                    ? "Cellular SMS notifications are now ON. Real-time medication reminders & vital alerts will be dispatched to your phone."
-                    : "Cellular SMS notifications are now turned OFF. Fast2SMS wallet balance & SMS recharge are completely protected.",
+                title: nextState ? "Notifications turned on" : "Notifications turned off",
+                message: "",
                 channel: "sms",
-                duration: 6000
+                duration: 3500
             });
         }
     };
@@ -224,31 +222,27 @@
             <div class="ms-auto d-flex align-items-center gap-2">
 
                 <!-- Interactive Cellular SMS Master Switch -->
-                <div class="d-inline-flex align-items-center bg-white border rounded-pill px-2 py-1 shadow-sm gap-2" id="headerSmsToggleContainer" style="cursor: pointer; user-select: none;" onclick="toggleSmsState()" title="Click to Toggle Cellular SMS Messages ON or OFF (Recharge Protection)">
+                <div class="d-inline-flex align-items-center bg-white border rounded-pill px-2 py-1 shadow-sm gap-2" id="headerSmsToggleContainer" style="cursor: pointer; user-select: none;" onclick="toggleSmsState()" title="Click to Toggle Cellular SMS Messages ON or OFF">
                     <div class="form-check form-switch m-0 d-flex align-items-center p-0" style="pointer-events: none;">
                         <input class="form-check-input ms-0 mt-0" type="checkbox" role="switch" id="headerSmsSwitchInput" style="cursor: pointer; width: 2.2em; height: 1.15em;">
                     </div>
-                    <span class="small fw-bold text-danger d-flex align-items-center gap-1" id="headerSmsText" style="font-size: 0.8rem;">
+                    <span class="small fw-bold text-danger d-flex align-items-center gap-1 text-nowrap" id="headerSmsText" style="font-size: 0.8rem;">
                         <i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS OFF
                     </span>
                 </div>
 
-                <button class="btn btn-outline-primary btn-sm fw-semibold rounded-pill d-none d-sm-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure Cellular SMS Alerts &amp; Emergency Contacts">
+                <button class="btn btn-outline-primary btn-sm fw-semibold rounded-pill d-none d-lg-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure Cellular SMS Alerts &amp; Emergency Contacts">
                     <i class="bi bi-broadcast me-1 text-primary"></i> SMS Alerts Setup
                 </button>
 
-                <button class="btn btn-danger btn-sm sos-btn-pulse px-3 me-1" onclick="activateTab('tab-emergency'); triggerOneTapSOS();">
-
-                    <i class="bi bi-broadcast me-1"></i> 1-Tap SOS Emergency
-
+                <button class="btn btn-danger btn-sm sos-btn-pulse px-2 px-sm-3 me-1 d-inline-flex align-items-center" onclick="activateTab('tab-emergency'); triggerOneTapSOS();" title="Emergency SOS">
+                    <i class="bi bi-broadcast me-1"></i> <span class="d-none d-sm-inline">1-Tap SOS Emergency</span><span class="d-inline d-sm-none fw-bold">SOS</span>
                 </button>
 
-                <span class="text-secondary small d-none d-md-inline" id="userWelcomeText">Welcome</span>
+                <span class="text-secondary small d-none d-lg-inline" id="userWelcomeText">Welcome</span>
 
-                <button class="btn btn-outline-danger btn-sm" onclick="API.logout()">
-
-                    <i class="bi bi-box-arrow-right"></i> Sign Out
-
+                <button class="btn btn-outline-danger btn-sm d-none d-sm-inline-flex align-items-center" onclick="API.logout()" title="Sign Out">
+                    <i class="bi bi-box-arrow-right me-1"></i> Sign Out
                 </button>
 
             </div>
@@ -449,7 +443,7 @@
                         <button class="sidebar-tab-btn nav-link" onclick="openContactSettingsModal(); toggleSidebar();" type="button">
                             <i class="bi bi-broadcast text-primary"></i>
                             <span class="tab-label">SMS Alerts</span>
-                            <span class="badge bg-primary-subtle text-primary ms-auto">Fast2SMS</span>
+                            <span class="badge bg-primary-subtle text-primary ms-auto">Cellular SMS</span>
                         </button>
                     </li>
 
@@ -489,7 +483,7 @@
 
                 <!-- WIZARD STEP 1: SYMPTOMS (TEXT & VOICE) -->
 
-                <div id="wizardStep1" class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <div id="wizardStep1" class="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-4">
 
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
 
@@ -619,7 +613,7 @@
 
                     <div class="d-flex justify-content-end">
 
-                        <button class="btn btn-primary btn-lg px-4 fw-semibold" onclick="goToStep2()">
+                        <button class="btn btn-primary btn-lg px-4 fw-semibold w-100 w-md-auto" onclick="goToStep2()">
 
                             Continue to Targeted Questions <i class="bi bi-arrow-right ms-1"></i>
 
@@ -4753,7 +4747,7 @@
 
                         <div class="p-3 bg-primary-subtle rounded-3 border border-primary-subtle mb-3">
                             <h6 class="fw-bold small text-primary mb-2 d-flex align-items-center justify-content-between">
-                                <span><i class="bi bi-broadcast me-1"></i> Fast2SMS Quick Gateway (Route 'q')</span>
+                                <span><i class="bi bi-broadcast me-1"></i> Cellular SMS Gateway</span>
                                 <span class="badge bg-primary text-white small">Direct Route Active</span>
                             </h6>
                             <p class="text-muted small mb-2" style="font-size:0.78rem;">
@@ -5117,7 +5111,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261022_4"></script>
+    <script src="/static/js/patient.js?v=20261022_6"></script>
 
 </body>
 
