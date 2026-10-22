@@ -101,6 +101,7 @@ router = APIRouter(prefix="/api/closed-loop", tags=["Adaptive Closed-Loop Clinic
 # ========================================================
 
 @router.get("/symptoms-catalog")
+@router.get("/symptoms/catalog")
 def get_symptoms_catalog():
     """Returns categorized clinical symptoms for multi-system user selection."""
     return {
@@ -113,9 +114,10 @@ def get_symptoms_catalog():
 # ========================================================
 
 @router.post("/uncertainty-assess")
+@router.post("/uncertainty/assess")
 def assess_uncertainty(
     req: UncertaintyAssessmentRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -123,14 +125,14 @@ def assess_uncertainty(
     based on reported symptoms and patient context.
     """
     patient_context = {
-        "age": current_user.age or 35,
-        "gender": current_user.gender or "Not specified",
-        "pre_existing_conditions": current_user.pre_existing_conditions or "",
-        "current_medications": current_user.current_medications or ""
+        "age": (current_user.age if current_user else None) or 35,
+        "gender": (current_user.gender if current_user else None) or "Not specified",
+        "pre_existing_conditions": (current_user.pre_existing_conditions if current_user else None) or "",
+        "current_medications": (current_user.current_medications if current_user else None) or ""
     }
 
     biomarkers = {"abnormal_flags": []}
-    if req.uploaded_report_ids:
+    if req.uploaded_report_ids and current_user:
         reports = db.query(MedicalReport).filter(
             MedicalReport.id.in_(req.uploaded_report_ids),
             MedicalReport.patient_id == current_user.id
@@ -152,24 +154,27 @@ def assess_uncertainty(
     entropy_info = compute_entropy_and_uncertainty(posteriors)
     missing_info = identify_missing_critical_information(req.symptoms, req.qa_answers, patient_context)
 
-    # Track in Adaptive Diagnostic Session
-    session = AdaptiveDiagnosticSession(
-        patient_id=current_user.id,
-        initial_symptoms_json=json.dumps(req.symptoms),
-        initial_entropy=entropy_info["shannon_entropy"],
-        current_entropy=entropy_info["shannon_entropy"],
-        current_uncertainty_score=entropy_info["uncertainty_score"],
-        answered_questions_json=json.dumps(req.qa_answers or {}),
-        top_predicted_disease=entropy_info["top_candidate"]["disease"],
-        confidence_score=round(entropy_info["top_candidate"]["probability"] * 100, 1),
-        session_status="in_progress"
-    )
-    db.add(session)
-    db.commit()
-    db.refresh(session)
+    # Track in Adaptive Diagnostic Session if user is authenticated
+    session_id = None
+    if current_user:
+        session = AdaptiveDiagnosticSession(
+            patient_id=current_user.id,
+            initial_symptoms_json=json.dumps(req.symptoms),
+            initial_entropy=entropy_info["shannon_entropy"],
+            current_entropy=entropy_info["shannon_entropy"],
+            current_uncertainty_score=entropy_info["uncertainty_score"],
+            answered_questions_json=json.dumps(req.qa_answers or {}),
+            top_predicted_disease=entropy_info["top_candidate"]["disease"],
+            confidence_score=round(entropy_info["top_candidate"]["probability"] * 100, 1),
+            session_status="in_progress"
+        )
+        db.add(session)
+        db.commit()
+        db.refresh(session)
+        session_id = session.id
 
     return {
-        "session_id": session.id,
+        "session_id": session_id,
         "shannon_entropy": entropy_info["shannon_entropy"],
         "uncertainty_score": entropy_info["uncertainty_score"],
         "certainty_band": entropy_info["certainty_band"],
