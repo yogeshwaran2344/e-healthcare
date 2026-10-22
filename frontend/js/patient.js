@@ -188,10 +188,33 @@ async function toggleSMSMasterSwitch(turnOn) {
 
     try {
         const url = `${getApiBaseUrl()}/api/closed-loop/sms/toggle`;
+        let userPhone = '';
+        try {
+            const saved = localStorage.getItem('ehealth_contact_routing');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                userPhone = parsed.patientPhone || parsed.caretakerPhone || '';
+            }
+        } catch (_) {}
+        if (!userPhone) {
+            try {
+                const u = JSON.parse(localStorage.getItem('ehealth_user') || '{}');
+                userPhone = u.phone || '';
+            } catch (_) {}
+        }
+        if (!userPhone) userPhone = '8618912755';
+
+        const token = localStorage.getItem('ehealth_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const resp = await fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: nextState })
+            headers: headers,
+            body: JSON.stringify({ 
+                enabled: nextState,
+                phone: userPhone
+            })
         });
         if (resp.ok) {
             const res = await resp.json();

@@ -982,16 +982,40 @@ def get_sms_toggle_status_endpoint():
 
 
 @router.post("/sms/toggle")
-def set_sms_toggle_endpoint(payload: Dict[str, Any] = Body(...)):
-    """Toggles cellular SMS messages ON or OFF."""
+def set_sms_toggle_endpoint(
+    payload: Dict[str, Any] = Body(...),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
+    """Toggles cellular SMS messages ON or OFF. Dispatches live confirmation SMS when enabled."""
     new_state = bool(payload.get("enabled", False))
     saved_state = set_sms_enabled(new_state)
+
+    dispatch_res = None
+    if saved_state:
+        target_phone = (
+            payload.get("phone") or
+            (current_user.phone if current_user else None) or
+            os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755")
+        )
+        if target_phone:
+            confirm_msg = (
+                "NeuroCare Alert: SMS notifications are now turned ON. "
+                "Real-time vital alerts and medication reminders are active on this phone."
+            )
+            dispatch_res = send_cellular_sms(
+                recipient_phone=str(target_phone),
+                message=confirm_msg,
+                force=True
+            )
+            logger.info(f"Toggle-ON cellular SMS dispatch to {target_phone}: status={dispatch_res.get('status')}")
+
     return {
         "success": True,
         "sms_enabled": saved_state,
         "status": "active" if saved_state else "disabled",
         "provider": "Cellular SMS Gateway",
-        "message": "Notifications turned on" if saved_state else "Notifications turned off"
+        "message": "Notifications turned on" if saved_state else "Notifications turned off",
+        "sms_dispatch": dispatch_res
     }
 
 
