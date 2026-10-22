@@ -118,7 +118,7 @@ function updateSmsToggleUI(enabled) {
     const caretakerLabel = document.getElementById('caretakerCardSmsLabel');
     if (caretakerSwitch) caretakerSwitch.checked = isSmsEnabledGlobal;
     if (caretakerLabel) {
-        caretakerLabel.textContent = isSmsEnabledGlobal ? "SMS: ON" : "SMS: OFF";
+        caretakerLabel.textContent = isSmsEnabledGlobal ? "SMS ON" : "SMS OFF";
         caretakerLabel.className = isSmsEnabledGlobal ? "form-check-label small fw-semibold text-success" : "form-check-label small fw-semibold text-muted";
     }
 
@@ -127,7 +127,7 @@ function updateSmsToggleUI(enabled) {
     const quickLabel = document.getElementById('quickSmsLabel');
     if (quickSwitch) quickSwitch.checked = isSmsEnabledGlobal;
     if (quickLabel) {
-        quickLabel.textContent = isSmsEnabledGlobal ? "SMS: ON" : "SMS: OFF";
+        quickLabel.textContent = isSmsEnabledGlobal ? "SMS ON" : "SMS OFF";
         quickLabel.className = isSmsEnabledGlobal ? "form-check-label small fw-semibold text-success" : "form-check-label small fw-semibold text-muted";
     }
 
@@ -233,6 +233,9 @@ function initContactSettings() {
 }
 
 function openContactSettingsModal() {
+    if (typeof updateSmsToggleUI === 'function') {
+        updateSmsToggleUI(isSmsEnabledGlobal);
+    }
     fetchSmsStatus();
     const cfg = getContactSettings();
     const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
