@@ -21,6 +21,7 @@
 
     <!-- Guaranteed Inline SMS Master Switch Controller -->
     <script>
+    (function() {
     function getApiBaseUrl() {
         try {
             if (typeof API !== 'undefined' && API && API.BASE_URL) return API.BASE_URL;
@@ -181,6 +182,7 @@
     } else {
         window.fetchSmsStatus();
     }
+    })();
     </script>
 
 </head>
@@ -5115,7 +5117,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261022_3"></script>
+    <script src="/static/js/patient.js?v=20261022_4"></script>
 
 </body>
 

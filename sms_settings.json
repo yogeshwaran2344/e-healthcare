@@ -1,5 +1,5 @@
 {
   "sms_enabled": false,
-  "updated_at": "2026-10-22T14:24:28Z",
+  "updated_at": "2026-10-22T14:43:00Z",
   "description": "Master switch for Fast2SMS cellular SMS dispatch. False = OFF (conserves balance & recharge); True = ON (dispatches live cellular SMS)."
 }

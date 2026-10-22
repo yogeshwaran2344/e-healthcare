@@ -69,8 +69,8 @@ function getApiBaseUrl() {
     return '';
 }
 
-const savedLocalPref = localStorage.getItem('neurocare_sms_enabled');
-let isSmsEnabledGlobal = (savedLocalPref === 'true');
+var savedLocalPref = localStorage.getItem('neurocare_sms_enabled');
+var isSmsEnabledGlobal = (savedLocalPref === 'true');
 
 function updateSmsToggleUI(enabled) {
     isSmsEnabledGlobal = !!enabled;
@@ -86,14 +86,14 @@ function updateSmsToggleUI(enabled) {
     if (headerText) {
         if (isSmsEnabledGlobal) {
             headerText.className = "small fw-bold text-success d-flex align-items-center gap-1";
-            headerText.innerHTML = '<i class="bi bi-broadcast text-success" id="headerSmsIcon"></i> SMS: ON';
+            headerText.innerHTML = '<i class="bi bi-broadcast text-success" id="headerSmsIcon"></i> SMS ON';
             if (headerContainer) {
                 headerContainer.style.borderColor = '#198754';
                 headerContainer.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
             }
         } else {
             headerText.className = "small fw-bold text-danger d-flex align-items-center gap-1";
-            headerText.innerHTML = '<i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS: OFF';
+            headerText.innerHTML = '<i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS OFF';
             if (headerContainer) {
                 headerContainer.style.borderColor = '#dee2e6';
                 headerContainer.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
@@ -104,11 +104,11 @@ function updateSmsToggleUI(enabled) {
     if (headerBtn) {
         if (isSmsEnabledGlobal) {
             headerBtn.className = "btn btn-sm btn-outline-success rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
-            headerBtn.innerHTML = '<i class="bi bi-broadcast text-success"></i> <span class="small fw-semibold">SMS: ON</span>';
+            headerBtn.innerHTML = '<i class="bi bi-broadcast text-success"></i> <span class="small fw-semibold">SMS ON</span>';
             headerBtn.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
         } else {
             headerBtn.className = "btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
-            headerBtn.innerHTML = '<i class="bi bi-bell-slash text-danger"></i> <span class="small fw-semibold">SMS: OFF</span>';
+            headerBtn.innerHTML = '<i class="bi bi-bell-slash text-danger"></i> <span class="small fw-semibold">SMS OFF</span>';
             headerBtn.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
         }
     }
