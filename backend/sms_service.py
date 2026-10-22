@@ -14,6 +14,7 @@ Uses Fast2SMS Quick SMS API (Route: 'q').
 import os
 import re
 import time
+import json
 import hashlib
 import logging
 from typing import Dict, Any, Optional
@@ -63,6 +64,47 @@ def get_fast2sms_config() -> Dict[str, str]:
     }
 
 
+SMS_SETTINGS_FILE = _PROJECT_ROOT / "sms_settings.json"
+
+def is_sms_enabled() -> bool:
+    """
+    Checks if cellular SMS dispatch is enabled.
+    Defaults to FALSE so the user is never charged / depleted of SMS balance unexpectedly.
+    Can be turned ON via UI toggle or environment variable ENABLE_CELLULAR_SMS=true.
+    """
+    env_setting = os.getenv("ENABLE_CELLULAR_SMS")
+    if env_setting is not None and env_setting.strip():
+        return env_setting.strip().lower() in ("1", "true", "yes", "on")
+
+    if SMS_SETTINGS_FILE.exists():
+        try:
+            with open(SMS_SETTINGS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return bool(data.get("sms_enabled", False))
+        except Exception as e:
+            logger.warning(f"Could not read sms_settings.json: {e}")
+            return False
+    return False
+
+
+def set_sms_enabled(enabled: bool) -> bool:
+    """Persists the user's SMS toggle preference (OFF or ON)."""
+    try:
+        data = {
+            "sms_enabled": bool(enabled),
+            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "description": "Master switch for Fast2SMS cellular SMS dispatch. False = OFF (conserves balance & recharge); True = ON (dispatches live cellular SMS)."
+        }
+        with open(SMS_SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        logger.info(f"Cellular SMS master switch set to: {'ENABLED (ON)' if enabled else 'DISABLED (OFF)'}")
+        return bool(enabled)
+    except Exception as e:
+        logger.error(f"Failed to save sms_settings.json: {e}")
+        return False
+
+
+
 def sanitize_indian_mobile_number(phone: str) -> str:
     """
     Cleans phone number to 10-digit Indian mobile number format.
@@ -105,11 +147,13 @@ from whatsapp_service import (
 )
 
 def check_sms_service_health() -> Dict[str, Any]:
-    """Returns Fast2SMS configuration health and operational status."""
+    """Returns Fast2SMS configuration health, master toggle, and operational status."""
     cfg = get_fast2sms_config()
     is_ready = bool(cfg["api_key"])
+    enabled = is_sms_enabled()
     return {
-        "status": "active" if is_ready else "ready_for_credentials",
+        "status": "active" if (is_ready and enabled) else ("disabled" if not enabled else "ready_for_credentials"),
+        "sms_enabled": enabled,
         "provider": "Fast2SMS Quick SMS Gateway",
         "channel": "sms",
         "api_key_configured": is_ready,
@@ -120,7 +164,7 @@ def check_sms_service_health() -> Dict[str, Any]:
         "automated": True,
         "instructions": (
             "Fast2SMS Quick Route ('q') sends cellular SMS automatically to any 10-digit Indian number "
-            "with zero DLT template registration required."
+            "with zero DLT template registration required. Turn ON the SMS toggle to enable live dispatch."
         )
     }
 
@@ -128,11 +172,13 @@ def check_sms_service_health() -> Dict[str, Any]:
 def send_cellular_sms(
     recipient_phone: str,
     message: str,
-    route: str = "q"
+    route: str = "q",
+    force: bool = False
 ) -> Dict[str, Any]:
     """
     Sends an automated cellular SMS to a 10-digit Indian mobile number via Fast2SMS Quick Route ('q').
     Does not require DLT registration or entity approvals.
+    Respects the master SMS toggle (disabled by default to prevent recharge exhaustion).
     """
     clean_digits = sanitize_indian_mobile_number(recipient_phone)
     if not clean_digits or len(clean_digits) != 10:
@@ -144,6 +190,26 @@ def send_cellular_sms(
             "error": error_msg,
             "phone": recipient_phone,
             "channel": "sms"
+        }
+
+    # Master switch check: if cellular SMS is turned OFF, bypass dispatch to protect recharge balance
+    if not is_sms_enabled() and not force:
+        logger.info(
+            f"Cellular SMS dispatch to +91{clean_digits} SKIPPED: "
+            f"SMS messages are currently turned OFF by user setting to prevent balance usage."
+        )
+        return {
+            "success": False,
+            "skipped": True,
+            "disabled": True,
+            "sms_enabled": False,
+            "status": "disabled",
+            "provider": "Fast2SMS Quick SMS Gateway",
+            "error": "SMS notifications are turned OFF to preserve your SMS recharge. Turn ON SMS in the dashboard to dispatch live messages.",
+            "phone": f"+91{clean_digits}",
+            "recipient_10digit": clean_digits,
+            "channel": "sms",
+            "message": message.strip()
         }
 
     cfg = get_fast2sms_config()
@@ -228,10 +294,11 @@ def send_cellular_sms(
 def send_sms(
     recipient_phone: str,
     message: str,
-    route: str = "q"
+    route: str = "q",
+    force: bool = False
 ) -> Dict[str, Any]:
     """Unified SMS dispatch via Fast2SMS."""
-    return send_cellular_sms(recipient_phone=recipient_phone, message=message, route=route)
+    return send_cellular_sms(recipient_phone=recipient_phone, message=message, route=route, force=force)
 
 
 # Backwards compatibility alias

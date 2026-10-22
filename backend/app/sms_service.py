@@ -19,7 +19,9 @@ from sms_service import (
     sanitize_phone_number,
     get_fast2sms_config,
     get_msg91_config,
-    check_sms_service_health
+    check_sms_service_health,
+    is_sms_enabled,
+    set_sms_enabled
 )
 
 __all__ = [
@@ -31,5 +33,7 @@ __all__ = [
     "sanitize_phone_number",
     "get_fast2sms_config",
     "get_msg91_config",
-    "check_sms_service_health"
+    "check_sms_service_health",
+    "is_sms_enabled",
+    "set_sms_enabled"
 ]

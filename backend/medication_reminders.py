@@ -23,7 +23,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 from sms_service import (
     send_cellular_sms,
     send_sms,
-    sanitize_indian_mobile_number
+    sanitize_indian_mobile_number,
+    is_sms_enabled
 )
 
 # Configure logger
@@ -108,7 +109,12 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
     Deduplication Rule:
     - Compares today's date (YYYY-MM-DD) against schedule.last_reminded_date.
     - If already sent today for this time window, skips duplicate sending.
+    - If cellular SMS master toggle is OFF, immediately returns empty to preserve recharge.
     """
+    if not is_sms_enabled():
+        logger.debug("Medication reminders check skipped: SMS master toggle is OFF (balance protection active).")
+        return []
+
     close_db_on_exit = False
     if db is None:
         db = get_database_session()

@@ -56,7 +56,119 @@ function getContactSettings() {
     };
 }
 
+// ==========================================
+// CELLULAR SMS MASTER SWITCH STATE & HELPERS
+// ==========================================
+let isSmsEnabledGlobal = false;
+
+function updateSmsToggleUI(enabled) {
+    isSmsEnabledGlobal = !!enabled;
+
+    // 1. Header Button
+    const headerBtn = document.getElementById('headerSmsBtn');
+    const headerIcon = document.getElementById('headerSmsIcon');
+    const headerText = document.getElementById('headerSmsText');
+    if (headerBtn && headerIcon && headerText) {
+        if (isSmsEnabledGlobal) {
+            headerBtn.className = "btn btn-sm btn-outline-success rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
+            headerIcon.className = "bi bi-broadcast text-success";
+            headerText.textContent = "SMS: ON";
+            headerBtn.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
+        } else {
+            headerBtn.className = "btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
+            headerIcon.className = "bi bi-bell-slash text-danger";
+            headerText.textContent = "SMS: OFF";
+            headerBtn.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
+        }
+    }
+
+    // 2. Caretaker Card Switch
+    const caretakerSwitch = document.getElementById('caretakerCardSmsSwitch');
+    const caretakerLabel = document.getElementById('caretakerCardSmsLabel');
+    if (caretakerSwitch) caretakerSwitch.checked = isSmsEnabledGlobal;
+    if (caretakerLabel) {
+        caretakerLabel.textContent = isSmsEnabledGlobal ? "SMS: ON" : "SMS: OFF";
+        caretakerLabel.className = isSmsEnabledGlobal ? "form-check-label small fw-semibold text-success" : "form-check-label small fw-semibold text-muted";
+    }
+
+    // 3. Quick Vitals Switch
+    const quickSwitch = document.getElementById('quickSmsSwitch');
+    const quickLabel = document.getElementById('quickSmsLabel');
+    if (quickSwitch) quickSwitch.checked = isSmsEnabledGlobal;
+    if (quickLabel) {
+        quickLabel.textContent = isSmsEnabledGlobal ? "SMS: ON" : "SMS: OFF";
+        quickLabel.className = isSmsEnabledGlobal ? "form-check-label small fw-semibold text-success" : "form-check-label small fw-semibold text-muted";
+    }
+
+    // 4. Modal Switch & Badge
+    const modalSwitch = document.getElementById('modalSmsToggle');
+    const modalBadge = document.getElementById('modalSmsStatusBadge');
+    if (modalSwitch) modalSwitch.checked = isSmsEnabledGlobal;
+    if (modalBadge) {
+        if (isSmsEnabledGlobal) {
+            modalBadge.className = "badge bg-success text-white";
+            modalBadge.textContent = "ON (Active Delivery)";
+        } else {
+            modalBadge.className = "badge bg-secondary text-white";
+            modalBadge.textContent = "OFF (Recharge Saver Active)";
+        }
+    }
+
+    // 5. Smartwatch BLE Vitals Badge
+    const bleBadge = document.getElementById('bleSmsBadge');
+    if (bleBadge) {
+        if (isSmsEnabledGlobal) {
+            bleBadge.className = "badge bg-success-subtle text-success border border-success-subtle";
+            bleBadge.innerHTML = '<i class="bi bi-broadcast me-1"></i> Cellular SMS Active (ON)';
+        } else {
+            bleBadge.className = "badge bg-secondary-subtle text-secondary border border-secondary-subtle";
+            bleBadge.innerHTML = '<i class="bi bi-bell-slash me-1"></i> Cellular SMS Paused (OFF)';
+        }
+    }
+}
+
+async function fetchSmsStatus() {
+    try {
+        const res = await API.get('/api/closed-loop/sms/toggle-status');
+        updateSmsToggleUI(res && res.sms_enabled);
+    } catch (e) {
+        updateSmsToggleUI(false);
+    }
+}
+
+async function toggleSMSMasterSwitch(turnOn) {
+    updateSmsToggleUI(turnOn);
+    try {
+        const res = await API.post('/api/closed-loop/sms/toggle', { enabled: !!turnOn });
+        const finalState = res && res.sms_enabled !== undefined ? res.sms_enabled : turnOn;
+        updateSmsToggleUI(finalState);
+
+        showSMSNotification({
+            title: finalState ? "📢 CELLULAR SMS TURNED ON" : "🛡️ CELLULAR SMS TURNED OFF",
+            message: finalState
+                ? "Cellular SMS notifications are now ON. Real-time medication reminders & vital alerts will be dispatched to registered phone numbers."
+                : "Cellular SMS notifications are now turned OFF. Fast2SMS wallet balance & SMS recharge are completely protected.",
+            channel: "sms",
+            duration: 7000
+        });
+    } catch (err) {
+        console.error("Failed to toggle SMS state:", err);
+        showSMSNotification({
+            title: "⚠️ SMS TOGGLE ERROR",
+            message: err.message || "Failed to update SMS status on the server.",
+            channel: "sms",
+            duration: 5000
+        });
+        fetchSmsStatus();
+    }
+}
+
+function toggleSmsState() {
+    toggleSMSMasterSwitch(!isSmsEnabledGlobal);
+}
+
 function initContactSettings() {
+    fetchSmsStatus();
     const cfg = getContactSettings();
     const pElem = document.getElementById('displayPatientPhone');
     const cNameElem = document.getElementById('displayCaretakerName');
@@ -70,6 +182,7 @@ function initContactSettings() {
 }
 
 function openContactSettingsModal() {
+    fetchSmsStatus();
     const cfg = getContactSettings();
     const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
     const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || (user && user.phone) || '';
@@ -86,6 +199,19 @@ async function testPatientSMS() {
     if (!pPhone) {
         alert("Please enter the Patient's Mobile Number first.");
         return;
+    }
+    if (!isSmsEnabledGlobal) {
+        if (confirm("Cellular SMS notifications are currently turned OFF to preserve your recharge balance.\n\nWould you like to turn ON SMS now and dispatch this message?")) {
+            await toggleSMSMasterSwitch(true);
+        } else {
+            showSMSNotification({
+                title: "🛡️ SMS DISPATCH CANCELLED",
+                message: "SMS dispatch skipped because Cellular SMS is turned OFF (Recharge Protection Active).",
+                channel: "sms",
+                duration: 5000
+            });
+            return;
+        }
     }
     const pName = (document.getElementById('profName')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.full_name) || 'Patient').trim();
 
@@ -136,6 +262,19 @@ async function testCaretakerSMS() {
     if (!cPhone) {
         alert("Please enter the Caretaker's Mobile Number first.");
         return;
+    }
+    if (!isSmsEnabledGlobal) {
+        if (confirm("Cellular SMS notifications are currently turned OFF to preserve your recharge balance.\n\nWould you like to turn ON SMS now and dispatch this message?")) {
+            await toggleSMSMasterSwitch(true);
+        } else {
+            showSMSNotification({
+                title: "🛡️ SMS DISPATCH CANCELLED",
+                message: "SMS dispatch skipped because Cellular SMS is turned OFF (Recharge Protection Active).",
+                channel: "sms",
+                duration: 5000
+            });
+            return;
+        }
     }
     const cName = (document.getElementById('modalCaretakerName')?.value || document.getElementById('profCaretakerName')?.value || 'Primary Caretaker').trim();
 
@@ -4114,6 +4253,19 @@ async function confirmDoseTaken(scheduleId, medName, dosage, reminderTime) {
 }
 
 async function sendMedicationReminderSMS(scheduleId, medName, dosage, condition, slot) {
+    if (!isSmsEnabledGlobal) {
+        if (confirm("Cellular SMS notifications are currently turned OFF to preserve your recharge balance.\n\nWould you like to turn ON SMS now and dispatch this medication reminder?")) {
+            await toggleSMSMasterSwitch(true);
+        } else {
+            showSMSNotification({
+                title: "🛡️ SMS REMINDER SKIPPED",
+                message: `Medication reminder for ${medName} skipped because Cellular SMS is turned OFF.`,
+                channel: "sms",
+                duration: 5000
+            });
+            return;
+        }
+    }
     const cfg = getContactSettings();
     const pName = document.getElementById('profName')?.value.trim() || currentProfile?.full_name || 'Patient';
 
@@ -5246,6 +5398,9 @@ window.deleteFamilyMember = deleteFamilyMember;
 window.openFamilyEmergencyCard = openFamilyEmergencyCard;
 window.shareFamilyEmergencyViaSMS = shareFamilyEmergencyViaSMS;
 window.shareFamilyEmergencyViaWhatsApp = shareFamilyEmergencyViaWhatsApp;
+window.toggleSMSMasterSwitch = toggleSMSMasterSwitch;
+window.toggleSmsState = toggleSmsState;
+window.fetchSmsStatus = fetchSmsStatus;
 window.filterFamilyMembersList = filterFamilyMembersList;
 window.openFamilyEmergencyLookupModal = openFamilyEmergencyLookupModal;
 window.performEmergencyHashLookup = performEmergencyHashLookup;

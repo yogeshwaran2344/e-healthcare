@@ -56,6 +56,11 @@
 
             <div class="ms-auto d-flex align-items-center gap-2">
 
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1" id="headerSmsBtn" onclick="toggleSmsState()" title="Click to Toggle Cellular SMS ON or OFF (Recharge Protection)">
+                    <i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i>
+                    <span class="small fw-semibold" id="headerSmsText">SMS: OFF</span>
+                </button>
+
                 <button class="btn btn-outline-primary btn-sm fw-semibold rounded-pill d-none d-sm-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure Cellular SMS Alerts &amp; Emergency Contacts">
                     <i class="bi bi-broadcast me-1 text-primary"></i> SMS Alerts Setup
                 </button>
@@ -1000,9 +1005,15 @@
                                 <div class="card border border-warning-subtle bg-warning-subtle bg-opacity-10 p-3 rounded-3 mb-3">
                                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                                         <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-warning me-1"></i> Caretaker / Emergency Contact Routing</h6>
-                                        <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="openContactSettingsModal()">
-                                            <i class="bi bi-gear-fill me-1"></i> SMS Alerts Setup
-                                        </button>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="form-check form-switch m-0 d-flex align-items-center gap-1 bg-white px-2 py-1 rounded-pill border shadow-sm">
+                                                <input class="form-check-input ms-0 mt-0" type="checkbox" role="switch" id="caretakerCardSmsSwitch" onchange="toggleSMSMasterSwitch(this.checked)" style="cursor: pointer;">
+                                                <label class="form-check-label small fw-semibold text-muted" for="caretakerCardSmsSwitch" id="caretakerCardSmsLabel">SMS: OFF</label>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="openContactSettingsModal()">
+                                                <i class="bi bi-gear-fill me-1"></i> SMS Alerts Setup
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <p class="small text-muted mb-3">Critical medical updates, prescription reminders, and abnormal vital alerts will automatically be dispatched via cellular SMS to this trusted contact.</p>
@@ -1387,9 +1398,9 @@
 
                                         </div>
 
-                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" id="bleSmsBadge">
 
-                                            <i class="bi bi-broadcast me-1"></i> Cellular SMS Active
+                                            <i class="bi bi-bell-slash me-1"></i> Cellular SMS Paused (OFF)
 
                                         </span>
 
@@ -1517,6 +1528,10 @@
                                             <i class="bi bi-broadcast me-1"></i> Send Test SMS to Caretaker
                                         </button>
 
+                                        <div class="form-check form-switch m-0 d-flex align-items-center gap-1 bg-white px-2 py-1 rounded-pill border">
+                                            <input class="form-check-input ms-0 mt-0" type="checkbox" role="switch" id="quickSmsSwitch" onchange="toggleSMSMasterSwitch(this.checked)" style="cursor: pointer;">
+                                            <label class="form-check-label small fw-semibold text-muted" for="quickSmsSwitch" id="quickSmsLabel">SMS: OFF</label>
+                                        </div>
                                         <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="openContactSettingsModal()">
                                             <i class="bi bi-gear-fill me-1"></i> SMS Alerts Setup
                                         </button>
@@ -4492,6 +4507,24 @@
                     <p class="small text-muted mb-3">
                         Set verified phone numbers for automated background cellular SMS delivery of medication reminders, vital alerts, and emergency triage.
                     </p>
+                    <!-- Cellular SMS Master Switch Card -->
+                    <div class="card border mb-3 shadow-sm rounded-3 bg-light" id="modalSmsCard">
+                        <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-broadcast text-primary me-1"></i> Cellular SMS Messages</h6>
+                                    <span class="badge bg-secondary text-white" id="modalSmsStatusBadge">OFF (Recharge Saver Active)</span>
+                                </div>
+                                <p class="small text-muted mb-0" style="font-size: 0.8rem;">
+                                    Turn ON to send automated SMS to your phone. Keep OFF to preserve Fast2SMS balance &amp; recharge.
+                                </p>
+                            </div>
+                            <div class="form-check form-switch fs-4 m-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="modalSmsToggle" onchange="toggleSMSMasterSwitch(this.checked)" style="cursor: pointer;">
+                            </div>
+                        </div>
+                    </div>
+
                     <form id="contactSettingsForm" onsubmit="saveContactSettings(event)">
                         <div class="mb-3">
                             <label class="form-label small fw-semibold text-dark">Patient Mobile Number (SMS Recipient)</label>

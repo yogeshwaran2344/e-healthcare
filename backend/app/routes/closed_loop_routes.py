@@ -31,7 +31,14 @@ def compute_sha256(data: str) -> str:
     return hashlib.sha256(str(data).encode("utf-8")).hexdigest()
 
 from ..config import PROJECT_ROOT
-from ..sms_service import send_sms, send_cellular_sms, check_sms_service_health, sanitize_indian_mobile_number
+from ..sms_service import (
+    send_sms,
+    send_cellular_sms,
+    check_sms_service_health,
+    sanitize_indian_mobile_number,
+    is_sms_enabled,
+    set_sms_enabled
+)
 from ..whatsapp_service import send_whatsapp
 
 def send_live_sms_message(
@@ -944,6 +951,43 @@ def test_whatsapp_endpoint(
 def get_whatsapp_health():
     """Returns SMS gateway configuration health status."""
     return check_sms_service_health()
+
+
+@router.get("/sms/toggle-status")
+def get_sms_toggle_status_endpoint():
+    """Returns current SMS master toggle state and health status."""
+    enabled = is_sms_enabled()
+    return {
+        "success": True,
+        "sms_enabled": enabled,
+        "status": "active" if enabled else "disabled",
+        "provider": "Fast2SMS Quick SMS Gateway",
+        "route": "q",
+        "message": (
+            "Cellular SMS messages are ON. Automated SMS notifications are active."
+            if enabled else
+            "Cellular SMS messages are OFF. Balance & recharge protection is active."
+        )
+    }
+
+
+@router.post("/sms/toggle")
+def set_sms_toggle_endpoint(payload: Dict[str, Any] = Body(...)):
+    """Toggles cellular SMS messages ON or OFF."""
+    new_state = bool(payload.get("enabled", False))
+    saved_state = set_sms_enabled(new_state)
+    return {
+        "success": True,
+        "sms_enabled": saved_state,
+        "status": "active" if saved_state else "disabled",
+        "provider": "Fast2SMS Quick SMS Gateway",
+        "message": (
+            "Cellular SMS messages turned ON. Live SMS will now be dispatched."
+            if saved_state else
+            "Cellular SMS messages turned OFF. Fast2SMS balance is preserved."
+        )
+    }
+
 
 
 # ========================================================
