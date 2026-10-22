@@ -3701,7 +3701,7 @@ async function checkAndTriggerAbnormalVitalsAlert(sys, dia, hr, force = false) {
 
         showSMSNotification({
             title: "🚨 ABNORMAL VITALS - CELLULAR SMS DISPATCHED",
-            message: `Telemetry breach detected from ${bleWatchName}: ${summaryStr}. Automated emergency SMS sent to Caretaker (${caretakerPhone})! Ref ID: ${notif.sid || 'F2SMS-LIVE'}`,
+            message: `EMERGENCY ALERT: Patient vitals abnormal (${summaryStr}). Automated cellular SMS alert dispatched to Caretaker (${caretakerPhone}). Ref: ${notif.sid || 'F2SMS-LIVE'}`,
             channel: "sms",
             phone: caretakerPhone,
             duration: 10000
@@ -3912,7 +3912,7 @@ async function submitManualVitals(e) {
         if (bpSys >= 140) {
             showSMSNotification({
                 title: bpSys >= 160 ? "🚨 CRITICAL HIGH BP (160 mmHg) AUTOMATED CARETAKER ALERT" : "⚠️ HIGH BP AUTOMATED ALERT",
-                message: `Blood Pressure of ${formattedBp} mmHg logged. Automated Cellular SMS notification transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
+                message: `EMERGENCY ALERT: Patient blood pressure abnormal (${formattedBp} mmHg, HR ${hr} bpm). Automated Cellular SMS dispatched to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
                 channel: "sms",
                 caretakerAlert: true,
                 duration: 10000

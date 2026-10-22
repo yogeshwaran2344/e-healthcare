@@ -213,12 +213,18 @@ def check_vitals(
                 "alerts": alerts
             }
 
-    # 4. Construct SMS Message Body
-    p_name = patient_name.strip() if patient_name else f"#{patient_id}"
-    alerts_summary = "; ".join(alerts)
+    # 4. Construct Concise SMS Message Body (Under 160 characters to conserve recharge balance)
+    p_name = patient_name.strip() if patient_name else "Patient"
+    readings_part = []
+    if systolic_bp is not None and diastolic_bp is not None:
+        readings_part.append(f"BP: {int(systolic_bp)}/{int(diastolic_bp)} mmHg")
+    if heart_rate is not None:
+        readings_part.append(f"HR: {int(heart_rate)} bpm")
+    vitals_str = ", ".join(readings_part) if readings_part else "; ".join(alerts)
+
     message = (
-        f"NeuroCare Health Alert [{severity}]: Patient {p_name} vitals out of range: "
-        f"{alerts_summary}. Please check on the patient immediately."
+        f"EMERGENCY ALERT: Patient {p_name} has abnormal vitals ({vitals_str}). "
+        f"Please check on the patient immediately."
     )
 
     clean_caretaker_phone = sanitize_indian_mobile_number(caretaker_phone)

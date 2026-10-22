@@ -786,10 +786,19 @@ def evaluate_caregiver_alert(
     )
 
     now_iso = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    bp_sys = vitals.get("systolic") or vitals.get("bp_sys")
+    bp_dia = vitals.get("diastolic") or vitals.get("bp_dia")
+    hr = vitals.get("heart_rate") or vitals.get("hr")
+    v_parts = []
+    if bp_sys and bp_dia:
+        v_parts.append(f"BP: {int(bp_sys)}/{int(bp_dia)} mmHg")
+    if hr:
+        v_parts.append(f"HR: {int(hr)} bpm")
+    v_str = ", ".join(v_parts) if v_parts else result.get('primary_trigger', 'Abnormal vitals')
+
     msg_body = (
-        f"NeuroCare Health Alert [{result.get('tier_badge', 'CRITICAL')}]: "
-        f"Patient {patient_name} vital warning: {result.get('primary_trigger', 'Abnormal vitals')}. "
-        f"{result.get('recommended_action', 'Check on patient immediately.')}"
+        f"EMERGENCY ALERT: Patient {patient_name} has abnormal vitals ({v_str}). "
+        f"Please check on the patient immediately."
     )
 
     live_res = send_cellular_sms(caretaker_phone, msg_body)
@@ -828,8 +837,8 @@ def dispatch_automated_caretaker_sms(
     patient_name = (current_user.full_name if current_user else None) or "Patient"
 
     msg_text = (
-        f"NeuroCare Health Alert: {alert_title} for {patient_name}. "
-        f"{message}. Please check on patient."
+        f"EMERGENCY ALERT: Patient {patient_name} vital warning: {message}. "
+        f"Please check on the patient immediately."
     )
 
     sms_res = send_cellular_sms(recipient_phone, msg_text)
