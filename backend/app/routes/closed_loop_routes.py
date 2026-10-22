@@ -71,7 +71,8 @@ from ..database import get_db
 from ..models import (
     User, Consultation, MedicalReport,
     ClinicalTimelineEntry, AdaptiveDiagnosticSession,
-    ClinicalDisagreementRecord, ClinicalOutcomeRecord, ContextualQRToken
+    ClinicalDisagreementRecord, ClinicalOutcomeRecord, ContextualQRToken,
+    CaretakerAlertConfig
 )
 from ..auth import get_current_user, get_optional_current_user
 from ..schemas import (
@@ -772,7 +773,8 @@ def trigger_due_medication_reminders(
 @router.post("/caregiver/evaluate-alert")
 def evaluate_caregiver_alert(
     payload: Dict[str, Any] = Body(...),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Analyzes patient vital deviations and evaluates prioritized caregiver escalation tier.
@@ -782,7 +784,15 @@ def evaluate_caregiver_alert(
     missed_doses = int(payload.get("missed_doses_count", 0))
     patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
     caretaker_name = (payload.get("caretaker_name") or "Primary Caregiver").strip()
-    caretaker_phone = (payload.get("caretaker_phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+
+    caretaker_phone = (payload.get("caretaker_phone") or payload.get("phone") or "").strip()
+    if not caretaker_phone and current_user:
+        cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+        if cfg and cfg.caretaker_phone:
+            caretaker_phone = cfg.caretaker_phone.strip()
+            caretaker_name = cfg.caretaker_name or caretaker_name
+        elif current_user.phone:
+            caretaker_phone = current_user.phone.strip()
 
     result = evaluate_contextual_caregiver_alert(
         vitals=vitals,
@@ -830,13 +840,22 @@ def evaluate_caregiver_alert(
 @router.post("/caregiver/dispatch-automated-sms")
 def dispatch_automated_caretaker_sms(
     payload: Dict[str, Any] = Body(...),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Direct endpoint to dispatch an automatic cellular SMS notification to the caretaker.
     """
     recipient_name = payload.get("recipient_name", "Primary Caregiver")
-    recipient_phone = payload.get("recipient_phone", "+918618912755")
+    recipient_phone = (payload.get("recipient_phone") or payload.get("phone") or "").strip()
+    if not recipient_phone and current_user:
+        cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+        if cfg and cfg.caretaker_phone:
+            recipient_phone = cfg.caretaker_phone.strip()
+            recipient_name = cfg.caretaker_name or recipient_name
+        elif current_user.phone:
+            recipient_phone = current_user.phone.strip()
+
     alert_title = payload.get("title", "HEALTH VITAL ALERT")
     message = payload.get("message", "Abnormal vitals recorded.")
     patient_name = (current_user.full_name if current_user else None) or "Patient"
@@ -861,40 +880,119 @@ def dispatch_automated_caretaker_sms(
         "confirmation": f"Automated cellular SMS successfully dispatched to {recipient_name} ({sms_res.get('phone', recipient_phone)})."
     }
 
+@router.get("/caregiver/notification-config")
+def get_notification_config(
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns saved patient and caretaker contact routing settings for the current user.
+    """
+    if not current_user:
+        return {
+            "success": True,
+            "configured": False,
+            "patient_phone": "",
+            "caretaker_phone": "",
+            "caretaker_name": "Primary Caregiver",
+            "relationship": "Emergency Contact / Guardian",
+            "dual_alert": True
+        }
+
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    return {
+        "success": True,
+        "configured": bool(cfg or current_user.phone),
+        "patient_phone": current_user.phone or "",
+        "caretaker_phone": cfg.caretaker_phone if cfg else (current_user.phone or ""),
+        "caretaker_name": cfg.caretaker_name if cfg else "Primary Caregiver",
+        "relationship": cfg.relationship if cfg else "Emergency Contact / Guardian",
+        "dual_alert": bool(cfg.is_active) if cfg else True
+    }
+
+
 @router.post("/caregiver/save-notification-config")
 def save_notification_config(
     payload: Dict[str, Any] = Body(...),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
 ):
     """
-    Saves caretaker notification routing configuration and returns verified SMS status.
+    Saves caretaker notification routing configuration and patient phone directly to the database.
+    Works dynamically for any provided 10-digit mobile number.
     """
-    patient_phone = (current_user.phone if current_user else None) or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
-    patient_name = (current_user.full_name if current_user else None) or "Patient"
-    target_phone = (payload.get("phone") or patient_phone).strip()
-    test_msg = f"NeuroCare Health: Caretaker emergency SMS alerts verified for patient {patient_name}."
-    res = send_cellular_sms(target_phone, test_msg)
+    patient_phone = (payload.get("patient_phone") or payload.get("patientPhone") or "").strip()
+    caretaker_phone = (payload.get("caretaker_phone") or payload.get("caretakerPhone") or payload.get("phone") or "").strip()
+    caretaker_name = (payload.get("caretaker_name") or payload.get("caretakerName") or "Primary Caregiver").strip()
+    relationship = (payload.get("relationship") or payload.get("caretakerRelation") or "Emergency Contact / Guardian").strip()
+    dual_alert = payload.get("dual_alert", payload.get("dualAlert", True))
+
+    saved_patient_phone = patient_phone
+    saved_caretaker_phone = caretaker_phone
+
+    if current_user:
+        if patient_phone:
+            clean_p = sanitize_indian_mobile_number(patient_phone)
+            current_user.phone = f"+91{clean_p}" if len(clean_p) == 10 else patient_phone
+            saved_patient_phone = current_user.phone
+
+        cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+        if not cfg:
+            cfg = CaretakerAlertConfig(patient_id=current_user.id)
+            db.add(cfg)
+        if caretaker_name:
+            cfg.caretaker_name = caretaker_name
+        if caretaker_phone:
+            clean_c = sanitize_indian_mobile_number(caretaker_phone)
+            cfg.caretaker_phone = f"+91{clean_c}" if len(clean_c) == 10 else caretaker_phone
+            saved_caretaker_phone = cfg.caretaker_phone
+        if relationship:
+            cfg.relationship = relationship
+        cfg.is_active = bool(dual_alert)
+        cfg.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(current_user)
+        db.refresh(cfg)
+
+    sms_res = None
+    if payload.get("send_test"):
+        target_phone = saved_caretaker_phone or saved_patient_phone
+        if target_phone:
+            test_msg = f"NeuroCare Health: Caretaker emergency SMS alerts verified for patient {current_user.full_name if current_user else 'Patient'}."
+            sms_res = send_cellular_sms(target_phone, test_msg)
 
     return {
         "success": True,
+        "saved": True,
         "channel": "sms",
-        "provider": res.get("provider", "Fast2SMS Quick SMS Gateway"),
-        "target_phone": res.get("phone", target_phone),
-        "error_details": res.get("error"),
+        "provider": "Fast2SMS Quick SMS Gateway",
+        "patient_phone": saved_patient_phone,
+        "caretaker_phone": saved_caretaker_phone,
+        "caretaker_name": caretaker_name,
         "verified_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "raw_response": res
+        "raw_response": sms_res
     }
 
 @router.post("/caregiver/test-live-whatsapp")
 @router.post("/caregiver/test-live-sms")
 def test_live_sms_endpoint(
     payload: Dict[str, Any] = Body(...),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Diagnostic testing endpoint: dispatches an automated cellular SMS notification to the specified phone.
     """
-    target_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+    target_phone = (payload.get("phone") or payload.get("caretaker_phone") or "").strip()
+    if not target_phone:
+        cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+        if cfg and cfg.caretaker_phone:
+            target_phone = cfg.caretaker_phone.strip()
+        elif current_user.phone:
+            target_phone = current_user.phone.strip()
+        else:
+            target_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "")
+
     patient_name = (payload.get("patient_name") or current_user.full_name or "Patient").strip()
     test_msg = (
         f"NeuroCare Health Test Alert: Emergency vitals alert channel verified for patient {patient_name}. "
@@ -925,17 +1023,29 @@ def get_meta_cloud_status():
 @router.post("/test-sms")
 def test_whatsapp_endpoint(
     payload: Dict[str, Any] = Body(...),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     Test SMS Endpoint for Patient or Caretaker.
     Sends automated cellular SMS notification to the target mobile number.
+    Supports any given 10-digit Indian mobile number.
     """
     recipient_type = (payload.get("recipient_type") or "patient").strip().lower()
     user_name = (current_user.full_name if current_user else None) or "Patient"
-    user_phone = (current_user.phone if current_user else None) or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")
 
-    target_phone = (payload.get("phone") or user_phone).strip()
+    target_phone = (payload.get("phone") or "").strip()
+    if not target_phone:
+        if recipient_type == "caretaker" and current_user:
+            cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+            if cfg and cfg.caretaker_phone:
+                target_phone = cfg.caretaker_phone.strip()
+        if not target_phone and current_user and current_user.phone:
+            target_phone = current_user.phone.strip()
+
+    if not target_phone:
+        target_phone = os.getenv("DEFAULT_ALERT_RECIPIENT", "")
+
     target_name = (payload.get("name") or (user_name if recipient_type == "patient" else "Caretaker")).strip()
 
     if recipient_type == "caretaker":
@@ -984,7 +1094,8 @@ def get_sms_toggle_status_endpoint():
 @router.post("/sms/toggle")
 def set_sms_toggle_endpoint(
     payload: Dict[str, Any] = Body(...),
-    current_user: Optional[User] = Depends(get_optional_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
 ):
     """Toggles cellular SMS messages ON or OFF. Dispatches live confirmation SMS when enabled."""
     new_state = bool(payload.get("enabled", False))
@@ -992,11 +1103,21 @@ def set_sms_toggle_endpoint(
 
     dispatch_res = None
     if saved_state:
-        target_phone = (
-            payload.get("phone") or
-            (current_user.phone if current_user else None) or
-            os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755")
-        )
+        target_phone = (payload.get("phone") or "").strip()
+        if not target_phone and current_user and current_user.phone:
+            target_phone = current_user.phone.strip()
+        if not target_phone and current_user:
+            cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+            if cfg and cfg.caretaker_phone:
+                target_phone = cfg.caretaker_phone.strip()
+
+        # If a phone was provided in the toggle request and user is authenticated, persist to user profile
+        if target_phone and current_user and payload.get("phone"):
+            clean_input = sanitize_indian_mobile_number(target_phone)
+            if clean_input and len(clean_input) == 10 and current_user.phone != f"+91{clean_input}":
+                current_user.phone = f"+91{clean_input}"
+                db.commit()
+
         if target_phone:
             confirm_msg = (
                 "NeuroCare Alert: SMS notifications are now turned ON. "
@@ -1008,6 +1129,8 @@ def set_sms_toggle_endpoint(
                 force=True
             )
             logger.info(f"Toggle-ON cellular SMS dispatch to {target_phone}: status={dispatch_res.get('status')}")
+        else:
+            logger.warning("SMS Toggle ON called without a configured phone number; dispatch skipped.")
 
     return {
         "success": True,

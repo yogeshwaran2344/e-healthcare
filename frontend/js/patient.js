@@ -202,7 +202,40 @@ async function toggleSMSMasterSwitch(turnOn) {
                 userPhone = u.phone || '';
             } catch (_) {}
         }
-        if (!userPhone) userPhone = '8618912755';
+        if (!userPhone && typeof currentProfile !== 'undefined' && currentProfile) {
+            userPhone = currentProfile.phone || '';
+        }
+        if (!userPhone && document.getElementById('modalPatientPhone')) {
+            userPhone = (document.getElementById('modalPatientPhone').value || '').trim();
+        }
+        if (!userPhone && document.getElementById('profPhone')) {
+            userPhone = (document.getElementById('profPhone').value || '').trim();
+        }
+
+        if (nextState && !userPhone) {
+            const entered = prompt(
+                "SMS Alerts Setup:\nPlease enter the 10-digit mobile number for automated SMS notifications:",
+                ""
+            );
+            if (entered && entered.trim()) {
+                userPhone = entered.trim();
+                const freshCfg = getContactSettings();
+                freshCfg.patientPhone = userPhone;
+                freshCfg.patientWhatsapp = userPhone;
+                localStorage.setItem('ehealth_contact_routing', JSON.stringify(freshCfg));
+                initContactSettings();
+                if (typeof API !== 'undefined' && API.post) {
+                    API.post('/api/closed-loop/caregiver/save-notification-config', {
+                        patient_phone: userPhone,
+                        phone: freshCfg.caretakerPhone || userPhone,
+                        caretaker_name: freshCfg.caretakerName
+                    }).catch(() => {});
+                }
+            } else {
+                updateSmsToggleUI(false);
+                return;
+            }
+        }
 
         const token = localStorage.getItem('ehealth_token');
         const headers = { 'Content-Type': 'application/json' };
@@ -239,8 +272,26 @@ function toggleSmsState() {
     toggleSMSMasterSwitch(!isSmsEnabledGlobal);
 }
 
-function initContactSettings() {
+async function initContactSettings() {
     fetchSmsStatus();
+    try {
+        if (typeof API !== 'undefined' && API.get) {
+            const remoteCfg = await API.get('/api/closed-loop/caregiver/notification-config');
+            if (remoteCfg && remoteCfg.configured) {
+                const currentSaved = getContactSettings();
+                const merged = {
+                    patientPhone: remoteCfg.patient_phone || currentSaved.patientPhone || "",
+                    patientWhatsapp: remoteCfg.patient_phone || currentSaved.patientWhatsapp || "",
+                    caretakerName: remoteCfg.caretaker_name || currentSaved.caretakerName || "Primary Caregiver",
+                    caretakerPhone: remoteCfg.caretaker_phone || currentSaved.caretakerPhone || "",
+                    caretakerRelation: remoteCfg.relationship || currentSaved.caretakerRelation || "Guardian",
+                    dualAlert: remoteCfg.dual_alert !== false
+                };
+                localStorage.setItem('ehealth_contact_routing', JSON.stringify(merged));
+            }
+        }
+    } catch (_) {}
+
     const cfg = getContactSettings();
     const pElem = document.getElementById('displayPatientPhone');
     const cNameElem = document.getElementById('displayCaretakerName');
@@ -270,10 +321,16 @@ function openContactSettingsModal() {
 }
 
 async function testPatientSMS() {
-    const pPhone = (document.getElementById('modalPatientPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('profWhatsapp')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.phone) || '').trim();
+    let pPhone = (document.getElementById('modalPatientPhone')?.value || document.getElementById('profPhone')?.value || document.getElementById('profWhatsapp')?.value || (typeof currentProfile !== 'undefined' && currentProfile?.phone) || '').trim();
     if (!pPhone) {
-        alert("Please enter the Patient's Mobile Number first.");
-        return;
+        const entered = prompt("Please enter the Patient's 10-digit Mobile Number for test SMS:", "");
+        if (entered && entered.trim()) {
+            pPhone = entered.trim();
+            if (document.getElementById('modalPatientPhone')) document.getElementById('modalPatientPhone').value = pPhone;
+            if (document.getElementById('profPhone')) document.getElementById('profPhone').value = pPhone;
+        } else {
+            return;
+        }
     }
     if (!isSmsEnabledGlobal) {
         if (confirm("Cellular SMS notifications are currently turned OFF to preserve your recharge balance.\n\nWould you like to turn ON SMS now and dispatch this message?")) {
@@ -305,6 +362,17 @@ async function testPatientSMS() {
             name: pName
         });
         if (res.success) {
+            const cfg = getContactSettings();
+            cfg.patientPhone = pPhone;
+            cfg.patientWhatsapp = pPhone;
+            localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
+            API.post('/api/closed-loop/caregiver/save-notification-config', {
+                patient_phone: pPhone,
+                caretaker_phone: cfg.caretakerPhone,
+                phone: cfg.caretakerPhone,
+                caretaker_name: cfg.caretakerName
+            }).catch(() => {});
+
             showSMSNotification({
                 title: "✅ PATIENT SMS DELIVERED",
                 message: `Cellular SMS delivered to Patient (${res.recipient_phone}) via ${res.provider}! Ref: ${res.sid}.`,
@@ -333,10 +401,16 @@ async function testPatientSMS() {
 }
 
 async function testCaretakerSMS() {
-    const cPhone = (document.getElementById('modalCaretakerPhone')?.value || document.getElementById('profCaretakerPhone')?.value || '').trim();
+    let cPhone = (document.getElementById('modalCaretakerPhone')?.value || document.getElementById('profCaretakerPhone')?.value || '').trim();
     if (!cPhone) {
-        alert("Please enter the Caretaker's Mobile Number first.");
-        return;
+        const entered = prompt("Please enter the Caretaker's 10-digit Mobile Number for test SMS:", "");
+        if (entered && entered.trim()) {
+            cPhone = entered.trim();
+            if (document.getElementById('modalCaretakerPhone')) document.getElementById('modalCaretakerPhone').value = cPhone;
+            if (document.getElementById('profCaretakerPhone')) document.getElementById('profCaretakerPhone').value = cPhone;
+        } else {
+            return;
+        }
     }
     if (!isSmsEnabledGlobal) {
         if (confirm("Cellular SMS notifications are currently turned OFF to preserve your recharge balance.\n\nWould you like to turn ON SMS now and dispatch this message?")) {
@@ -368,6 +442,17 @@ async function testCaretakerSMS() {
             name: cName
         });
         if (res.success) {
+            const cfg = getContactSettings();
+            cfg.caretakerPhone = cPhone;
+            cfg.caretakerName = cName;
+            localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
+            API.post('/api/closed-loop/caregiver/save-notification-config', {
+                caretaker_phone: cPhone,
+                phone: cPhone,
+                patient_phone: cfg.patientPhone,
+                caretaker_name: cName
+            }).catch(() => {});
+
             showSMSNotification({
                 title: "✅ CARETAKER SMS DELIVERED",
                 message: `Cellular SMS alert successfully delivered to Caretaker (${res.recipient_phone}) via ${res.provider}! Ref: ${res.sid}.`,
@@ -401,28 +486,37 @@ const testCaretakerWhatsApp = testCaretakerSMS;
 const testDirectWhatsAppAlert = testCaretakerSMS;
 
 function saveContactSettings(e) {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || '';
-    const pPhone = document.getElementById('modalPatientPhone').value.trim() || defaultNum;
-    const cPhone = document.getElementById('modalCaretakerPhone').value.trim() || defaultNum;
+    const pPhone = (document.getElementById('modalPatientPhone')?.value || defaultNum).trim();
+    const cPhone = (document.getElementById('modalCaretakerPhone')?.value || defaultNum).trim();
+    const cName = (document.getElementById('modalCaretakerName')?.value || "Primary Caregiver").trim();
+    const cRel = document.getElementById('modalCaretakerRelation')?.value || "Emergency Contact / Guardian";
+    const dualAlert = document.getElementById('modalCaretakerDualAlert') ? document.getElementById('modalCaretakerDualAlert').checked : true;
 
     const cfg = {
         patientPhone: pPhone,
         patientWhatsapp: pPhone,
-        caretakerName: document.getElementById('modalCaretakerName').value.trim() || "Primary Caregiver",
+        caretakerName: cName,
         caretakerPhone: cPhone,
-        caretakerRelation: document.getElementById('modalCaretakerRelation').value,
-        dualAlert: document.getElementById('modalCaretakerDualAlert').checked
+        caretakerRelation: cRel,
+        dualAlert: dualAlert
     };
     localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
+    if (typeof currentProfile !== 'undefined' && currentProfile && pPhone) {
+        currentProfile.phone = pPhone;
+    }
     initContactSettings();
 
-    // Sync to backend
+    // Sync to backend DB permanently
     API.post('/api/closed-loop/caregiver/save-notification-config', {
         phone: cPhone,
+        caretaker_phone: cPhone,
         patient_phone: pPhone,
-        caretaker_name: cfg.caretakerName
-    }).catch(() => {});
+        caretaker_name: cfg.caretakerName,
+        relationship: cfg.caretakerRelation,
+        dual_alert: dualAlert
+    }).catch(err => console.warn("Failed to save contact settings remotely:", err));
 
     // Sync into profile form if open
     const profPhone = document.getElementById('profPhone');
@@ -437,16 +531,17 @@ function saveContactSettings(e) {
     if (profCRel) profCRel.value = cfg.caretakerRelation;
 
     const modalEl = document.getElementById('contactSettingsModal');
-    const modalInst = bootstrap.Modal.getInstance(modalEl);
-    if (modalInst) modalInst.hide();
+    if (modalEl) {
+        const modalInst = bootstrap.Modal.getInstance(modalEl);
+        if (modalInst) modalInst.hide();
+    }
 
     // Trigger verified SMS card
     showSMSNotification({
         title: "ROUTING CONFIGURATION SAVED",
-        message: `Alert channels configured! Prescriptions & vital spike alerts will now be routed directly to ${cfg.patientPhone} and Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
-        channel: "whatsapp",
-        phone: cfg.caretakerPhone,
-        otp: Math.floor(100000 + Math.random() * 900000).toString(),
+        message: `Alert channels configured! Notifications will now be routed directly to Patient (${cfg.patientPhone || 'Not set'}) and Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone || 'Not set'}).`,
+        channel: "sms",
+        phone: cfg.caretakerPhone || cfg.patientPhone,
         duration: 8000
     });
 }
@@ -1731,6 +1826,7 @@ async function loadProfileData() {
         }
 
         // Load contact routing details
+        try { await initContactSettings(); } catch (_) {}
         const cfg = getContactSettings();
         const pWhatsapp = document.getElementById('profWhatsapp');
         const pCName = document.getElementById('profCaretakerName');
@@ -1802,11 +1898,23 @@ async function saveProfile(e) {
     try {
         const updated = await API.request('/api/profile', { method: 'PUT', body: payload });
         currentProfile = updated;
+
+        if (cPhone || phoneVal) {
+            API.post('/api/closed-loop/caregiver/save-notification-config', {
+                phone: cPhone,
+                caretaker_phone: cPhone,
+                patient_phone: phoneVal,
+                caretaker_name: cName,
+                relationship: cRel,
+                dual_alert: true
+            }).catch(err => console.warn("Failed to sync caretaker config to DB:", err));
+        }
+
         showSMSNotification({
             title: "PROFILE PERMANENTLY SAVED",
             message: `Health profile for ${payload.full_name} (Age: ${ageVal}${dobVal ? ' • DOB: ' + dobVal : ''}) and Caretaker routing for ${cName} (${cPhone}) successfully saved.`,
-            channel: "whatsapp",
-            otp: Math.floor(100000 + Math.random() * 900000).toString(),
+            channel: "sms",
+            phone: cPhone || phoneVal,
             duration: 7500
         });
     } catch (err) {

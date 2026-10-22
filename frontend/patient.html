@@ -135,7 +135,25 @@
                     userPhone = u.phone || '';
                 } catch (_) {}
             }
-            if (!userPhone) userPhone = '8618912755';
+            if (!userPhone && document.getElementById('modalPatientPhone')) {
+                userPhone = (document.getElementById('modalPatientPhone').value || '').trim();
+            }
+            if (!userPhone && document.getElementById('profPhone')) {
+                userPhone = (document.getElementById('profPhone').value || '').trim();
+            }
+            if (nextState && !userPhone) {
+                const entered = prompt("SMS Alerts Setup:\nPlease enter the 10-digit mobile number for automated SMS notifications:", "");
+                if (entered && entered.trim()) {
+                    userPhone = entered.trim();
+                    let cfg = {};
+                    try { cfg = JSON.parse(localStorage.getItem('ehealth_contact_routing') || '{}'); } catch (_) {}
+                    cfg.patientPhone = userPhone;
+                    localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
+                } else {
+                    window.updateSmsToggleUI(false);
+                    return;
+                }
+            }
 
             const token = localStorage.getItem('ehealth_token');
             const headers = { 'Content-Type': 'application/json' };
@@ -1186,7 +1204,7 @@
                                         <label class="form-label small fw-semibold">Emergency SMS Number (Alert Recipient)</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-primary-subtle text-primary"><i class="bi bi-broadcast"></i></span>
-                                            <input type="tel" id="profWhatsapp" class="form-control" placeholder="+91 86189 12755">
+                                            <input type="tel" id="profWhatsapp" class="form-control" placeholder="+91 98765 43210">
                                         </div>
                                     </div>
                                 </div>
@@ -1215,7 +1233,7 @@
 
                                         <div class="col-md-4">
                                             <label class="form-label small fw-semibold">Caretaker Mobile (SMS Alerts)</label>
-                                            <input type="tel" id="profCaretakerPhone" class="form-control" placeholder="e.g. +91 86189 12755">
+                                            <input type="tel" id="profCaretakerPhone" class="form-control" placeholder="e.g. +91 98765 43210">
                                         </div>
 
                                         <div class="col-md-4">
@@ -4749,7 +4767,7 @@
                             <label class="form-label small fw-semibold text-dark">Patient Mobile Number (SMS Recipient)</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-primary-subtle text-primary"><i class="bi bi-broadcast"></i></span>
-                                <input type="tel" id="modalPatientPhone" class="form-control" required placeholder="+91 86189 12755">
+                                <input type="tel" id="modalPatientPhone" class="form-control" required placeholder="+91 98765 43210">
                             </div>
                             <small class="text-secondary">Direct recipient for medication reminders, digital prescriptions, and vital status.</small>
                         </div>
@@ -4764,7 +4782,7 @@
                             </div>
                             <div class="mb-2">
                                 <label class="form-label small fw-semibold">Caretaker Mobile (Emergency SMS Alerts)</label>
-                                <input type="tel" id="modalCaretakerPhone" class="form-control form-control-sm" required placeholder="e.g. +91 86189 12755">
+                                <input type="tel" id="modalCaretakerPhone" class="form-control form-control-sm" required placeholder="e.g. +91 98765 43210">
                             </div>
 
                             <div class="mb-2">
