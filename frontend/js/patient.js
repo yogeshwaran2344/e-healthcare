@@ -64,21 +64,26 @@ let isSmsEnabledGlobal = false;
 function updateSmsToggleUI(enabled) {
     isSmsEnabledGlobal = !!enabled;
 
-    // 1. Header Button
-    const headerBtn = document.getElementById('headerSmsBtn');
-    const headerIcon = document.getElementById('headerSmsIcon');
+    // 1. Header Switch
+    const switchInput = document.getElementById('headerSmsSwitchInput');
     const headerText = document.getElementById('headerSmsText');
-    if (headerBtn && headerIcon && headerText) {
+    const headerContainer = document.getElementById('headerSmsToggleContainer');
+    if (switchInput) switchInput.checked = isSmsEnabledGlobal;
+    if (headerText) {
         if (isSmsEnabledGlobal) {
-            headerBtn.className = "btn btn-sm btn-outline-success rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
-            headerIcon.className = "bi bi-broadcast text-success";
-            headerText.textContent = "SMS: ON";
-            headerBtn.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
+            headerText.className = "small fw-bold text-success d-flex align-items-center gap-1";
+            headerText.innerHTML = '<i class="bi bi-broadcast text-success" id="headerSmsIcon"></i> SMS: ON';
+            if (headerContainer) {
+                headerContainer.style.borderColor = '#198754';
+                headerContainer.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
+            }
         } else {
-            headerBtn.className = "btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1";
-            headerIcon.className = "bi bi-bell-slash text-danger";
-            headerText.textContent = "SMS: OFF";
-            headerBtn.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
+            headerText.className = "small fw-bold text-danger d-flex align-items-center gap-1";
+            headerText.innerHTML = '<i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS: OFF';
+            if (headerContainer) {
+                headerContainer.style.borderColor = '#dee2e6';
+                headerContainer.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
+            }
         }
     }
 

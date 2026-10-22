@@ -18,6 +18,124 @@
 
     <link rel="stylesheet" href="/static/css/style.css">
 
+
+    <!-- Guaranteed Inline SMS Master Switch Controller -->
+    <script>
+    window.isSmsEnabledGlobal = false;
+
+    window.updateSmsToggleUI = function(enabled) {
+        window.isSmsEnabledGlobal = !!enabled;
+
+        // 1. Header Switch
+        const switchInput = document.getElementById('headerSmsSwitchInput');
+        const headerText = document.getElementById('headerSmsText');
+        const headerContainer = document.getElementById('headerSmsToggleContainer');
+        if (switchInput) switchInput.checked = window.isSmsEnabledGlobal;
+        if (headerText) {
+            if (window.isSmsEnabledGlobal) {
+                headerText.className = "small fw-bold text-success d-flex align-items-center gap-1";
+                headerText.innerHTML = '<i class="bi bi-broadcast text-success" id="headerSmsIcon"></i> SMS: ON';
+                if (headerContainer) {
+                    headerContainer.style.borderColor = '#198754';
+                    headerContainer.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
+                }
+            } else {
+                headerText.className = "small fw-bold text-danger d-flex align-items-center gap-1";
+                headerText.innerHTML = '<i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS: OFF';
+                if (headerContainer) {
+                    headerContainer.style.borderColor = '#dee2e6';
+                    headerContainer.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
+                }
+            }
+        }
+
+        // 2. Caretaker Card Switch
+        const cSwitch = document.getElementById('caretakerCardSmsSwitch');
+        const cLabel = document.getElementById('caretakerCardSmsLabel');
+        if (cSwitch) cSwitch.checked = window.isSmsEnabledGlobal;
+        if (cLabel) {
+            cLabel.textContent = window.isSmsEnabledGlobal ? "SMS: ON" : "SMS: OFF";
+            cLabel.className = window.isSmsEnabledGlobal ? "form-check-label small fw-semibold text-success" : "form-check-label small fw-semibold text-muted";
+        }
+
+        // 3. Quick Vitals Switch
+        const qSwitch = document.getElementById('quickSmsSwitch');
+        const qLabel = document.getElementById('quickSmsLabel');
+        if (qSwitch) qSwitch.checked = window.isSmsEnabledGlobal;
+        if (qLabel) {
+            qLabel.textContent = window.isSmsEnabledGlobal ? "SMS: ON" : "SMS: OFF";
+            qLabel.className = window.isSmsEnabledGlobal ? "form-check-label small fw-semibold text-success" : "form-check-label small fw-semibold text-muted";
+        }
+
+        // 4. Modal Switch & Badge
+        const mSwitch = document.getElementById('modalSmsToggle');
+        const mBadge = document.getElementById('modalSmsStatusBadge');
+        if (mSwitch) mSwitch.checked = window.isSmsEnabledGlobal;
+        if (mBadge) {
+            mBadge.className = window.isSmsEnabledGlobal ? "badge bg-success text-white" : "badge bg-secondary text-white";
+            mBadge.textContent = window.isSmsEnabledGlobal ? "ON (Active Delivery)" : "OFF (Recharge Saver Active)";
+        }
+
+        // 5. Smartwatch BLE Vitals Badge
+        const bleBadge = document.getElementById('bleSmsBadge');
+        if (bleBadge) {
+            bleBadge.className = window.isSmsEnabledGlobal ? "badge bg-success-subtle text-success border border-success-subtle" : "badge bg-secondary-subtle text-secondary border border-secondary-subtle";
+            bleBadge.innerHTML = window.isSmsEnabledGlobal ? '<i class="bi bi-broadcast me-1"></i> Cellular SMS Active (ON)' : '<i class="bi bi-bell-slash me-1"></i> Cellular SMS Paused (OFF)';
+        }
+    };
+
+    window.toggleSMSMasterSwitch = async function(turnOn) {
+        const nextState = (turnOn !== undefined) ? !!turnOn : !window.isSmsEnabledGlobal;
+        window.updateSmsToggleUI(nextState);
+
+        try {
+            const resp = await fetch('/api/closed-loop/sms/toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: nextState })
+            });
+            const res = await resp.json();
+            const finalState = (res && res.sms_enabled !== undefined) ? !!res.sms_enabled : nextState;
+            window.updateSmsToggleUI(finalState);
+
+            if (typeof showSMSNotification === 'function') {
+                showSMSNotification({
+                    title: finalState ? "📢 CELLULAR SMS TURNED ON" : "🛡️ CELLULAR SMS TURNED OFF",
+                    message: finalState
+                        ? "Cellular SMS notifications are now ON. Real-time medication reminders & vital alerts will be dispatched to your phone."
+                        : "Cellular SMS notifications are now turned OFF. Fast2SMS wallet balance & SMS recharge are completely protected.",
+                    channel: "sms",
+                    duration: 6000
+                });
+            }
+        } catch (err) {
+            console.error("SMS toggle failed:", err);
+            window.updateSmsToggleUI(!nextState);
+        }
+    };
+
+    window.toggleSmsState = function() {
+        window.toggleSMSMasterSwitch(!window.isSmsEnabledGlobal);
+    };
+
+    window.fetchSmsStatus = async function() {
+        try {
+            const resp = await fetch('/api/closed-loop/sms/toggle-status');
+            const res = await resp.json();
+            window.updateSmsToggleUI(res && res.sms_enabled);
+        } catch (e) {
+            window.updateSmsToggleUI(false);
+        }
+    };
+
+    // Auto-fetch status on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.fetchSmsStatus);
+    } else {
+        window.fetchSmsStatus();
+    }
+    </script>
+
 </head>
 
 <body class="bg-light">
@@ -56,10 +174,15 @@
 
             <div class="ms-auto d-flex align-items-center gap-2">
 
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-1 shadow-sm px-2 py-1" id="headerSmsBtn" onclick="toggleSmsState()" title="Click to Toggle Cellular SMS ON or OFF (Recharge Protection)">
-                    <i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i>
-                    <span class="small fw-semibold" id="headerSmsText">SMS: OFF</span>
-                </button>
+                <!-- Interactive Cellular SMS Master Switch -->
+                <div class="d-inline-flex align-items-center bg-white border rounded-pill px-2 py-1 shadow-sm gap-2" id="headerSmsToggleContainer" style="cursor: pointer; user-select: none;" onclick="toggleSmsState()" title="Click to Toggle Cellular SMS Messages ON or OFF (Recharge Protection)">
+                    <div class="form-check form-switch m-0 d-flex align-items-center p-0" style="pointer-events: none;">
+                        <input class="form-check-input ms-0 mt-0" type="checkbox" role="switch" id="headerSmsSwitchInput" style="cursor: pointer; width: 2.2em; height: 1.15em;">
+                    </div>
+                    <span class="small fw-bold text-danger d-flex align-items-center gap-1" id="headerSmsText" style="font-size: 0.8rem;">
+                        <i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS: OFF
+                    </span>
+                </div>
 
                 <button class="btn btn-outline-primary btn-sm fw-semibold rounded-pill d-none d-sm-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure Cellular SMS Alerts &amp; Emergency Contacts">
                     <i class="bi bi-broadcast me-1 text-primary"></i> SMS Alerts Setup
@@ -4950,7 +5073,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js"></script>
+    <script src="/static/js/patient.js?v=20261022_3"></script>
 
 </body>
 
