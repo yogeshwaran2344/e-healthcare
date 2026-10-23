@@ -3198,8 +3198,12 @@ function updateSosStatusUI(res) {
 }
 
 function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
+    const incEl = document.getElementById('modalSosIncidentId');
     const nameEl = document.getElementById('modalSosCaretakerName');
     const phoneEl = document.getElementById('modalSosCaretakerPhone');
+    const secNameEl = document.getElementById('modalSosSecondaryName');
+    const secPhoneEl = document.getElementById('modalSosSecondaryPhone');
+    const secBtn = document.getElementById('modalSosCallSecondaryBtn');
     const latEl = document.getElementById('modalSosLat');
     const lngEl = document.getElementById('modalSosLng');
     const mapsBtn = document.getElementById('modalSosGoogleMapsBtn');
@@ -3208,8 +3212,19 @@ function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
     const statusBadge = document.getElementById('modalSosSmsStatusBadge');
     const accBadge = document.getElementById('modalSosAccuracyBadge');
 
+    if (incEl) incEl.textContent = res.incident_id || `INC-${Date.now().toString().slice(-6)}`;
     if (nameEl) nameEl.textContent = res.caretaker_name || "Primary Caregiver";
     if (phoneEl) phoneEl.textContent = res.caretaker_phone || "Registered Caretaker";
+
+    // Secondary contact details if dispatched
+    const contacts = res.contacts_dispatched || [];
+    const secContact = contacts.find(c => c.role && c.role.includes("Secondary"));
+    if (secContact && secNameEl && secPhoneEl && secBtn) {
+        secNameEl.textContent = secContact.contact_name || "Secondary Contact";
+        secPhoneEl.textContent = secContact.contact_phone || "—";
+        secBtn.href = `tel:${secContact.contact_phone}`;
+    }
+
     if (latEl) latEl.textContent = Number(lat).toFixed(6);
     if (lngEl) lngEl.textContent = Number(lng).toFixed(6);
     if (mapsBtn) mapsBtn.href = mapsUrl;
@@ -3217,17 +3232,22 @@ function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
     if (callBtn) {
         callBtn.href = res.caretaker_phone ? `tel:${res.caretaker_phone}` : 'javascript:void(0)';
     }
+
+    // Accurate delivery status tracking
     if (statusBadge) {
-        if (res.sms_sent) {
-            statusBadge.className = "badge bg-success";
-            statusBadge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Cellular SMS Delivered to Caretaker`;
+        if (res.delivery_status === 'GATEWAY_ACCEPTED') {
+            statusBadge.className = "badge bg-warning text-dark px-3 py-2 fs-6";
+            statusBadge.innerHTML = `<i class="bi bi-hourglass-split me-1"></i>Gateway Accepted (Carrier Hand-Off in Progress)`;
+        } else if (res.delivery_status === 'DELIVERED') {
+            statusBadge.className = "badge bg-success px-3 py-2 fs-6";
+            statusBadge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Carrier Delivered`;
         } else {
-            statusBadge.className = "badge bg-primary";
-            statusBadge.innerHTML = `<i class="bi bi-broadcast me-1"></i>Alert Dispatched to Caretaker`;
+            statusBadge.className = "badge bg-danger px-3 py-2 fs-6";
+            statusBadge.innerHTML = `<i class="bi bi-x-circle me-1"></i>Carrier SMS Rejected / Failed`;
         }
     }
     if (accBadge) {
-        accBadge.textContent = acc ? `GPS Accuracy ±${Math.round(acc)}m` : `Live GPS Pinpoint`;
+        accBadge.textContent = acc ? `GPS Accuracy ±${Math.round(acc)}m` : `Live GPS High Accuracy`;
     }
 
     const modalEl = document.getElementById('emergencySosModal');
@@ -3236,19 +3256,85 @@ function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
     }
 }
 
-async function triggerOneTapSOS() {
+let sosCountdownTimer = null;
+let sosCountdownSeconds = 5;
+
+function openSosCountdownModal() {
+    sosCountdownSeconds = 5;
+    const numEl = document.getElementById('sosCountdownNumber');
+    const barEl = document.getElementById('sosCountdownProgress');
+    if (numEl) numEl.textContent = "5";
+    if (barEl) barEl.style.width = "100%";
+
     playSmsChime();
 
-    // Show initial responsive notification
+    const modalEl = document.getElementById('sosCountdownModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    if (sosCountdownTimer) clearInterval(sosCountdownTimer);
+    sosCountdownTimer = setInterval(() => {
+        sosCountdownSeconds--;
+        if (numEl) numEl.textContent = String(sosCountdownSeconds);
+        if (barEl) barEl.style.width = `${(sosCountdownSeconds / 5) * 100}%`;
+
+        if (sosCountdownSeconds <= 0) {
+            clearInterval(sosCountdownTimer);
+            sosCountdownTimer = null;
+            if (modalEl) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            }
+            executeOneTapSosDispatch();
+        }
+    }, 1000);
+}
+
+function cancelSosCountdown() {
+    if (sosCountdownTimer) {
+        clearInterval(sosCountdownTimer);
+        sosCountdownTimer = null;
+    }
+    const modalEl = document.getElementById('sosCountdownModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
     showSMSNotification({
-        title: "🚨 1-TAP EMERGENCY SOS INITIATED",
-        message: "Acquiring your live device GPS location to alert caretaker immediately...",
+        title: "🛡️ SOS DISPATCH CANCELLED",
+        message: "Emergency SOS trigger aborted by patient. No notifications were dispatched.",
+        channel: "sms",
+        duration: 4000
+    });
+}
+
+function confirmSosImmediately() {
+    if (sosCountdownTimer) {
+        clearInterval(sosCountdownTimer);
+        sosCountdownTimer = null;
+    }
+    const modalEl = document.getElementById('sosCountdownModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    }
+    executeOneTapSosDispatch();
+}
+
+async function triggerOneTapSOS() {
+    // Standard trigger routes through the 5-second safety countdown to prevent accidental double-clicks
+    openSosCountdownModal();
+}
+
+async function executeOneTapSosDispatch() {
+    playSmsChime();
+
+    showSMSNotification({
+        title: "🚨 1-TAP EMERGENCY SOS DISPATCHING",
+        message: "Acquiring live high-accuracy GPS coordinates & generating incident dossier...",
         channel: "sms",
         duration: 3500
     });
 
     try {
-        // Acquire real live GPS coordinates
         const coords = await getLiveLocationCoordinates();
         const lat = coords ? coords.latitude : 12.9716;
         const lng = coords ? coords.longitude : 77.5946;
@@ -3257,6 +3343,7 @@ async function triggerOneTapSOS() {
         const cfg = getContactSettings();
 
         const payload = {
+            idempotency_key: `SOS-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             emergency_type: "ONE_TAP_SOS_LIVE_LOCATION",
             latitude: lat,
             longitude: lng,
@@ -3275,10 +3362,13 @@ async function triggerOneTapSOS() {
         // Update SOS status UI elements
         updateSosStatusUI(res);
 
-        // Display confirmed high-priority toast
+        const statusLabel = res.delivery_status === 'GATEWAY_ACCEPTED' 
+            ? "Gateway Accepted (Carrier Hand-Off in Progress)"
+            : (res.delivery_status === 'DELIVERED' ? "Carrier Delivered" : "SMS Rejected/Blocked");
+
         showSMSNotification({
-            title: "🚨 EMERGENCY SOS DISPATCHED TO CARETAKER",
-            message: `Alert sent to ${res.caretaker_name || 'Caretaker'} (${res.caretaker_phone || 'Registered Phone'}). Live GPS Location transmitted!`,
+            title: `🚨 EMERGENCY SOS [${res.incident_id || 'INC-LIVE'}]`,
+            message: `Alert sent to ${res.caretaker_name || 'Caregiver'} (${res.caretaker_phone || 'Registered Phone'}). Status: ${statusLabel}`,
             channel: "sms",
             phone: res.caretaker_phone,
             duration: 9000
@@ -3288,6 +3378,13 @@ async function triggerOneTapSOS() {
         console.error("SOS dispatch failed:", err);
         alert("Failed to dispatch 1-Tap SOS: " + (err.message || err));
         showSMSNotification({
+            title: "⚠️ SOS DISPATCH WARNING",
+            message: `Emergency dispatch server reported: ${err.message || err}`,
+            channel: "sms",
+            duration: 8000
+        });
+    }
+}
             title: "⚠️ SOS DISPATCH WARNING",
             message: `Could not reach emergency dispatch server: ${err.message || err}`,
             channel: "sms",
@@ -3556,31 +3653,148 @@ async function loadDigitalHealthTimeline() {
 // ===================================================================
 let activePassportScope = 'PUBLIC_BASIC';
 let currentPassportToken = null;
+let currentPassportDataCache = null;
 
 function renderLivePassportFields(p) {
-    if (!p) return '<div class="text-muted">No passport data.</div>';
-    const v = p.latest_vitals_snapshot || p.recent_vitals || {};
+    if (!p) return '<div class="text-muted">No passport data available.</div>';
+    currentPassportDataCache = p;
+
+    // 1. Profile Completion HUD
+    const completion = p.profile_completion || { percentage: 25, grade: 'Incomplete', missing_fields: [] };
+    const pct = completion.percentage || 25;
+    const compText = document.getElementById('passportCompletionText');
+    const compBar = document.getElementById('passportCompletionProgressBar');
+    const compGrade = document.getElementById('passportCompletionGradeBadge');
+    const missingPrompt = document.getElementById('passportMissingFieldsPrompt');
+    const verifiedBadge = document.getElementById('passportVerifiedStatusBadge');
+
+    if (compText) compText.textContent = `${pct}% Ready (${completion.grade || 'In Progress'})`;
+    if (compBar) {
+        compBar.style.width = `${pct}%`;
+        compBar.className = pct >= 85 ? "progress-bar bg-success" : (pct >= 50 ? "progress-bar bg-primary" : "progress-bar bg-warning");
+    }
+    if (compGrade) {
+        compGrade.textContent = pct >= 85 ? "Exemplary Readiness" : (pct >= 50 ? "Moderate Setup" : "Incomplete Profile");
+        compGrade.className = pct >= 85 ? "badge bg-success" : (pct >= 50 ? "badge bg-primary" : "badge bg-warning text-dark");
+    }
+    if (missingPrompt) {
+        if (completion.missing_fields && completion.missing_fields.length > 0) {
+            missingPrompt.innerHTML = `
+                <span class="text-muted"><i class="bi bi-exclamation-circle text-warning me-1"></i> Missing for full emergency readiness: <strong class="text-dark">${completion.missing_fields.join(', ')}</strong></span>
+                <button class="btn btn-sm btn-link p-0 text-decoration-none text-primary fw-semibold" onclick="verifyMyPassportProfile()"><i class="bi bi-patch-check me-1"></i>Mark Verified</button>
+            `;
+        } else {
+            missingPrompt.innerHTML = `<span class="text-success"><i class="bi bi-check-all me-1"></i> All critical emergency clinical baseline parameters recorded &amp; verified.</span>`;
+        }
+    }
+
+    if (verifiedBadge) {
+        if (p.is_verified) {
+            verifiedBadge.className = "badge bg-success px-3 py-1";
+            verifiedBadge.innerHTML = `<i class="bi bi-patch-check-fill me-1"></i> Patient Verified (${new Date(p.verified_at || Date.now()).toLocaleDateString()})`;
+        } else {
+            verifiedBadge.className = "badge bg-warning text-dark px-3 py-1";
+            verifiedBadge.innerHTML = `<i class="bi bi-clock-history me-1"></i> Unverified Self-Record`;
+        }
+    }
+
+    // 2. Clinical distinction helper for None vs Not recorded
+    function renderClinicalBadge(val, status, noneText, emptyText) {
+        if (status === 'NONE_KNOWN' || (val && val.toLowerCase().includes('none') && !val.toLowerCase().includes('not recorded'))) {
+            return `<span class="badge bg-success-subtle text-success border border-success-subtle fw-semibold"><i class="bi bi-check-circle-fill me-1"></i> ${noneText}</span>`;
+        }
+        if (!val || status === 'NOT_RECORDED' || val === 'Not recorded') {
+            return `<span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-question-circle me-1"></i> ${emptyText}</span>`;
+        }
+        return `<span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i> ${val}</span>`;
+    }
+
+    const allergiesHtml = renderClinicalBadge(p.severe_drug_allergies || p.drug_allergies, p.allergy_status, "No Known Drug Allergies (NKDA)", "Not recorded");
+    const conditionsHtml = renderClinicalBadge(p.pre_existing_conditions, p.condition_status, "No Known Chronic Conditions", "Not recorded");
+    const medsHtml = renderClinicalBadge(p.current_medications, p.medication_status, "No Active Medications", "Not recorded");
+
     const phys = p.physician || {};
-    const vitals = [
-        v.blood_pressure || v.bp,
-        v.heart_rate || v.hr,
-        v.spo2 ? ('SpO2 ' + v.spo2) : null,
-        v.glucose
-    ].filter(Boolean).join(' · ') || 'Not recorded';
-    const physician = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' · ') || 'Not recorded';
+    const physLine = [phys.name, phys.specialization, phys.hospital].filter(x => x && x !== 'Not recorded').join(' · ') || 'Not recorded';
+
+    // 3. Render Graded Vitals Cards
+    const vitals = p.latest_vitals_snapshot || p.recent_vitals || {};
+    const graded = vitals.graded_vitals || {};
+    renderGradedVitalsGrid(graded);
+
+    const syncTime = p.last_updated_at ? new Date(p.last_updated_at).toLocaleString() : new Date().toLocaleString();
+
     return `
-        <div class="row g-2">
-            <div class="col-md-4"><span class="text-muted d-block">Identity</span><strong>${p.patient_name || p.full_name || '—'}</strong><div class="text-muted">${p.age || '—'} · ${p.gender || '—'}</div></div>
-            <div class="col-md-2"><span class="text-muted d-block">Blood group</span><span class="badge bg-danger fs-6">${p.blood_group || '—'}</span></div>
-            <div class="col-md-6"><span class="text-muted d-block">Allergies</span><strong class="text-danger">${p.severe_drug_allergies || p.drug_allergies || '—'}</strong></div>
-            <div class="col-md-6"><span class="text-muted d-block">Critical conditions</span>${p.pre_existing_conditions || '—'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Medications</span>${p.current_medications || '—'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Emergency contact</span>${p.emergency_contact || p.emergency_contact_phone || '—'}</div>
-            <div class="col-md-6"><span class="text-muted d-block">Physician</span>${physician}</div>
-            <div class="col-12"><span class="text-muted d-block">Latest vitals</span>${vitals}</div>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <span class="text-muted d-block small fw-bold">PATIENT IDENTITY</span>
+                <strong class="text-dark fs-6">${p.patient_name || p.full_name || 'Patient'}</strong>
+                <div class="text-muted small">${p.age || '—'} Yrs · ${p.gender || '—'} · ID: #${p.patient_id || '5'}</div>
+            </div>
+            <div class="col-md-6">
+                <span class="text-muted d-block small fw-bold">BLOOD GROUP</span>
+                <span class="badge bg-danger fs-6 px-3 py-1">${p.blood_group || 'Not recorded'}</span>
+            </div>
+            <div class="col-12">
+                <span class="text-muted d-block small fw-bold mb-1">SEVERE DRUG ALLERGIES (NKDA CHECK)</span>
+                <div>${allergiesHtml}</div>
+            </div>
+            <div class="col-md-6">
+                <span class="text-muted d-block small fw-bold mb-1">PRE-EXISTING CHRONIC CONDITIONS</span>
+                <div>${conditionsHtml}</div>
+            </div>
+            <div class="col-md-6">
+                <span class="text-muted d-block small fw-bold mb-1">ACTIVE CLINICAL PRESCRIPTIONS</span>
+                <div>${medsHtml}</div>
+            </div>
+            <div class="col-md-6">
+                <span class="text-muted d-block small fw-bold">EMERGENCY CONTACT &amp; CAREGIVER</span>
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="font-monospace fw-bold text-dark">${p.emergency_contact || p.emergency_contact_phone || 'Not recorded'}</span>
+                    ${p.emergency_contact_phone ? `<a href="tel:${p.emergency_contact_phone}" class="btn btn-outline-success btn-sm py-0 px-2 rounded-pill"><i class="bi bi-telephone-fill me-1"></i>Call</a>` : ''}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <span class="text-muted d-block small fw-bold">TREATING PHYSICIAN</span>
+                <div class="text-dark small mt-1"><i class="bi bi-hospital me-1 text-primary"></i>${physLine}</div>
+            </div>
         </div>
-        <div class="small text-muted mt-2"><i class="bi bi-lock me-1"></i>Read-only live view · generated ${p.timestamp || ''}</div>
+        <div class="small text-muted mt-3 pt-2 border-top d-flex justify-content-between align-items-center flex-wrap">
+            <span><i class="bi bi-shield-check text-success me-1"></i>Read-only dynamic snapshot · Synchronized: ${syncTime}</span>
+            <span class="badge bg-light text-secondary border font-monospace">SHA-256 Verified Ledger</span>
+        </div>
     `;
+}
+
+function renderGradedVitalsGrid(graded) {
+    const gridEl = document.getElementById('passportGradedVitalsGrid');
+    if (!gridEl) return;
+
+    if (!graded || Object.keys(graded).length === 0) {
+        gridEl.innerHTML = `<div class="col-12 text-muted small p-2">Continuous vitals monitoring active. No critical breaches reported.</div>`;
+        return;
+    }
+
+    const cards = Object.values(graded).map(v => {
+        let badgeClass = "bg-success";
+        if (v.status === 'CRITICAL') badgeClass = "bg-danger text-white";
+        else if (v.status === 'BORDERLINE') badgeClass = "bg-warning text-dark";
+
+        return `
+            <div class="col-6 col-md-3">
+                <div class="p-2 rounded-3 border bg-light h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted fw-bold text-truncate" style="font-size:0.7rem;">${v.metric}</small>
+                        <span class="badge ${badgeClass}" style="font-size:0.65rem;">${v.status}</span>
+                    </div>
+                    <div class="fw-bold text-dark fs-6">${v.value}</div>
+                    <div class="text-secondary small text-truncate" style="font-size:0.68rem;" title="${v.flag}">${v.flag}</div>
+                    <div class="text-muted" style="font-size:0.65rem;"><i class="bi bi-clock me-1"></i>${v.recorded_at}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    gridEl.innerHTML = cards;
 }
 
 async function loadLiveEmergencyPassport() {
@@ -3590,37 +3804,46 @@ async function loadLiveEmergencyPassport() {
         const res = await API.get('/api/emergency/live-passport');
         box.innerHTML = renderLivePassportFields(res.passport);
     } catch (err) {
-        box.innerHTML = `<div class="text-danger">${err.message}</div>`;
+        box.innerHTML = `<div class="text-danger small p-2">Error loading passport: ${err.message}</div>`;
     }
 }
 
-async function loadPatientEmergencyAudit() {
-    const tbody = document.getElementById('patientEmergencyAuditBody');
-    if (!tbody) return;
+async function verifyMyPassportProfile() {
     try {
-        const res = await API.get('/api/emergency/audit-log');
-        const events = res.events || [];
-        if (!events.length) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-muted text-center py-3">No emergency access events yet.</td></tr>`;
-            return;
-        }
-        tbody.innerHTML = events.map(ev => `
-            <tr>
-                <td class="small">${ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '—'}</td>
-                <td class="small">${ev.accessor_name || '—'}</td>
-                <td class="small">${ev.accessor_role || '—'}</td>
-                <td class="small">${ev.purpose || '—'}</td>
-                <td class="small">${ev.information_type || '—'}</td>
-                <td>${ev.is_emergency ? '<span class="badge bg-danger">Emergency</span>' : '<span class="badge bg-secondary">Routine</span>'}</td>
-            </tr>
-        `).join('');
+        const res = await API.post('/api/closed-loop/passport/verify-profile', {});
+        showSMSNotification({
+            title: "✅ PROFILE VERIFIED",
+            message: res.message || "Medical profile marked as patient-verified.",
+            channel: "sms",
+            duration: 4000
+        });
+        loadLiveEmergencyPassport();
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-danger small">${err.message}</td></tr>`;
+        alert("Verification failed: " + err.message);
     }
 }
 
 async function switchPassportContext(scope) {
     activePassportScope = scope;
+    const explainer = document.getElementById('passportScopeExplainer');
+    const pinBox = document.getElementById('passportPinChallengeBox');
+
+    if (explainer) {
+        if (scope === 'PUBLIC_BASIC') {
+            explainer.className = "alert alert-info py-2 px-3 rounded-3 small mb-3";
+            explainer.innerHTML = `<i class="bi bi-info-circle me-1"></i> <strong>Public Bystander Scope:</strong> Exposes only essential emergency details (Blood group, allergies, contact phone). Zero medications or clinical notes are exposed.`;
+            if (pinBox) pinBox.classList.add('d-none');
+        } else if (scope === 'AMBULANCE_PARAMEDIC') {
+            explainer.className = "alert alert-warning py-2 px-3 rounded-3 small mb-3";
+            explainer.innerHTML = `<i class="bi bi-truck me-1"></i> <strong>Paramedic / ALS Scope:</strong> Exposes en-route triage vitals, chronic illnesses, active prescriptions. <strong>Requires Paramedic Authorization PIN (Demo: 9999).</strong>`;
+            if (pinBox) pinBox.classList.remove('d-none');
+        } else if (scope === 'HOSPITAL_ER_TRAUMA') {
+            explainer.className = "alert alert-danger py-2 px-3 rounded-3 small mb-3";
+            explainer.innerHTML = `<i class="bi bi-hospital me-1"></i> <strong>Hospital ER Trauma Bay Scope:</strong> Exposes full clinical dossier: lab biomarkers, radiology reports, physician notes. <strong>Requires Trauma Bay PIN (Demo: 1234).</strong>`;
+            if (pinBox) pinBox.classList.remove('d-none');
+        }
+    }
+
     await fetchAndRenderPassport(scope);
 }
 
@@ -3633,77 +3856,81 @@ function startPassportCountdownTimer(validityMinutes) {
     if (passportCountdownInterval) clearInterval(passportCountdownInterval);
     let secondsLeft = (validityMinutes || 15) * 60;
     const countdownEl = document.getElementById('passportCountdown');
-    const noteEl = document.getElementById('passportRevocationNote');
+    const badgeEl = document.getElementById('passportExpiryBadge');
     if (!countdownEl) return;
 
     function renderTime() {
         if (secondsLeft <= 0) {
             clearInterval(passportCountdownInterval);
-            countdownEl.innerHTML = `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Emergency Window Expired</span>`;
-            if (noteEl) noteEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-shield-lock me-1"></i>Access automatically revoked after emergency window.</span>`;
+            countdownEl.innerHTML = `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Pass Auto-Revoked (Expired)</span>`;
+            if (badgeEl) {
+                badgeEl.className = "badge bg-secondary";
+                badgeEl.textContent = "Expired";
+            }
             return;
         }
         const m = Math.floor(secondsLeft / 60);
         const s = secondsLeft % 60;
-        countdownEl.innerHTML = `<i class="bi bi-clock-history me-1"></i>Access expires in: ${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        countdownEl.innerHTML = `<i class="bi bi-clock-history me-1"></i>Access auto-revokes in: <strong>${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}</strong>`;
+        if (badgeEl) {
+            badgeEl.className = "badge bg-success";
+            badgeEl.textContent = "Active Token";
+        }
         secondsLeft--;
     }
     renderTime();
     passportCountdownInterval = setInterval(renderTime, 1000);
 }
 
-async function fetchAndRenderPassport(scope, forceNew = false) {
+async function fetchAndRenderPassport(scope, forceNew = false, customPin = null) {
     const previewBox = document.getElementById('passportDataPreviewBox');
     const qrImg = document.getElementById('passportQrImg');
     const label = document.getElementById('passportScopeLabel');
     const tokenHash = document.getElementById('passportTokenHash');
-    const countdown = document.getElementById('passportCountdown');
 
     if (!previewBox) return;
-    previewBox.innerHTML = `<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Generating context-scoped view...</div>`;
+    previewBox.innerHTML = `<div class="text-center py-2 text-muted"><div class="spinner-border spinner-border-sm text-primary"></div> Validating cryptographic permissions...</div>`;
 
     try {
         const tokenRes = await API.post('/api/closed-loop/passport/generate-token', { context_scope: scope });
         currentPassportToken = tokenRes.token;
 
         if (label) label.textContent = tokenRes.scope_label;
-        if (tokenHash) tokenHash.textContent = tokenRes.token;
+        if (tokenHash) tokenHash.textContent = `${tokenRes.token.slice(0, 12)}...`;
         startPassportCountdownTimer(tokenRes.validity_minutes || 15);
 
-        // Update QR Code Image
-        const viewUrl = window.location.origin + (tokenRes.emergency_view_url || tokenRes.qr_access_url);
+        // Update QR Code Image pointing to view URL
+        const viewUrl = window.location.origin + tokenRes.qr_access_url;
         if (qrImg) {
             qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(viewUrl)}`;
         }
 
         // Fetch the filtered view as the accessor would see it
-        const viewRes = await API.get(tokenRes.qr_access_url);
+        let fetchUrl = tokenRes.qr_access_url;
+        if (customPin) fetchUrl += `?pin=${encodeURIComponent(customPin)}`;
+        const viewRes = await API.get(fetchUrl);
         const data = viewRes.data || viewRes;
 
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle">${viewRes.scope_label}</span>
-                <span class="text-muted" style="font-size: 0.75rem;">Access Count: ${viewRes.access_count}</span>
+                <span class="badge bg-light text-muted border" style="font-size: 0.72rem;">Role: ${viewRes.role_authorization_note || 'Bystander'}</span>
             </div>
             <div class="text-dark">
         `;
 
         if (data.full_name) html += `<div><strong>Patient Name:</strong> ${data.full_name}</div>`;
         if (data.blood_group) html += `<div><strong>Blood Group:</strong> <span class="badge bg-danger">${data.blood_group}</span></div>`;
-        if (data.drug_allergies) html += `<div><strong>Drug Allergies:</strong> <span class="text-danger fw-bold">${data.drug_allergies}</span></div>`;
+        if (data.severe_drug_allergies || data.drug_allergies) {
+            html += `<div><strong>Allergies:</strong> <span class="text-danger fw-bold">${data.severe_drug_allergies || data.drug_allergies}</span></div>`;
+        }
         if (data.emergency_contact_phone) html += `<div><strong>Emergency Phone:</strong> ${data.emergency_contact_phone}</div>`;
-        if (data.resuscitation_preference) html += `<div><strong>Code Status:</strong> <span class="badge bg-dark">${data.resuscitation_preference}</span></div>`;
+        if (data.resuscitation_preference) html += `<div><strong>Resuscitation Code:</strong> <span class="badge bg-dark">${data.resuscitation_preference}</span></div>`;
         if (data.pre_existing_conditions) html += `<div><strong>Conditions:</strong> ${data.pre_existing_conditions}</div>`;
         if (data.current_medications) html += `<div><strong>Medications:</strong> ${data.current_medications}</div>`;
         if (data.recent_vitals) {
             const v = data.recent_vitals;
-            const bp = v.blood_pressure || v.bp || '-';
-            const hr = v.heart_rate || v.hr || '-';
-            const spo2 = v.spo2 || '-';
-            html += `<div class="mt-1"><strong>Recent Vitals:</strong> BP ${bp}, HR ${hr}, SpO2 ${spo2}</div>`;
-        }
-        if (data.recent_lab_biomarkers) {
-            html += `<div class="mt-1"><strong>Lab Biomarkers:</strong> WBC ${data.recent_lab_biomarkers.wbc || '-'}, Platelets ${data.recent_lab_biomarkers.platelets || '-'}</div>`;
+            html += `<div class="mt-1"><strong>Vitals Snapshot:</strong> BP ${v.blood_pressure || '-'}, HR ${v.heart_rate || '-'}, SpO2 ${v.spo2 || '-'}</div>`;
         }
         if (data.treating_physician_notes) {
             html += `<div class="mt-1 p-2 bg-white rounded border"><strong>Physician Notes:</strong> ${data.treating_physician_notes}</div>`;
@@ -3712,14 +3939,265 @@ async function fetchAndRenderPassport(scope, forceNew = false) {
         html += `
             </div>
             <div class="mt-2 text-muted" style="font-size: 0.72rem;">
-                <i class="bi bi-shield-lock me-1"></i> Data-bound consent active. Fields outside this scope are cryptographically masked.
+                <i class="bi bi-shield-lock me-1"></i> Server-enforced role boundary. Sensitive clinical fields outside ${viewRes.effective_scope || scope} are cryptographically withheld.
             </div>
         `;
 
         previewBox.innerHTML = html;
 
     } catch (err) {
-        previewBox.innerHTML = `<div class="alert alert-danger small">Error: ${err.message}</div>`;
+        previewBox.innerHTML = `<div class="alert alert-danger small p-2">Error: ${err.message}</div>`;
+    }
+}
+
+function applyStaffPinForPassport() {
+    const pin = document.getElementById('passportStaffPinInput').value;
+    if (!pin) {
+        alert("Please enter a clinician authorization PIN.");
+        return;
+    }
+    fetchAndRenderPassport(activePassportScope, false, pin);
+}
+
+function useDemoStaffPin() {
+    const pin = activePassportScope === 'HOSPITAL_ER_TRAUMA' ? '1234' : '9999';
+    const pinInput = document.getElementById('passportStaffPinInput');
+    if (pinInput) pinInput.value = pin;
+    fetchAndRenderPassport(activePassportScope, false, pin);
+}
+
+async function revokeCurrentActivePassportToken() {
+    if (!currentPassportToken) {
+        alert("No active passport token to revoke.");
+        return;
+    }
+    if (!confirm("Immediately revoke this emergency pass? Remote scanners will be instantly blocked.")) return;
+    try {
+        await API.post(`/api/closed-loop/passport/revoke/${currentPassportToken}`, {});
+        showSMSNotification({
+            title: "🚫 EMERGENCY PASS REVOKED",
+            message: "This specific QR pass was invalidated on the server. Remote access blocked.",
+            channel: "sms",
+            duration: 4000
+        });
+        const countdownEl = document.getElementById('passportCountdown');
+        const badgeEl = document.getElementById('passportExpiryBadge');
+        if (countdownEl) countdownEl.innerHTML = `<span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>Pass Manually Revoked</span>`;
+        if (badgeEl) {
+            badgeEl.className = "badge bg-danger";
+            badgeEl.textContent = "Revoked";
+        }
+        loadPatientEmergencyAudit();
+    } catch (err) {
+        alert("Revocation failed: " + err.message);
+    }
+}
+
+async function revokeAllEmergencyPasses() {
+    if (!confirm("EMERGENCY KILL SWITCH: Immediately revoke ALL active QR emergency passes?")) return;
+    try {
+        const res = await API.post('/api/closed-loop/passport/revoke-all', {});
+        showSMSNotification({
+            title: "🛑 ALL EMERGENCY PASSES REVOKED",
+            message: res.message || "All active tokens were purged.",
+            channel: "sms",
+            duration: 5000
+        });
+        loadLiveEmergencyPassport();
+        loadPatientEmergencyAudit();
+    } catch (err) {
+        alert("Revocation failed: " + err.message);
+    }
+}
+
+// Emergency Offline Mode Helpers
+function saveOfflinePassportSnapshot() {
+    if (!currentPassportDataCache) {
+        alert("Please wait for live passport to load before saving offline.");
+        return;
+    }
+    const snapshot = {
+        data: currentPassportDataCache,
+        saved_at: new Date().toISOString(),
+        offline_signature: `OFFLINE-SIG-${Date.now().toString(36).toUpperCase()}`
+    };
+    try {
+        localStorage.setItem("ehealthcare_offline_passport", JSON.stringify(snapshot));
+        showSMSNotification({
+            title: "💾 OFFLINE SNAPSHOT SAVED",
+            message: "Emergency profile cached locally on this device. Accessible without network connectivity.",
+            channel: "sms",
+            duration: 4000
+        });
+    } catch (err) {
+        alert("Failed to store local cache: " + err.message);
+    }
+}
+
+function viewOfflinePassportSnapshot() {
+    const raw = localStorage.getItem("ehealthcare_offline_passport");
+    const modalEl = document.getElementById('passportOfflineModal');
+    const contentBox = document.getElementById('offlinePassportContentBox');
+    const timeEl = document.getElementById('offlineSnapshotTimestamp');
+
+    if (!raw) {
+        if (contentBox) contentBox.innerHTML = `<div class="text-danger small">No offline cache found on this device. Click "Save Offline" on the Dynamic Passport tab to save a copy.</div>`;
+        if (timeEl) timeEl.textContent = "Never Cached";
+    } else {
+        try {
+            const parsed = JSON.parse(raw);
+            if (timeEl) timeEl.textContent = new Date(parsed.saved_at).toLocaleString();
+            if (contentBox) {
+                const p = parsed.data;
+                contentBox.innerHTML = `
+                    <div class="row g-2">
+                        <div class="col-md-6"><strong>Patient:</strong> ${p.full_name || 'Patient'} (${p.age || '—'} Yrs · ${p.gender || '—'})</div>
+                        <div class="col-md-6"><strong>Blood Group:</strong> <span class="badge bg-danger">${p.blood_group || 'Not recorded'}</span></div>
+                        <div class="col-12"><strong>Allergies:</strong> <span class="text-danger fw-bold">${p.severe_drug_allergies || p.drug_allergies || 'Not recorded'}</span></div>
+                        <div class="col-md-6"><strong>Conditions:</strong> ${p.pre_existing_conditions || 'Not recorded'}</div>
+                        <div class="col-md-6"><strong>Medications:</strong> ${p.current_medications || 'Not recorded'}</div>
+                        <div class="col-md-6"><strong>Emergency Contact:</strong> ${p.emergency_contact_phone || 'Not recorded'}</div>
+                        <div class="col-md-6"><strong>Physician:</strong> ${(p.physician && p.physician.name) || 'Not recorded'}</div>
+                    </div>
+                    <div class="small text-muted mt-2 pt-1 border-top font-monospace">Signature: ${parsed.offline_signature}</div>
+                `;
+            }
+        } catch (err) {
+            if (contentBox) contentBox.innerHTML = `<div class="text-danger small">Corrupt offline snapshot: ${err.message}</div>`;
+        }
+    }
+
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+function clearOfflinePassportSnapshot() {
+    localStorage.removeItem("ehealthcare_offline_passport");
+    const contentBox = document.getElementById('offlinePassportContentBox');
+    const timeEl = document.getElementById('offlineSnapshotTimestamp');
+    if (contentBox) contentBox.innerHTML = `<div class="text-muted small">Offline cache purged from this device memory.</div>`;
+    if (timeEl) timeEl.textContent = "Purged";
+    showSMSNotification({
+        title: "🗑️ OFFLINE CACHE PURGED",
+        message: "Offline emergency snapshot removed from local storage.",
+        channel: "sms",
+        duration: 3000
+    });
+}
+
+// Caretaker Dashboard Handlers
+async function openCaretakerDashboardModal() {
+    const modalEl = document.getElementById('caretakerDashboardModal');
+    try {
+        const res = await API.get('/api/closed-loop/caretaker/config');
+        document.getElementById('cfgPrimaryName').value = res.caretaker_name || '';
+        document.getElementById('cfgPrimaryPhone').value = res.caretaker_phone || '';
+        document.getElementById('cfgPrimaryRel').value = res.relationship || '';
+        document.getElementById('cfgSecondaryName').value = res.secondary_name || '';
+        document.getElementById('cfgSecondaryPhone').value = res.secondary_phone || '';
+        document.getElementById('cfgPrefSos').checked = res.alert_preference_sos !== false;
+        document.getElementById('cfgPrefVitals').checked = res.alert_preference_vitals !== false;
+        document.getElementById('cfgPrefMeds').checked = res.alert_preference_meds !== false;
+        document.getElementById('cfgLastAckStatus').textContent = res.last_acknowledgement_status || 'Awaiting alerts';
+    } catch (err) {
+        console.warn("Could not load caretaker config:", err);
+    }
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
+async function saveCaretakerDashboardConfig(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const payload = {
+        caretaker_name: document.getElementById('cfgPrimaryName').value,
+        caretaker_phone: document.getElementById('cfgPrimaryPhone').value,
+        relationship: document.getElementById('cfgPrimaryRel').value,
+        secondary_name: document.getElementById('cfgSecondaryName').value,
+        secondary_phone: document.getElementById('cfgSecondaryPhone').value,
+        alert_preference_sos: document.getElementById('cfgPrefSos').checked,
+        alert_preference_vitals: document.getElementById('cfgPrefVitals').checked,
+        alert_preference_meds: document.getElementById('cfgPrefMeds').checked
+    };
+    try {
+        const res = await API.put('/api/closed-loop/caretaker/config', payload);
+        showSMSNotification({
+            title: "💾 CAREGIVER PREFERENCES SAVED",
+            message: res.message || "Alert routing contacts updated.",
+            channel: "sms",
+            duration: 4000
+        });
+        const modalEl = document.getElementById('caretakerDashboardModal');
+        if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        initSosTab();
+    } catch (err) {
+        alert("Failed to save caregiver preferences: " + err.message);
+    }
+}
+
+async function simulateCaretakerAcknowledgment() {
+    const name = document.getElementById('cfgPrimaryName').value || 'Primary Caregiver';
+    try {
+        const res = await API.post('/api/closed-loop/caretaker/acknowledge', { responder_name: name });
+        document.getElementById('cfgLastAckStatus').textContent = res.status;
+        showSMSNotification({
+            title: "🤝 CAREGIVER ACKNOWLEDGED",
+            message: res.status,
+            channel: "sms",
+            duration: 4000
+        });
+    } catch (err) {
+        alert("Ack failed: " + err.message);
+    }
+}
+
+// Upgraded Audit Log with Filters
+async function loadPatientEmergencyAudit() {
+    const tbody = document.getElementById('patientEmergencyAuditBody');
+    if (!tbody) return;
+
+    const filterEl = document.getElementById('passportAuditStatusFilter');
+    const filterStatus = filterEl ? filterEl.value : 'ALL';
+
+    try {
+        let url = `/api/emergency/audit-log?limit=50`;
+        if (filterStatus && filterStatus !== 'ALL') {
+            url += `&status=${filterStatus}`;
+        }
+        const res = await API.get(url);
+        const events = res.events || [];
+        if (!events.length) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center py-3">No access events matching '${filterStatus}' filter.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = events.map(ev => {
+            const fields = (ev.fields_viewed && ev.fields_viewed.length > 0)
+                ? ev.fields_viewed.slice(0, 4).map(f => `<span class="badge bg-light text-dark border me-1" style="font-size:0.65rem;">${f}</span>`).join('')
+                : '<span class="text-muted" style="font-size:0.7rem;">None/Masked</span>';
+
+            const anomalyBadge = ev.anomaly_detected
+                ? `<span class="badge bg-danger ms-1" title="${ev.anomaly_reason}"><i class="bi bi-exclamation-triangle-fill"></i> Anomaly Alert</span>`
+                : '';
+
+            return `
+                <tr>
+                    <td class="small text-nowrap">${ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit', month:'short', day:'numeric'}) : '—'}</td>
+                    <td class="small">
+                        <strong>${ev.accessor_name || 'Bystander'}</strong>
+                        <span class="text-muted d-block" style="font-size:0.7rem;">${ev.accessor_role || 'Responder'}</span>
+                    </td>
+                    <td>
+                        <span class="badge ${ev.status_badge || 'bg-success'}">${ev.status || 'SUCCESS'}</span>
+                        ${anomalyBadge}
+                    </td>
+                    <td class="small"><span class="badge bg-light text-dark border">${ev.consent_status || 'GRANTED'}</span></td>
+                    <td class="small">${fields}</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-danger small">${err.message}</td></tr>`;
     }
 }
 

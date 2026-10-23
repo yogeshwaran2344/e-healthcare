@@ -114,6 +114,54 @@ def calculate_ambulance_telemetry(
 NOT_RECORDED = "Not recorded"
 
 
+def parse_clinical_status(value: Optional[str], field_type: str = "generic") -> tuple:
+    """
+    Returns (status_enum, display_text)
+    status_enum: 'RECORDED', 'NONE_KNOWN', 'NOT_RECORDED'
+    """
+    if value is None:
+        return ("NOT_RECORDED", NOT_RECORDED)
+    s = str(value).strip()
+    if not s or s.lower() in ("not recorded", "unrecorded", "unknown", "none recorded", "null"):
+        return ("NOT_RECORDED", NOT_RECORDED)
+    clean_lower = s.lower()
+    if clean_lower in (
+        "none", "no", "nil", "nkda", "no known allergies", "no known drug allergies",
+        "no allergies", "no chronic conditions", "no conditions", "no medications",
+        "no active medications", "none known"
+    ):
+        if field_type == "allergy":
+            return ("NONE_KNOWN", "No Known Drug Allergies (NKDA)")
+        elif field_type == "condition":
+            return ("NONE_KNOWN", "No Known Chronic Conditions")
+        elif field_type == "medication":
+            return ("NONE_KNOWN", "No Active Medications")
+        return ("NONE_KNOWN", "None")
+    return ("RECORDED", s)
+
+
+def calculate_profile_completion(patient, physician, vitals) -> Dict[str, Any]:
+    weights = [
+        ("Full Name", bool(getattr(patient, "full_name", None) and str(patient.full_name).strip()), 10),
+        ("Date of Birth / Age", bool(getattr(patient, "age", None) or getattr(patient, "date_of_birth", None)), 10),
+        ("Blood Group", bool(getattr(patient, "blood_group", None) and str(patient.blood_group).strip() and str(patient.blood_group).strip() != NOT_RECORDED), 20),
+        ("Drug Allergies", bool(getattr(patient, "drug_allergies", None) and str(patient.drug_allergies).strip() and str(patient.drug_allergies).strip().lower() not in ("not recorded", "unknown")), 20),
+        ("Pre-existing Conditions", bool(getattr(patient, "pre_existing_conditions", None) and str(patient.pre_existing_conditions).strip() and str(patient.pre_existing_conditions).strip().lower() not in ("not recorded", "unknown")), 15),
+        ("Emergency Contact Phone", bool(getattr(patient, "phone", None) or getattr(patient, "emergency_contact_phone", None)), 15),
+        ("Treating Physician", bool(physician and physician.get("name") and physician.get("name") != NOT_RECORDED), 10),
+    ]
+    total_score = sum(w for _, ok, w in weights if ok)
+    missing = [name for name, ok, _ in weights if not ok]
+    completed = [name for name, ok, _ in weights if ok]
+    return {
+        "percentage": total_score,
+        "is_complete": total_score >= 85,
+        "missing_fields": missing,
+        "completed_fields": completed,
+        "grade": "Exemplary (High Readiness)" if total_score >= 90 else ("Moderate" if total_score >= 60 else "Incomplete Profile")
+    }
+
+
 def _recorded(value, fallback=NOT_RECORDED):
     if value is None:
         return fallback
@@ -130,17 +178,31 @@ def assemble_live_emergency_passport(
 ) -> Dict[str, Any]:
     """
     Builds a concise emergency profile from the latest authorized patient records.
-    Does not invent clinical data when fields are empty.
+    Distinguishes 'Not recorded' from verified 'None' or 'NKDA'.
+    Includes completion progress, timestamps, and patient verification status.
     """
-    meds = latest_medications if latest_medications else patient.current_medications
+    raw_meds = latest_medications if latest_medications else getattr(patient, "current_medications", None)
+    raw_allergies = getattr(patient, "drug_allergies", None)
+    raw_conditions = getattr(patient, "pre_existing_conditions", None)
+
+    allergy_status, allergies = parse_clinical_status(raw_allergies, "allergy")
+    condition_status, conditions = parse_clinical_status(raw_conditions, "condition")
+    medication_status, medications = parse_clinical_status(raw_meds, "medication")
+
     blood_group = _recorded(getattr(patient, "blood_group", None))
-    allergies = _recorded(getattr(patient, "drug_allergies", None), "None recorded")
-    conditions = _recorded(getattr(patient, "pre_existing_conditions", None), "None recorded")
-    medications = _recorded(meds, "None recorded")
-    contact_phone = _recorded(getattr(patient, "phone", None), "None recorded")
+    contact_phone = _recorded(getattr(patient, "emergency_contact_phone", None) or getattr(patient, "phone", None))
+    contact_name = _recorded(getattr(patient, "emergency_contact_name", None), "Primary Caretaker / Family")
 
     physician = physician or {}
     vitals = latest_vitals or {}
+
+    completion = calculate_profile_completion(patient, physician, vitals)
+
+    is_verified = bool(getattr(patient, "is_profile_verified", False))
+    verified_at = getattr(patient, "profile_verified_at", None)
+    verified_at_iso = verified_at.isoformat() if verified_at else None
+    updated_at = getattr(patient, "profile_updated_at", None) or getattr(patient, "created_at", None)
+    updated_at_iso = updated_at.isoformat() if updated_at else datetime.utcnow().isoformat()
 
     return {
         "generated_dynamically": True,
@@ -153,10 +215,15 @@ def assemble_live_emergency_passport(
         "blood_group": blood_group,
         "severe_drug_allergies": allergies,
         "drug_allergies": allergies,
+        "allergy_status": allergy_status,
         "pre_existing_conditions": conditions,
+        "condition_status": condition_status,
         "current_medications": medications,
+        "medication_status": medication_status,
         "emergency_contact": contact_phone,
+        "emergency_contact_name": contact_name,
         "emergency_contact_phone": contact_phone,
+        "resuscitation_preference": "Full Resuscitation (Unless DNR explicitly ordered)",
         "physician": {
             "name": physician.get("name") or NOT_RECORDED,
             "specialization": physician.get("specialization") or NOT_RECORDED,
@@ -166,6 +233,11 @@ def assemble_live_emergency_passport(
         "treating_physician_notes": physician.get("name") or NOT_RECORDED,
         "latest_vitals_snapshot": vitals,
         "recent_vitals": vitals,
+        "profile_completion": completion,
+        "is_verified": is_verified,
+        "verified_at": verified_at_iso,
+        "verified_by": "Patient Self-Verified" if is_verified else "Pending Patient Verification",
+        "last_updated_at": updated_at_iso,
         "timestamp": datetime.utcnow().isoformat(),
         "data_sources": ["users", "iot_vital_readings", "prescriptions", "consultations", "doctor_profiles"],
     }

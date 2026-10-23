@@ -21,6 +21,11 @@ class User(Base):
     pre_existing_conditions = Column(Text, nullable=True)  # Comma-separated or JSON: "Diabetes Type 2, Hypertension"
     current_medications = Column(Text, nullable=True)      # e.g., "Metformin 500mg, Amlodipine 5mg"
     drug_allergies = Column(Text, nullable=True)           # e.g., "Penicillin, Sulfa, Aspirin"
+    is_profile_verified = Column(Boolean, default=False)
+    profile_verified_at = Column(DateTime, nullable=True)
+    profile_updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    emergency_contact_name = Column(String(100), nullable=True)
+    emergency_contact_phone = Column(String(30), nullable=True)
     
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -315,6 +320,12 @@ class EmergencyAlert(Base):
     blood_bank_alert = Column(String(100), default="B+ Cross-match pre-alerted")
     patient_snapshot = Column(Text, nullable=True) # JSON snapshot of allergies, vitals, chronic conditions
     status = Column(String(30), default="dispatched") # dispatched, en_route, arrived_scene, in_transit_er, resolved
+    incident_id = Column(String(50), nullable=True, index=True)
+    idempotency_key = Column(String(100), nullable=True, index=True)
+    delivery_status = Column(String(50), default="QUEUED") # QUEUED, GATEWAY_ACCEPTED, DELIVERED, FAILED
+    delivery_details = Column(Text, nullable=True)
+    contacts_contacted = Column(Text, nullable=True)
+    failure_fallback_triggered = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     patient = relationship("User")
@@ -473,6 +484,11 @@ class ContextualQRToken(Base):
     context_scope = Column(String(50), default="PUBLIC_BASIC") # PUBLIC_BASIC, AMBULANCE_PARAMEDIC, HOSPITAL_ER_TRAUMA
     expires_at = Column(DateTime, nullable=False)
     is_revoked = Column(Boolean, default=False)
+    revoked_at = Column(DateTime, nullable=True)
+    required_role = Column(String(50), default="public")
+    authorized_by_pin = Column(String(50), nullable=True)
+    minute_request_count = Column(Integer, default=0)
+    last_rate_limit_reset = Column(DateTime, nullable=True)
     access_count = Column(Integer, default=0)
     last_accessed_at = Column(DateTime, nullable=True)
     access_logs_json = Column(Text, nullable=True) # JSON list of {ip, role, timestamp, user_agent}
@@ -496,6 +512,13 @@ class EmergencyAccessAudit(Base):
     is_emergency = Column(Boolean, default=True)
     access_channel = Column(String(50), default="authenticated")
     context_scope = Column(String(50), nullable=True)
+    status = Column(String(30), default="SUCCESS") # SUCCESS, DENIED, EXPIRED, REVOKED, RATE_LIMITED
+    consent_status = Column(String(30), default="GRANTED") # GRANTED, EXPLICIT_OVERRIDE, DENIED, NOT_REQUIRED
+    expires_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    fields_viewed = Column(Text, nullable=True) # JSON list of fields viewed
+    anomaly_detected = Column(Boolean, default=False)
+    anomaly_reason = Column(String(255), nullable=True)
 
     accessor = relationship("User", foreign_keys=[accessor_id])
     patient = relationship("User", foreign_keys=[patient_id])
@@ -578,6 +601,13 @@ class CaretakerAlertConfig(Base):
     heart_rate_max = Column(Float, default=100.0)
     
     is_active = Column(Boolean, default=True)
+    alert_preference_sos = Column(Boolean, default=True)
+    alert_preference_vitals = Column(Boolean, default=True)
+    alert_preference_meds = Column(Boolean, default=True)
+    secondary_name = Column(String(100), nullable=True)
+    secondary_phone = Column(String(30), nullable=True)
+    last_acknowledgement_at = Column(DateTime, nullable=True)
+    last_acknowledgement_status = Column(String(100), nullable=True)
     last_alert_at = Column(DateTime, nullable=True)
     last_alert_severity = Column(String(30), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

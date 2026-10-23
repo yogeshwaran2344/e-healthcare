@@ -21,7 +21,7 @@ import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body
+from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger("whatsapp_delivery")
@@ -514,16 +514,27 @@ def create_passport_token(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Generates a dynamic context-bound emergency QR token with auto-expiration."""
+    """
+    Generates a secure, cryptographically unguessable context-bound emergency QR token with auto-expiration.
+    """
     token_meta = generate_contextual_emergency_token(current_user.id, req.context_scope)
+    role_mapping = {
+        "PUBLIC_BASIC": "public",
+        "AMBULANCE_PARAMEDIC": "paramedic",
+        "HOSPITAL_ER_TRAUMA": "doctor"
+    }
 
-    # Save to database
+    # Save to database with server validation metadata
     qr_token = ContextualQRToken(
         patient_id=current_user.id,
         token_hash=token_meta["token"],
         context_scope=token_meta["context_scope"],
+        required_role=role_mapping.get(token_meta["context_scope"], "public"),
         expires_at=datetime.fromisoformat(token_meta["expires_at"]),
-        access_count=0
+        access_count=0,
+        minute_request_count=0,
+        last_rate_limit_reset=datetime.utcnow(),
+        is_revoked=False
     )
     db.add(qr_token)
     db.commit()
@@ -535,6 +546,7 @@ def create_passport_token(
         "scope_label": token_meta["scope_label"],
         "expires_at": qr_token.expires_at.isoformat(),
         "validity_minutes": token_meta["validity_minutes"],
+        "requires_auth": token_meta.get("requires_auth", False),
         "qr_access_url": f"/api/closed-loop/passport/view/{qr_token.token_hash}",
         "emergency_view_url": f"/emergency/view?token={qr_token.token_hash}",
     }
@@ -543,61 +555,434 @@ def create_passport_token(
 def view_contextual_passport(
     token_hash: str,
     request: Request,
+    pin: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """
     Public or Emergency Responder access endpoint.
-    Filters patient medical dossier according to token's context scope.
-    Logs access attempt in tamper-evident log.
+    - Strictly validates token existence, patient profile, expiration, and revocation.
+    - Enforces rate limiting against scraping.
+    - Requires clinician PIN/credential for privileged Paramedic or ER Trauma views.
+    - Filters medical dossier according to verified role.
+    - Records tamper-evident audit log with exact fields viewed.
     """
     token = db.query(ContextualQRToken).filter(ContextualQRToken.token_hash == token_hash).first()
     if not token:
         raise HTTPException(status_code=404, detail="Invalid emergency token.")
 
+    # 1. Immediate revocation check
     if token.is_revoked:
-        raise HTTPException(status_code=403, detail="Emergency token has been revoked by patient.")
+        record_emergency_access(
+            db,
+            accessor=None,
+            patient_id=token.patient_id,
+            purpose="Blocked access to revoked emergency pass",
+            information_type="emergency_passport",
+            is_emergency=True,
+            access_channel="qr_token",
+            context_scope=token.context_scope,
+            status="REVOKED",
+            consent_status="DENIED",
+            revoked_at=token.revoked_at,
+            accessor_name="Bystander / Responder",
+            accessor_role="emergency_responder",
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Emergency pass was REVOKED by the patient at {token.revoked_at.strftime('%Y-%m-%d %H:%M UTC') if token.revoked_at else 'earlier'}."
+        )
 
+    # 2. Strict auto-expiration check
     if datetime.utcnow() > token.expires_at:
-        raise HTTPException(status_code=410, detail="Emergency token has EXPIRED. Request active re-generation.")
+        record_emergency_access(
+            db,
+            accessor=None,
+            patient_id=token.patient_id,
+            purpose="Blocked access to expired emergency pass",
+            information_type="emergency_passport",
+            is_emergency=True,
+            access_channel="qr_token",
+            context_scope=token.context_scope,
+            status="EXPIRED",
+            consent_status="DENIED",
+            expires_at=token.expires_at,
+            accessor_name="Bystander / Responder",
+            accessor_role="emergency_responder",
+        )
+        raise HTTPException(status_code=410, detail="Emergency token has EXPIRED. A fresh pass must be generated.")
+
+    # 3. Server-side Rate Limiting (max 6 requests per token per minute)
+    now = datetime.utcnow()
+    if not token.last_rate_limit_reset or (now - token.last_rate_limit_reset).total_seconds() > 60:
+        token.last_rate_limit_reset = now
+        token.minute_request_count = 1
+    else:
+        token.minute_request_count += 1
+        if token.minute_request_count > 6:
+            record_emergency_access(
+                db,
+                accessor=None,
+                patient_id=token.patient_id,
+                purpose="Rate limit exceeded (>6 scans/min)",
+                information_type="emergency_passport",
+                is_emergency=True,
+                access_channel="qr_token",
+                context_scope=token.context_scope,
+                status="RATE_LIMITED",
+                consent_status="DENIED",
+                anomaly_detected=True,
+                anomaly_reason="Rapid scraping or automated scan flood detected",
+                accessor_name="Automated Scraper",
+                accessor_role="anonymous"
+            )
+            db.commit()
+            raise HTTPException(status_code=429, detail="Too many scan requests. Rate limit active to protect patient data.")
 
     patient = db.query(User).filter(User.id == token.patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient profile not found.")
 
-    # Audit logging
+    # 4. Privileged Role & PIN Verification
+    # Public bystanders scanning privileged paramedic/trauma tokens without PIN receive safe PUBLIC_BASIC view
+    header_pin = request.headers.get("x-emergency-pin") or pin
+    effective_scope = token.context_scope
+    consent_status = "GRANTED"
+    role_note = "Public Responder"
+
+    if token.context_scope in ("AMBULANCE_PARAMEDIC", "HOSPITAL_ER_TRAUMA"):
+        expected_pin = CONTEXT_PERMISSIONS.get(token.context_scope, {}).get("default_pin", "9999")
+        if header_pin == expected_pin:
+            effective_scope = token.context_scope
+            consent_status = "EXPLICIT_OVERRIDE"
+            role_note = "Paramedic / ALS Authorized" if token.context_scope == "AMBULANCE_PARAMEDIC" else "Hospital ER Trauma Authorized"
+        else:
+            # Downgrade to minimal public view
+            effective_scope = "PUBLIC_BASIC"
+            consent_status = "ROLE_FILTERED_TO_PUBLIC"
+            role_note = "Public Responder (Privileged Data Protected: PIN Required)"
+
+    # Update access counts and internal logs
     token.access_count += 1
     token.last_accessed_at = datetime.utcnow()
     logs = json.loads(token.access_logs_json or "[]")
     logs.append({
         "timestamp": datetime.utcnow().isoformat(),
         "ip": request.client.host if request.client else "unknown",
-        "user_agent": request.headers.get("user-agent", "unknown")
+        "user_agent": request.headers.get("user-agent", "unknown")[:100],
+        "scope_granted": effective_scope
     })
-    token.access_logs_json = json.dumps(logs)
+    token.access_logs_json = json.dumps(logs[-20:])
     db.commit()
 
+    # Build live records and apply context filter
     live_passport = build_live_passport(db, patient)
     full_patient_data = passport_to_context_fields(live_passport)
+    filtered_data = filter_patient_data_by_context(full_patient_data, effective_scope)
 
-    filtered_data = filter_patient_data_by_context(full_patient_data, token.context_scope)
     filtered_data["token_expires_at"] = token.expires_at.isoformat()
     filtered_data["access_count"] = token.access_count
+    filtered_data["effective_scope"] = effective_scope
+    filtered_data["role_authorization_note"] = role_note
     filtered_data["read_only"] = True
 
+    # Record tamper-evident audit with exact fields viewed
+    fields_viewed_list = [k for k in filtered_data.keys() if k not in ("disclaimer", "read_only", "access_scope", "scope_label", "filtered_at")]
     record_emergency_access(
         db,
         accessor=None,
         patient_id=patient.id,
-        purpose=f"QR contextual access ({token.context_scope})",
+        purpose=f"QR scan: {token.context_scope} (Served: {effective_scope})",
         information_type="emergency_passport",
         is_emergency=True,
         access_channel="qr_token",
-        context_scope=token.context_scope,
-        accessor_name="QR / public responder",
+        context_scope=effective_scope,
+        status="SUCCESS",
+        consent_status=consent_status,
+        expires_at=token.expires_at,
+        fields_viewed=fields_viewed_list,
+        accessor_name=role_note,
         accessor_role="emergency_responder",
     )
 
     return filtered_data
+
+
+@router.post("/passport/revoke/{token_hash}")
+def revoke_passport_token(
+    token_hash: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Patient immediately revokes a specific emergency QR token.
+    Terminates active scanner sessions with instant effect.
+    """
+    token = db.query(ContextualQRToken).filter(
+        ContextualQRToken.token_hash == token_hash,
+        ContextualQRToken.patient_id == current_user.id
+    ).first()
+    if not token:
+        raise HTTPException(status_code=404, detail="Token not found or not owned by user.")
+
+    token.is_revoked = True
+    token.revoked_at = datetime.utcnow()
+    db.commit()
+
+    record_emergency_access(
+        db,
+        accessor=current_user,
+        patient_id=current_user.id,
+        purpose=f"Patient revoked {token.context_scope} QR token",
+        information_type="emergency_passport",
+        is_emergency=False,
+        access_channel="authenticated",
+        context_scope=token.context_scope,
+        status="REVOKED",
+        consent_status="GRANTED",
+        revoked_at=token.revoked_at,
+        accessor_name=current_user.full_name or "Patient",
+        accessor_role="patient"
+    )
+
+    return {
+        "success": True,
+        "message": f"Emergency token '{token_hash[:8]}...' has been immediately revoked.",
+        "revoked_at": token.revoked_at.isoformat()
+    }
+
+
+@router.post("/passport/revoke-all")
+def revoke_all_passport_tokens(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Emergency Kill Switch: Patient immediately revokes ALL active emergency passes.
+    """
+    now = datetime.utcnow()
+    active_tokens = db.query(ContextualQRToken).filter(
+        ContextualQRToken.patient_id == current_user.id,
+        ContextualQRToken.is_revoked == False
+    ).all()
+
+    count = len(active_tokens)
+    for t in active_tokens:
+        t.is_revoked = True
+        t.revoked_at = now
+
+    db.commit()
+
+    record_emergency_access(
+        db,
+        accessor=current_user,
+        patient_id=current_user.id,
+        purpose=f"Master revocation: Patient revoked all ({count}) active emergency tokens",
+        information_type="emergency_passport",
+        is_emergency=False,
+        access_channel="authenticated",
+        status="REVOKED",
+        consent_status="GRANTED",
+        revoked_at=now,
+        accessor_name=current_user.full_name or "Patient",
+        accessor_role="patient"
+    )
+
+    return {
+        "success": True,
+        "revoked_count": count,
+        "message": f"Successfully revoked {count} active emergency pass(es). All remote access is blocked."
+    }
+
+
+@router.get("/passport/active-tokens")
+def get_active_passport_tokens(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lists active and recently expired emergency tokens with live validity countdowns.
+    """
+    tokens = (
+        db.query(ContextualQRToken)
+        .filter(ContextualQRToken.patient_id == current_user.id)
+        .order_by(ContextualQRToken.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    now = datetime.utcnow()
+    results = []
+    for t in tokens:
+        is_expired = now > t.expires_at
+        remaining_seconds = max(0, int((t.expires_at - now).total_seconds())) if not is_expired else 0
+        status_text = "REVOKED" if t.is_revoked else ("EXPIRED" if is_expired else "ACTIVE")
+
+        results.append({
+            "token": t.token_hash,
+            "token_preview": f"{t.token_hash[:8]}...",
+            "context_scope": t.context_scope,
+            "scope_label": CONTEXT_PERMISSIONS.get(t.context_scope, {}).get("label", t.context_scope),
+            "status": status_text,
+            "is_active": (not t.is_revoked) and (not is_expired),
+            "remaining_seconds": remaining_seconds,
+            "access_count": t.access_count,
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "expires_at": t.expires_at.isoformat(),
+            "revoked_at": t.revoked_at.isoformat() if t.revoked_at else None,
+        })
+
+    return {"tokens": results}
+
+
+@router.post("/passport/verify-profile")
+def verify_patient_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Allows patient to mark their emergency profile details as verified.
+    Records timestamp and verification audit.
+    """
+    now = datetime.utcnow()
+    current_user.is_profile_verified = True
+    current_user.profile_verified_at = now
+    current_user.profile_updated_at = now
+    db.commit()
+
+    return {
+        "success": True,
+        "is_verified": True,
+        "verified_at": now.isoformat(),
+        "verified_by": "Patient Self-Verification",
+        "message": "Emergency profile verified. A green verified badge is now displayed on your dynamic passport."
+    }
+
+
+# ========================================================
+# Caretaker Management & Alert Preferences Endpoints
+# ========================================================
+
+@router.get("/caretaker/config")
+def get_caretaker_configuration(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Fetches registered caretaker configuration and alert preferences.
+    """
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    if not cfg:
+        # Default fallback config
+        return {
+            "has_config": False,
+            "caretaker_name": "Primary Caregiver",
+            "caretaker_phone": current_user.phone or "",
+            "relationship": "Emergency Contact",
+            "secondary_name": "",
+            "secondary_phone": "",
+            "alert_preference_sos": True,
+            "alert_preference_vitals": True,
+            "alert_preference_meds": True,
+            "last_acknowledgement_at": None,
+            "last_acknowledgement_status": "No alerts acknowledged yet"
+        }
+
+    return {
+        "has_config": True,
+        "caretaker_name": cfg.caretaker_name,
+        "caretaker_phone": cfg.caretaker_phone,
+        "relationship": cfg.relationship,
+        "secondary_name": cfg.secondary_name or "",
+        "secondary_phone": cfg.secondary_phone or "",
+        "alert_preference_sos": cfg.alert_preference_sos if cfg.alert_preference_sos is not None else True,
+        "alert_preference_vitals": cfg.alert_preference_vitals if cfg.alert_preference_vitals is not None else True,
+        "alert_preference_meds": cfg.alert_preference_meds if cfg.alert_preference_meds is not None else True,
+        "last_alert_at": cfg.last_alert_at.isoformat() if cfg.last_alert_at else None,
+        "last_acknowledgement_at": cfg.last_acknowledgement_at.isoformat() if cfg.last_acknowledgement_at else None,
+        "last_acknowledgement_status": cfg.last_acknowledgement_status or "Awaiting acknowledgment"
+    }
+
+
+@router.put("/caretaker/config")
+def update_caretaker_configuration(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Updates caretaker emergency contacts and alert preferences.
+    """
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    if not cfg:
+        cfg = CaretakerAlertConfig(patient_id=current_user.id)
+        db.add(cfg)
+
+    if "caretaker_name" in payload:
+        cfg.caretaker_name = str(payload["caretaker_name"]).strip()
+    if "caretaker_phone" in payload:
+        cfg.caretaker_phone = str(payload["caretaker_phone"]).strip()
+    if "relationship" in payload:
+        cfg.relationship = str(payload["relationship"]).strip()
+    if "secondary_name" in payload:
+        cfg.secondary_name = str(payload["secondary_name"]).strip()
+    if "secondary_phone" in payload:
+        cfg.secondary_phone = str(payload["secondary_phone"]).strip()
+    if "alert_preference_sos" in payload:
+        cfg.alert_preference_sos = bool(payload["alert_preference_sos"])
+    if "alert_preference_vitals" in payload:
+        cfg.alert_preference_vitals = bool(payload["alert_preference_vitals"])
+    if "alert_preference_meds" in payload:
+        cfg.alert_preference_meds = bool(payload["alert_preference_meds"])
+
+    # Also update user's emergency contact phone
+    if cfg.caretaker_phone:
+        current_user.emergency_contact_phone = cfg.caretaker_phone
+        current_user.emergency_contact_name = cfg.caretaker_name
+
+    cfg.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(cfg)
+
+    return {
+        "success": True,
+        "message": "Caretaker contacts and notification preferences saved successfully.",
+        "config": {
+            "caretaker_name": cfg.caretaker_name,
+            "caretaker_phone": cfg.caretaker_phone,
+            "relationship": cfg.relationship,
+            "secondary_name": cfg.secondary_name,
+            "secondary_phone": cfg.secondary_phone,
+            "alert_preference_sos": cfg.alert_preference_sos,
+            "alert_preference_vitals": cfg.alert_preference_vitals,
+            "alert_preference_meds": cfg.alert_preference_meds,
+        }
+    }
+
+
+@router.post("/caretaker/acknowledge")
+def acknowledge_caretaker_alert(
+    payload: Dict[str, Any] = Body(default={}),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Records or simulates caretaker acknowledgment of an emergency dispatch.
+    """
+    now = datetime.utcnow()
+    responder_name = payload.get("responder_name") or "Primary Caregiver"
+    status_msg = f"Acknowledged by {responder_name} at {now.strftime('%I:%M %p UTC')}"
+
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    if cfg:
+        cfg.last_acknowledgement_at = now
+        cfg.last_acknowledgement_status = status_msg
+        db.commit()
+
+    return {
+        "success": True,
+        "status": status_msg,
+        "timestamp": now.isoformat()
+    }
 
 # ========================================================
 # 9. Longitudinal Patient Digital Health Timeline

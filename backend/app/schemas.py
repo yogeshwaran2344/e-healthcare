@@ -36,6 +36,8 @@ class UserProfileUpdate(BaseModel):
     pre_existing_conditions: Optional[str] = None
     current_medications: Optional[str] = None
     drug_allergies: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
 
 class UserOut(BaseModel):
     id: int

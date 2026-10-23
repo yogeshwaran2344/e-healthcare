@@ -677,6 +677,18 @@ def get_access_history(
         .all()
     )
     for a in audits:
+        status_text = a.status or ("⚠ Emergency Access" if a.is_emergency else "✓ Allowed")
+        if a.status == "SUCCESS":
+            status_badge = "bg-success text-white"
+        elif a.status in ("DENIED", "RATE_LIMITED"):
+            status_badge = "bg-danger text-white"
+        elif a.status == "REVOKED":
+            status_badge = "bg-secondary text-white"
+        elif a.status == "EXPIRED":
+            status_badge = "bg-warning text-dark"
+        else:
+            status_badge = "bg-danger text-white" if a.is_emergency else "bg-info text-white"
+
         history.append({
             "id": f"audit-{a.id}",
             "date": a.accessed_at.strftime("%b %d, %Y %H:%M") if hasattr(a.accessed_at, "strftime") else str(a.accessed_at),
@@ -685,8 +697,8 @@ def get_access_history(
             "role": (a.accessor_role or "Staff").replace("_", " ").title(),
             "purpose": a.purpose or ("Emergency Triage Access" if a.is_emergency else "Clinical Record Access"),
             "data_scope": (a.context_scope or a.information_type or "Emergency Passport").replace("_", " ").title(),
-            "status": "⚠ Emergency Access" if a.is_emergency else "✓ Allowed",
-            "status_badge": "bg-danger text-white" if a.is_emergency else "bg-info text-white",
+            "status": status_text,
+            "status_badge": status_badge,
             "is_emergency": a.is_emergency,
             "can_revoke": False,
             "token_preview": a.access_channel or "Direct Audit"

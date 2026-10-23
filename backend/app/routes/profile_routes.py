@@ -87,7 +87,12 @@ def update_profile(
         current_user.current_medications = req.current_medications.strip()
     if req.drug_allergies is not None:
         current_user.drug_allergies = req.drug_allergies.strip()
+    if req.emergency_contact_name is not None:
+        current_user.emergency_contact_name = req.emergency_contact_name.strip()
+    if req.emergency_contact_phone is not None:
+        current_user.emergency_contact_phone = req.emergency_contact_phone.strip()
 
+    current_user.profile_updated_at = datetime.utcnow()
     db.commit()
     db.refresh(current_user)
 

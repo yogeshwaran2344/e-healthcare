@@ -15,35 +15,49 @@ CONTEXT_PERMISSIONS = {
     "PUBLIC_BASIC": {
         "label": "Public Emergency First Responder",
         "description": "Minimal non-sensitive life-saving data viewable by general public or bystander.",
-        "allowed_fields": ["blood_group", "drug_allergies", "emergency_contact_phone", "full_name"],
-        "token_validity_minutes": 15 # 15-minute emergency bystander window
+        "allowed_fields": [
+            "full_name", "blood_group", "severe_drug_allergies", "allergy_status",
+            "emergency_contact", "emergency_contact_name", "emergency_contact_phone",
+            "resuscitation_preference", "is_verified", "verified_at", "verified_by"
+        ],
+        "token_validity_minutes": 15, # 15-minute emergency bystander window
+        "requires_auth": False
     },
     "AMBULANCE_PARAMEDIC": {
         "label": "Paramedic / ALS Ambulance Unit",
         "description": "Critical en-route triage vitals, chronic illnesses, and active prescriptions.",
         "allowed_fields": [
-            "full_name", "age", "gender", "blood_group", "drug_allergies",
-            "pre_existing_conditions", "current_medications", "recent_vitals",
-            "emergency_contact_phone", "resuscitation_preference"
+            "full_name", "age", "gender", "blood_group", "severe_drug_allergies",
+            "drug_allergies", "allergy_status", "pre_existing_conditions", "condition_status",
+            "current_medications", "medication_status", "recent_vitals", "graded_vitals",
+            "emergency_contact", "emergency_contact_name", "emergency_contact_phone",
+            "resuscitation_preference", "is_verified", "verified_at", "verified_by"
         ],
-        "token_validity_minutes": 30 # 30-minute en-route paramedic window
+        "token_validity_minutes": 30, # 30-minute en-route paramedic window
+        "requires_auth": True,
+        "default_pin": "9999" # Demo Paramedic Authorization PIN
     },
     "HOSPITAL_ER_TRAUMA": {
         "label": "Hospital Trauma Bay & Attending ER Physician",
         "description": "Full clinical dossier: lab biomarkers, radiology findings, and past medical consults.",
         "allowed_fields": [
-            "full_name", "age", "gender", "blood_group", "drug_allergies",
-            "pre_existing_conditions", "current_medications", "recent_vitals",
-            "emergency_contact_phone", "resuscitation_preference", "recent_lab_biomarkers",
-            "radiology_reports", "recent_diagnoses", "treating_physician_notes"
+            "full_name", "age", "gender", "blood_group", "severe_drug_allergies",
+            "drug_allergies", "allergy_status", "pre_existing_conditions", "condition_status",
+            "current_medications", "medication_status", "recent_vitals", "graded_vitals",
+            "emergency_contact", "emergency_contact_name", "emergency_contact_phone",
+            "resuscitation_preference", "treating_physician_notes", "physician",
+            "recent_lab_biomarkers", "radiology_reports", "recent_diagnoses",
+            "profile_completion", "is_verified", "verified_at", "verified_by", "last_updated_at"
         ],
-        "token_validity_minutes": 120 # 2-hour trauma resuscitation window
+        "token_validity_minutes": 120, # 2-hour trauma resuscitation window
+        "requires_auth": True,
+        "default_pin": "1234" # Demo Hospital Trauma Bay PIN
     }
 }
 
 def generate_contextual_emergency_token(patient_id: int, context_scope: str = "PUBLIC_BASIC") -> Dict[str, Any]:
     """
-    Generates a secure, context-bound QR token with automatic time expiration.
+    Generates a secure, context-bound QR token with automatic time expiration using high-entropy random URL-safe tokens.
     """
     if context_scope not in CONTEXT_PERMISSIONS:
         context_scope = "PUBLIC_BASIC"
@@ -52,16 +66,17 @@ def generate_contextual_emergency_token(patient_id: int, context_scope: str = "P
     validity_mins = scope_meta["token_validity_minutes"]
     
     expires_at = datetime.utcnow() + timedelta(minutes=validity_mins)
-    raw_entropy = f"{patient_id}:{context_scope}:{time.time()}:{secrets.token_hex(16)}"
-    token_hash = hashlib.sha256(raw_entropy.encode()).hexdigest()[:32]
+    # High-entropy random token (256-bit unguessable)
+    token_str = secrets.token_urlsafe(32)
 
     return {
-        "token": token_hash,
+        "token": token_str,
         "patient_id": patient_id,
         "context_scope": context_scope,
         "scope_label": scope_meta["label"],
         "expires_at": expires_at.isoformat(),
-        "validity_minutes": validity_mins
+        "validity_minutes": validity_mins,
+        "requires_auth": scope_meta.get("requires_auth", False)
     }
 
 def filter_patient_data_by_context(

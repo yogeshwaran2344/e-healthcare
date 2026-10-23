@@ -262,31 +262,57 @@
 
             <div class="ms-auto d-flex align-items-center gap-2">
 
-                <!-- Interactive Cellular SMS Master Switch -->
-                <div class="d-inline-flex align-items-center bg-white border rounded-pill px-2 py-1 shadow-sm gap-2" id="headerSmsToggleContainer" style="cursor: pointer; user-select: none;" onclick="toggleSmsState()" title="Click to Toggle Cellular SMS Messages ON or OFF">
-                    <div class="form-check form-switch m-0 d-flex align-items-center p-0" style="pointer-events: none;">
-                        <input class="form-check-input ms-0 mt-0" type="checkbox" role="switch" id="headerSmsSwitchInput" style="cursor: pointer; width: 2.2em; height: 1.15em;">
-                    </div>
-                    <span class="small fw-bold text-danger d-flex align-items-center gap-1 text-nowrap" id="headerSmsText" style="font-size: 0.8rem;">
-                        <i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS OFF
-                    </span>
-                </div>
-
-                <button class="btn btn-outline-primary btn-sm fw-semibold rounded-pill d-none d-lg-inline-flex align-items-center" onclick="openContactSettingsModal()" title="Configure Cellular SMS Alerts &amp; Emergency Contacts">
-                    <i class="bi bi-broadcast me-1 text-primary"></i> SMS Alerts Setup
-                </button>
-
-                <button class="btn btn-danger btn-sm sos-btn-pulse px-2 px-sm-3 me-1 d-inline-flex align-items-center rounded-pill shadow-sm" onclick="triggerOneTapSOS()" title="One-Tap Emergency SOS (Alerts Caretaker with Live GPS Location)">
+                <!-- 1-Tap SOS Emergency Primary Trigger -->
+                <button class="btn btn-danger btn-sm sos-btn-pulse px-3 d-inline-flex align-items-center rounded-pill shadow-sm" onclick="openSosCountdownModal()" title="1-Tap Emergency SOS (5s cancel countdown &amp; live GPS dispatch)">
                     <i class="bi bi-geo-alt-fill me-1 text-white"></i> <span class="d-none d-sm-inline fw-bold text-white">1-Tap SOS</span><span class="d-inline d-sm-none fw-bold text-white">SOS</span>
                 </button>
 
-                <button class="btn btn-outline-primary btn-sm px-2 px-sm-3 me-1 d-inline-flex align-items-center rounded-pill shadow-sm" onclick="activateTab('tab-emergency')" title="Dynamic Medical Passport">
+                <!-- Dynamic Medical Passport Quick Link -->
+                <button class="btn btn-outline-primary btn-sm px-2 px-sm-3 d-inline-flex align-items-center rounded-pill shadow-sm" onclick="activateTab('tab-emergency')" title="Dynamic Medical Passport">
                     <i class="bi bi-qr-code-scan me-1 text-primary"></i> <span class="d-none d-sm-inline fw-semibold">Dynamic Passport</span><span class="d-inline d-sm-none fw-bold">Passport</span>
                 </button>
 
+                <!-- Cellular SMS & Alert Settings Unified Dropdown -->
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-sm-3 d-inline-flex align-items-center gap-1 shadow-sm bg-white" type="button" id="headerSmsDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="SMS &amp; Emergency Gateway Settings">
+                        <i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i>
+                        <span class="small fw-bold text-dark text-nowrap" id="headerSmsText">SMS OFF</span>
+                        <i class="bi bi-chevron-down ms-1 text-muted" style="font-size: 0.7rem;"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-3" aria-labelledby="headerSmsDropdown" style="min-width: 280px; z-index: 1050;">
+                        <li class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong class="d-block small text-dark">Cellular SMS Alerts</strong>
+                                    <small class="text-muted" style="font-size: 0.72rem;">Fast2SMS Route 'q'</small>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="headerSmsSwitchInput" onchange="toggleSmsState()" style="cursor: pointer; width: 2.2em; height: 1.15em;">
+                                </div>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider my-2"></li>
+                        <li>
+                            <a class="dropdown-item small py-2 rounded-2 text-dark d-flex align-items-center gap-2" href="javascript:void(0)" onclick="openContactSettingsModal()">
+                                <i class="bi bi-telephone-plus text-primary"></i> Configure Caretaker Numbers
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small py-2 rounded-2 text-dark d-flex align-items-center gap-2" href="javascript:void(0)" onclick="openCaretakerDashboardModal()">
+                                <i class="bi bi-person-heart text-danger"></i> Caregiver Alert Preferences
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small py-2 rounded-2 text-dark d-flex align-items-center gap-2" href="javascript:void(0)" onclick="activateTab('tab-access-audit')">
+                                <i class="bi bi-shield-check text-success"></i> Access Audit History
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
                 <span class="text-secondary small d-none d-lg-inline" id="userWelcomeText">Welcome</span>
 
-                <button class="btn btn-outline-danger btn-sm d-none d-sm-inline-flex align-items-center" onclick="API.logout()" title="Sign Out">
+                <button class="btn btn-outline-danger btn-sm d-none d-sm-inline-flex align-items-center rounded-pill" onclick="API.logout()" title="Sign Out">
                     <i class="bi bi-box-arrow-right me-1"></i> Sign Out
                 </button>
 
@@ -3573,20 +3599,44 @@
                 <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-primary-subtle border border-primary-subtle">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <div>
-                            <div class="d-flex align-items-center gap-2 mb-1">
+                            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                 <span class="badge bg-primary px-3 py-1"><i class="bi bi-shield-check me-1"></i>Cryptographic Token</span>
                                 <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-broadcast me-1"></i>Zero-Login Emergency Access</span>
+                                <span class="badge bg-dark-subtle text-dark border" id="passportVerifiedStatusBadge"><i class="bi bi-patch-check me-1"></i>Verification Check</span>
                             </div>
                             <h3 class="fw-bold text-primary mb-1"><i class="bi bi-qr-code-scan me-2"></i>Dynamic Medical Passport</h3>
                             <p class="text-dark small mb-0">Context-aware cryptographic medical passport with zero-login emergency access, time-bound consent, and role-based data isolation.</p>
                         </div>
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-3" onclick="loadLiveEmergencyPassport(); fetchAndRenderPassport(activePassportScope, true);">
-                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Passport
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill px-3 bg-white" onclick="saveOfflinePassportSnapshot()" title="Save verified snapshot to local device memory for internet-free access">
+                                <i class="bi bi-save2 me-1"></i> Save Offline
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold rounded-pill px-3 bg-white" onclick="viewOfflinePassportSnapshot()" title="Simulate access when device has no network">
+                                <i class="bi bi-wifi-off me-1"></i> View Offline
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm fw-semibold rounded-pill px-3 bg-white" onclick="revokeAllEmergencyPasses()" title="Instantly revoke all active emergency QR passes">
+                                <i class="bi bi-shield-x me-1"></i> Revoke All Passes
                             </button>
                             <button type="button" class="btn btn-primary btn-sm fw-semibold rounded-pill px-3 text-white" onclick="window.print()">
-                                <i class="bi bi-printer-fill me-1"></i> Print / Export Card
+                                <i class="bi bi-printer-fill me-1"></i> Print / PDF
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Completion Progress Bar HUD -->
+                    <div class="mt-3 pt-3 border-top border-primary-subtle" id="passportCompletionContainer">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div class="small fw-bold text-dark">
+                                <i class="bi bi-speedometer2 text-primary me-1"></i> Emergency Profile Readiness: <span id="passportCompletionText" class="text-primary fw-bold">Calculating...</span>
+                            </div>
+                            <span class="badge bg-white text-primary border" id="passportCompletionGradeBadge">Analyzing</span>
+                        </div>
+                        <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="passportCompletionProgressBar" role="progressbar" style="width: 30%"></div>
+                        </div>
+                        <div class="small text-muted mt-1 d-flex justify-content-between align-items-center flex-wrap" id="passportMissingFieldsPrompt">
+                            <span>Add blood group, physician, and emergency contacts to achieve 100% emergency readiness.</span>
+                            <button class="btn btn-sm btn-link p-0 text-decoration-none text-primary fw-semibold" onclick="verifyMyPassportProfile()"><i class="bi bi-patch-check me-1"></i>Self-Verify Profile</button>
                         </div>
                     </div>
                 </div>
@@ -3596,7 +3646,7 @@
                     <div class="col-lg-5">
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-qr-code-scan text-primary me-2"></i>Dynamic QR Access</h5>
+                                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-qr-code-scan text-primary me-2"></i>Contextual QR Access</h5>
                                 <span class="badge bg-success" id="passportExpiryBadge">Active Token</span>
                             </div>
                             <p class="text-muted small mb-3">Context-aware QR code changes viewable data according to scanner role with time-bound consent.</p>
@@ -3616,14 +3666,41 @@
                                 </div>
                             </div>
 
+                            <!-- Role Scope Explanation Alert -->
+                            <div class="alert alert-info py-2 px-3 rounded-3 small mb-3" id="passportScopeExplainer">
+                                <i class="bi bi-info-circle me-1"></i> <strong>Public Bystander Scope:</strong> Exposes only essential emergency details (Blood group, allergies, contact phone). Zero medications or clinical notes are exposed.
+                            </div>
+
                             <!-- QR Code & Token Info -->
-                            <div class="text-center p-3 bg-light rounded-4 mb-3 border">
+                            <div class="text-center p-3 bg-light rounded-4 mb-3 border position-relative">
                                 <div id="passportQrContainer" class="mb-2">
                                     <img id="passportQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://neurocare-health.com/emergency/token_preview" alt="Emergency QR Code" class="img-fluid rounded border p-2 bg-white" style="width: 150px; height: 150px;">
                                 </div>
-                                <span class="badge bg-primary px-3 py-1" id="passportScopeLabel">Public First Responder</span>
+                                <div class="d-flex justify-content-center gap-1 mb-1">
+                                    <span class="badge bg-primary px-3 py-1" id="passportScopeLabel">Public First Responder</span>
+                                </div>
                                 <div class="small text-danger fw-bold mt-1" id="passportCountdown"><i class="bi bi-clock-history me-1"></i>Access expires in: 14:59</div>
-                                <div class="small text-muted mt-1" id="passportRevocationNote"><i class="bi bi-shield-lock me-1"></i>Access automatically revoked after emergency window.</div>
+                                <div class="small text-muted mt-1 font-monospace" style="font-size:0.75rem;">Token: <span id="passportTokenHash">Generating...</span></div>
+
+                                <div class="mt-2 d-flex justify-content-center gap-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-0 fw-semibold" onclick="revokeCurrentActivePassportToken()" title="Immediately invalidate this specific QR token">
+                                        <i class="bi bi-x-circle me-1"></i> Revoke Pass Now
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Paramedic / Staff PIN Verification Helper -->
+                            <div id="passportPinChallengeBox" class="p-2 mb-3 bg-light rounded-3 border d-none small">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong class="text-dark"><i class="bi bi-key-fill text-warning me-1"></i>Clinician Authorization PIN</strong>
+                                    <span class="badge bg-warning text-dark">Staff Only</span>
+                                </div>
+                                <p class="text-muted mb-2" style="font-size:0.75rem;">Public scanners without this PIN will be safely restricted to Public Basic view.</p>
+                                <div class="input-group input-group-sm">
+                                    <input type="password" class="form-control" id="passportStaffPinInput" placeholder="Enter Staff PIN (Demo: 9999 or 1234)">
+                                    <button class="btn btn-outline-primary" type="button" onclick="applyStaffPinForPassport()">Verify PIN</button>
+                                    <button class="btn btn-light border" type="button" onclick="useDemoStaffPin()">Use Demo PIN</button>
+                                </div>
                             </div>
 
                             <!-- Filtered Data Live Preview -->
@@ -3643,17 +3720,36 @@
                         <div class="card border-0 shadow-sm rounded-4 p-4 bg-white h-100">
                             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
                                 <div>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle mb-2">LIVE VERIFIED PROFILE</span>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" id="liveProfileHeaderBadge">LIVE MEDICAL PROFILE</span>
+                                        <span class="badge bg-secondary-subtle text-secondary" id="liveProfileSyncBadge">Sync: Live DB</span>
+                                    </div>
                                     <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-person-vcard-fill text-primary me-2"></i>Live Emergency Medical Passport</h5>
-                                    <p class="text-muted small mb-0">Assembled in real-time from your authorized records with SHA-256 cryptographic proof.</p>
+                                    <p class="text-muted small mb-0">Compiled in real-time from authorized patient and IoT records. Distinguishes confirmed NKDA from unrecorded fields.</p>
                                 </div>
-                                <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill" onclick="loadLiveEmergencyPassport()">
-                                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh live profile
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-success btn-sm fw-semibold rounded-pill" onclick="verifyMyPassportProfile()" title="Certify your medical records as patient-verified">
+                                        <i class="bi bi-patch-check-fill me-1"></i> Verify Profile
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm fw-semibold rounded-pill" onclick="loadLiveEmergencyPassport()">
+                                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                                    </button>
+                                </div>
                             </div>
 
                             <div id="liveEmergencyPassportBox" class="p-3 bg-light rounded-4 border mb-3 small">
                                 <div class="text-muted">Loading live emergency medical passport...</div>
+                            </div>
+
+                            <!-- Live Clinically Graded Vitals Card -->
+                            <div class="p-3 rounded-4 border bg-white mb-3" id="passportLiveVitalsCard">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong class="text-dark"><i class="bi bi-activity text-danger me-1"></i>Live Clinical Telemetry &amp; Risk Flags</strong>
+                                    <span class="badge bg-light text-muted border" id="vitalsLastSyncBadge">Continuous Monitor</span>
+                                </div>
+                                <div class="row g-2" id="passportGradedVitalsGrid">
+                                    <!-- Rendered dynamically by JS -->
+                                </div>
                             </div>
 
                             <!-- Sovereign Data Rights & Protection Guarantee -->
@@ -3663,34 +3759,43 @@
                                     <strong class="text-primary">Self-Sovereign Emergency Data Guarantee</strong>
                                 </div>
                                 <p class="text-muted mb-0 small">
-                                    Your full medical history remains private and encrypted. Only essential life-saving data (blood group, allergies, emergency contacts) is exposed to scanners, protected by time-bound revocable consent.
+                                    Your full medical history remains private and encrypted. Only essential life-saving data (blood group, allergies, emergency contacts) is exposed to public scanners, protected by time-bound revocable consent.
                                 </p>
                             </div>
 
                             <!-- Audit Section inside Passport -->
                             <div class="mt-2">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-shield-lock-fill text-secondary me-1"></i>Who accessed this emergency profile</h6>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="loadPatientEmergencyAudit()">Refresh log</button>
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <h6 class="fw-bold text-dark mb-0"><i class="bi bi-shield-lock-fill text-secondary me-1"></i>Emergency Profile Access Audit</h6>
+                                    <div class="d-flex gap-1 align-items-center">
+                                        <select class="form-select form-select-sm" id="passportAuditStatusFilter" style="width: auto; font-size: 0.75rem;" onchange="loadPatientEmergencyAudit()">
+                                            <option value="ALL">All Outcomes</option>
+                                            <option value="SUCCESS">Success Only</option>
+                                            <option value="DENIED">Denied</option>
+                                            <option value="EXPIRED">Expired</option>
+                                            <option value="REVOKED">Revoked</option>
+                                            <option value="RATE_LIMITED">Rate Limited</option>
+                                        </select>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="loadPatientEmergencyAudit()">Refresh</button>
+                                    </div>
                                 </div>
                                 <div class="table-responsive rounded-3 border">
                                     <table class="table table-sm table-hover mb-0">
-                                        <thead class="table-light">
+                                        <thead class="table-light" style="font-size: 0.78rem;">
                                             <tr>
                                                 <th>Time</th>
-                                                <th>Accessor</th>
-                                                <th>Role</th>
-                                                <th>Purpose</th>
-                                                <th>Info type</th>
-                                                <th>Mode</th>
+                                                <th>Accessor &amp; Role</th>
+                                                <th>Outcome</th>
+                                                <th>Consent</th>
+                                                <th>Fields Viewed</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="patientEmergencyAuditBody">
-                                            <tr><td colspan="6" class="text-muted text-center py-3">Open this tab to load access events.</td></tr>
+                                        <tbody id="patientEmergencyAuditBody" style="font-size: 0.78rem;">
+                                            <tr><td colspan="5" class="text-muted text-center py-3">Loading access audit history...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
-                                <p class="small text-muted mb-0 mt-1" style="font-size: 0.75rem;">Clinical values are omitted from this log to protect accessor privacy.</p>
+                                <p class="small text-muted mb-0 mt-1" style="font-size: 0.72rem;">Complete cryptographic audit of all view events. Direct medical values are omitted to preserve visitor privacy.</p>
                             </div>
                         </div>
                     </div>
@@ -4722,72 +4827,270 @@
 
     </div>
 
+    <!-- 5-Second SOS Pre-Dispatch Countdown & Cancel Modal -->
+    <div class="modal fade" id="sosCountdownModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden border border-danger">
+                <div class="modal-header bg-danger text-white border-0 py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="spinner-grow spinner-grow-sm text-light"></span>
+                        <h5 class="modal-title fw-bold mb-0">
+                            <i class="bi bi-shield-fill-exclamation me-1"></i> EMERGENCY SOS CONFIRMATION
+                        </h5>
+                    </div>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div class="my-2">
+                        <div class="display-1 fw-bold text-danger font-monospace" id="sosCountdownNumber">5</div>
+                        <h5 class="fw-bold text-dark mt-2">Dispatching Emergency Cellular SMS in seconds...</h5>
+                        <p class="text-muted small">
+                            Capturing high-accuracy device GPS coordinates and generating emergency medical passport for primary caregivers and ambulance.
+                        </p>
+                    </div>
+
+                    <!-- Progress Bar for countdown -->
+                    <div class="progress rounded-pill mb-4" style="height: 8px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" id="sosCountdownProgress" role="progressbar" style="width: 100%"></div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex flex-column gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-lg fw-bold rounded-pill py-3" onclick="cancelSosCountdown()">
+                            <i class="bi bi-x-circle-fill text-danger me-1"></i> CANCEL SOS (I AM OK)
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm rounded-pill fw-semibold py-2" onclick="confirmSosImmediately()">
+                            <i class="bi bi-lightning-charge-fill me-1"></i> Send Immediately Without Waiting
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 1-Tap Emergency SOS Dispatch Confirmation Modal -->
     <div class="modal fade" id="emergencySosModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="modal-header bg-danger text-white border-0 py-3">
                     <div class="d-flex align-items-center gap-2">
                         <span class="spinner-grow spinner-grow-sm text-light"></span>
                         <h5 class="modal-title fw-bold mb-0">
-                            <i class="bi bi-shield-fill-exclamation me-1"></i> EMERGENCY SOS DISPATCHED!
+                            <i class="bi bi-shield-fill-exclamation me-1"></i> EMERGENCY SOS DISPATCHED
                         </h5>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <div class="alert alert-danger d-flex align-items-start gap-2 mb-3 rounded-3">
-                        <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0 mt-1"></i>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small text-muted fw-bold">INCIDENT ID:</span>
+                            <span class="badge bg-dark font-monospace fs-6 px-3" id="modalSosIncidentId">INC-PENDING</span>
+                        </div>
+                        <span class="badge bg-warning text-dark px-3 py-2 fs-6" id="modalSosSmsStatusBadge">
+                            <i class="bi bi-hourglass-split me-1"></i>Gateway Accepted (Carrier Hand-Off in Progress)
+                        </span>
+                    </div>
+
+                    <div class="alert alert-warning d-flex align-items-start gap-2 mb-3 rounded-3 small">
+                        <i class="bi bi-shield-exclamation fs-5 flex-shrink-0 mt-0 text-warning"></i>
                         <div>
-                            <strong class="d-block">Immediate Care Requested!</strong>
-                            <span class="small">An urgent emergency notification with your live Google Maps location has been dispatched to your caretaker.</span>
+                            <strong>Delivery Status Notice:</strong> Cellular message has been accepted by Fast2SMS Quick Gateway (Route 'q'). Telecom delivery receipt is in progress. <strong>If the patient is in critical danger, use the Direct Dial buttons below immediately.</strong>
                         </div>
                     </div>
 
-                    <!-- Caretaker Alert Delivery HUD -->
-                    <div class="p-3 bg-light rounded-4 border mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="small text-muted fw-bold">ALERTED CARETAKER:</span>
-                            <span class="badge bg-success" id="modalSosSmsStatusBadge"><i class="bi bi-check-circle-fill me-1"></i>Cellular SMS Delivered</span>
+                    <div class="row g-3 mb-3">
+                        <!-- Caretaker Alert Delivery HUD -->
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-4 border h-100">
+                                <span class="small text-muted fw-bold d-block mb-1">PRIMARY CAREGIVER NOTIFIED:</span>
+                                <h6 class="fw-bold text-dark mb-0" id="modalSosCaretakerName">Primary Caregiver</h6>
+                                <div class="small text-muted mb-2 font-monospace" id="modalSosCaretakerPhone">+91 Registered Phone</div>
+                                <a id="modalSosCallCaretakerBtn" href="tel:" class="btn btn-success btn-sm w-100 rounded-pill fw-semibold">
+                                    <i class="bi bi-telephone-fill me-1"></i> Direct Call Caretaker
+                                </a>
+                            </div>
                         </div>
-                        <h6 class="fw-bold text-dark mb-0" id="modalSosCaretakerName">Primary Caregiver</h6>
-                        <div class="small text-muted" id="modalSosCaretakerPhone">+91 86189 12755</div>
+
+                        <!-- Secondary Emergency Contact HUD -->
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-4 border h-100">
+                                <span class="small text-muted fw-bold d-block mb-1">SECONDARY EMERGENCY CONTACT:</span>
+                                <h6 class="fw-bold text-dark mb-0" id="modalSosSecondaryName">Secondary Contact</h6>
+                                <div class="small text-muted mb-2 font-monospace" id="modalSosSecondaryPhone">Not configured</div>
+                                <a id="modalSosCallSecondaryBtn" href="tel:" class="btn btn-outline-success btn-sm w-100 rounded-pill fw-semibold">
+                                    <i class="bi bi-telephone-fill me-1"></i> Call Secondary Contact
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Live Location & Google Maps Link -->
                     <div class="p-3 rounded-4 border border-primary-subtle bg-primary-subtle bg-opacity-10 mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small fw-bold text-primary"><i class="bi bi-geo-alt-fill me-1"></i>Live GPS Coordinates:</span>
-                            <span class="badge bg-primary text-white" id="modalSosAccuracyBadge">GPS Locked</span>
+                            <span class="small fw-bold text-primary"><i class="bi bi-geo-alt-fill me-1"></i>Live GPS Coordinates Transmitted:</span>
+                            <span class="badge bg-primary text-white" id="modalSosAccuracyBadge">GPS High Accuracy</span>
                         </div>
                         <div class="small text-dark mb-2 font-monospace">
                             Lat: <span id="modalSosLat">12.9716</span> &bull; Lng: <span id="modalSosLng">77.5946</span>
                         </div>
                         <a id="modalSosGoogleMapsBtn" href="https://maps.google.com" target="_blank" class="btn btn-primary btn-sm w-100 rounded-pill fw-semibold">
-                            <i class="bi bi-map-fill me-1"></i> Open Live Location in Google Maps
+                            <i class="bi bi-map-fill me-1"></i> Open Transmitted Pin in Google Maps
                         </a>
                     </div>
 
                     <!-- Dispatched Message Transcript -->
-                    <div class="small text-muted mb-3 p-2 bg-light rounded border">
-                        <span class="fw-bold d-block text-secondary" style="font-size:0.75rem;">MESSAGE SENT TO CARETAKER:</span>
-                        <span id="modalSosMessageText" class="fst-italic" style="font-size:0.8rem;">
+                    <div class="small text-muted mb-3 p-3 bg-light rounded-3 border">
+                        <span class="fw-bold d-block text-secondary mb-1" style="font-size:0.75rem;">CELLULAR SMS PAYLOAD DELIVERED TO GATEWAY:</span>
+                        <div id="modalSosMessageText" class="fst-italic font-monospace text-dark p-2 bg-white rounded border" style="font-size:0.78rem;">
                             "EMERGENCY SOS: Patient needs IMMEDIATE medical care! Live GPS Location: https://maps.google.com..."
-                        </span>
+                        </div>
                     </div>
 
-                    <!-- Direct Action Buttons -->
-                    <div class="d-flex gap-2">
-                        <a id="modalSosCallCaretakerBtn" href="tel:" class="btn btn-success flex-fill fw-semibold rounded-pill">
-                            <i class="bi bi-telephone-fill me-1"></i> Call Caretaker
-                        </a>
-                        <a href="tel:108" class="btn btn-danger flex-fill fw-semibold rounded-pill">
-                            <i class="bi bi-truck me-1"></i> Dial 108
-                        </a>
-                        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">
+                    <!-- Emergency Hotline Fallbacks -->
+                    <div class="p-3 bg-danger-subtle border border-danger-subtle rounded-4 mb-3">
+                        <div class="small text-danger fw-bold mb-2"><i class="bi bi-telephone-forward me-1"></i>Local Emergency Hotlines (Immediate Voice Failover):</div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="tel:108" class="btn btn-danger flex-fill fw-bold rounded-pill">
+                                <i class="bi bi-truck me-1"></i> Call 108 (Ambulance)
+                            </a>
+                            <a href="tel:112" class="btn btn-dark flex-fill fw-bold rounded-pill">
+                                <i class="bi bi-shield-fill me-1"></i> Call 112 (National Helpline)
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                            Close Confirmation
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency Offline Mode Snapshot Modal -->
+    <div class="modal fade" id="passportOfflineModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-dark text-white border-0 py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-wifi-off fs-5 text-warning"></i>
+                        <h5 class="modal-title fw-bold mb-0">Emergency Offline Mode Snapshot</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 px-3 rounded-3 small mb-3">
+                        <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                        <strong>Offline Local Cache:</strong> This profile was captured from local device storage for zero-connectivity scenarios.
+                        <div class="mt-1 text-danger fw-bold"><i class="bi bi-shield-exclamation me-1"></i>Note: Access cannot be remotely revoked while this device is disconnected from the network.</div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-4 border mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small text-muted fw-bold">OFFLINE SNAPSHOT TIMESTAMP:</span>
+                            <span class="badge bg-secondary font-monospace" id="offlineSnapshotTimestamp">No cache found</span>
+                        </div>
+                        <div id="offlinePassportContentBox" class="p-3 bg-white rounded-3 border small">
+                            <p class="text-muted mb-0">No local snapshot saved yet. Click "Save Offline" on the Dynamic Passport tab while connected.</p>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill" onclick="clearOfflinePassportSnapshot()">
+                            <i class="bi bi-trash3 me-1"></i> Purge Local Offline Cache
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" data-bs-dismiss="modal">
                             Close
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Caretaker Management & Alert Preferences Modal -->
+    <div class="modal fade" id="caretakerDashboardModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-light border-bottom py-3">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="bi bi-person-heart text-danger me-2"></i>Caregiver Alert Configuration
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="caretakerDashboardForm" onsubmit="saveCaretakerDashboardConfig(event)">
+                        <!-- Primary Caregiver -->
+                        <h6 class="fw-bold text-primary mb-2"><i class="bi bi-telephone-fill me-1"></i> Primary Caregiver</h6>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-dark">Caregiver Full Name</label>
+                            <input type="text" class="form-control form-control-sm" id="cfgPrimaryName" placeholder="e.g. Anita Verma" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-7">
+                                <label class="form-label small fw-bold text-dark">Mobile Phone (+91)</label>
+                                <input type="text" class="form-control form-control-sm" id="cfgPrimaryPhone" placeholder="10-digit mobile" required>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small fw-bold text-dark">Relationship</label>
+                                <input type="text" class="form-control form-control-sm" id="cfgPrimaryRel" placeholder="e.g. Spouse / Daughter">
+                            </div>
+                        </div>
+
+                        <!-- Secondary Contact -->
+                        <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-telephone-plus me-1"></i> Secondary Emergency Contact</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-dark">Secondary Name</label>
+                                <input type="text" class="form-control form-control-sm" id="cfgSecondaryName" placeholder="e.g. Vikram Verma">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold text-dark">Secondary Phone</label>
+                                <input type="text" class="form-control form-control-sm" id="cfgSecondaryPhone" placeholder="10-digit mobile">
+                            </div>
+                        </div>
+
+                        <!-- Alert Notification Preferences -->
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-bell-fill text-warning me-1"></i> Notification Delivery Triggers</h6>
+                        <div class="p-3 bg-light rounded-3 border mb-3">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="cfgPrefSos" checked>
+                                <label class="form-check-label small fw-semibold text-dark" for="cfgPrefSos">
+                                    🚨 1-Tap Emergency SOS Dispatches
+                                </label>
+                            </div>
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="cfgPrefVitals" checked>
+                                <label class="form-check-label small fw-semibold text-dark" for="cfgPrefVitals">
+                                    ⚠️ Critical IoT Vitals Escalation (SpO2 &lt; 90%, BP Spikes)
+                                </label>
+                            </div>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="cfgPrefMeds" checked>
+                                <label class="form-check-label small fw-semibold text-dark" for="cfgPrefMeds">
+                                    💊 Missed High-Risk Medication Escalation
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Acknowledgment HUD -->
+                        <div class="p-2 bg-light rounded border mb-3 small d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="d-block text-muted" style="font-size:0.72rem;">LAST CARETAKER ACKNOWLEDGMENT:</span>
+                                <span class="fw-bold text-dark" id="cfgLastAckStatus">No recent alerts</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" onclick="simulateCaretakerAcknowledgment()">
+                                Simulate Ack
+                            </button>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-light btn-sm rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold">Save Preferences</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
