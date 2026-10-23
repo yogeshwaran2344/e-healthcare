@@ -66,6 +66,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('prescribeDoctorName').value = currentDoctor.full_name;
 
     await loadDoctorConsultations();
+    initDoctorPatientPickers().catch(() => {});
 
     // Proactively pre-populate all clinical dashboard tabs
     loadDoctorCalibration().catch(() => {});
@@ -484,6 +485,7 @@ async function submitPrescription(e) {
             alert("Official Prescription digitally signed and issued! Consultation completed." + (isDivergent ? " (Clinician-AI divergence logged in audit trail)." : ""));
         }
         await loadDoctorConsultations();
+    initDoctorPatientPickers().catch(() => {});
     } catch (err) {
         alert("Error issuing prescription: " + err.message);
         btn.disabled = false;
@@ -982,6 +984,7 @@ async function submitOutcomeVerification(e) {
         await loadDoctorCalibration();
         await loadDoctorDisagreements();
         await loadDoctorConsultations();
+    initDoctorPatientPickers().catch(() => {});
     } catch (err) {
         alert("Error verifying outcome: " + err.message);
     }
@@ -989,8 +992,52 @@ async function submitOutcomeVerification(e) {
 
 
 // ===================================================================
-// 7. BREAK-GLASS EMERGENCY OVERRIDE & LICENSE VERIFICATION CONTROLLER
+// 7. BREAK-GLASS EMERGENCY OVERRIDE & PATIENT PICKER CONTROLLERS
 // ===================================================================
+
+function syncBreakGlassPatientSelect(val) {
+    const idInput = document.getElementById('bgPatientId');
+    if (idInput) idInput.value = val;
+    const txt = document.getElementById('bgPatientSelectedText');
+    if (txt) txt.innerHTML = `<i class="bi bi-person-check me-1"></i>Active Patient ID: <strong>${val}</strong>`;
+}
+
+function syncConsentRequestPatientSelect(val) {
+    const idInput = document.getElementById('docReqPatientId');
+    if (idInput) idInput.value = val;
+    const txt = document.getElementById('docReqPatientSelectedText');
+    if (txt) txt.innerHTML = `<i class="bi bi-person-check me-1"></i>Target Patient ID: <strong>${val}</strong>`;
+}
+
+async function initDoctorPatientPickers() {
+    try {
+        const patients = await API.get('/api/blockchain/patients-list');
+        if (!patients || patients.length === 0) return;
+
+        const bgSelect = document.getElementById('bgPatientSelect');
+        const reqSelect = document.getElementById('docReqPatientSelect');
+
+        const optionsHtml = patients.map(p => `
+            <option value="${p.id}">${p.full_name} (ID: ${p.id}) — Blood: ${p.blood_group}</option>
+        `).join('');
+
+        const defaultId = activeConsultation?.patient_id || patients[0].id;
+
+        if (bgSelect) {
+            bgSelect.innerHTML = optionsHtml;
+            bgSelect.value = String(defaultId);
+            syncBreakGlassPatientSelect(defaultId);
+        }
+
+        if (reqSelect) {
+            reqSelect.innerHTML = optionsHtml;
+            reqSelect.value = String(defaultId);
+            syncConsentRequestPatientSelect(defaultId);
+        }
+    } catch (err) {
+        console.warn("Could not load dynamic patients list:", err);
+    }
+}
 
 async function executeDoctorBreakGlass(e) {
     e.preventDefault();
@@ -998,7 +1045,7 @@ async function executeDoctorBreakGlass(e) {
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Recording Emergency Override Block...`;
 
-    const patientId = parseInt(document.getElementById('bgPatientId').value);
+    const patientId = parseInt(document.getElementById('bgPatientId')?.value || document.getElementById('bgPatientSelect')?.value || 5);
     const hospital = document.getElementById('bgHospital').value;
     const justification = document.getElementById('bgJustification').value.trim();
 
@@ -1018,19 +1065,20 @@ async function executeDoctorBreakGlass(e) {
                 <strong>BREAK-GLASS OVERRIDE AUTHORIZED:</strong> Recorded immutably at Block #${res.block_index} (2-Hour Window).
             </div>
             <div class="p-3 bg-white rounded border">
-                <h6 class="fw-bold text-danger mb-2"><i class="bi bi-heart-pulse-fill me-1"></i> Decrypted Emergency Baseline: ${res.emergency_data.patient_name}</h6>
+                <h6 class="fw-bold text-danger mb-2"><i class="bi bi-heart-pulse-fill me-1"></i> Decrypted Emergency Baseline: ${res.emergency_data.patient_name} (ID: #${res.emergency_data.patient_id || patientId})</h6>
                 <div class="row g-2 small">
                     <div class="col-6"><strong>Blood Group:</strong> <span class="badge bg-danger fs-6">${res.emergency_data.blood_group}</span></div>
                     <div class="col-6"><strong>Critical Allergies:</strong> <span class="text-danger fw-bold">${res.emergency_data.drug_allergies}</span></div>
                     <div class="col-6"><strong>Active Medications:</strong> ${res.emergency_data.current_medications}</div>
                     <div class="col-6"><strong>Chronic Conditions:</strong> ${res.emergency_data.pre_existing_conditions}</div>
-                    <div class="col-12 text-muted"><strong>Emergency Next-of-Kin:</strong> ${res.emergency_data.emergency_contact}</div>
+                    <div class="col-12 text-muted border-top pt-2 mt-2"><strong>Emergency Next-of-Kin:</strong> <span class="text-dark fw-semibold">${res.emergency_data.emergency_contact}</span></div>
                 </div>
             </div>
         `;
-        alert(`🚨 Break-Glass Override Granted!\nPatient: ${res.emergency_data.patient_name}\nBlock Index: #${res.block_index}\nImmutable audit notification dispatched to patient.`);
+        outBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        alert(`🚨 Break-Glass Override Granted!\nPatient: ${res.emergency_data.patient_name}\nBlock Index: #${res.block_index}\nImmutable audit record and notification dispatched.`);
     } catch (err) {
-        alert("Break-Glass Error: " + err.message);
+        alert("Break-Glass Error: " + (err.message || err));
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-shield-slash-fill me-1"></i> Authorize & Decrypt Records`;
@@ -1048,7 +1096,7 @@ async function submitDoctorConsentRequest(e) {
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Transmitting Request...`;
 
-    const patientId = parseInt(document.getElementById('docReqPatientId').value);
+    const patientId = parseInt(document.getElementById('docReqPatientId')?.value || document.getElementById('docReqPatientSelect')?.value || 5);
     const purpose = document.getElementById('docReqPurpose').value;
     const hours = parseInt(document.getElementById('docReqHours').value);
 
@@ -1066,11 +1114,11 @@ async function submitDoctorConsentRequest(e) {
             duration_hours: hours
         });
 
-        alert(`✓ Consent Request Transmitted to Patient #${patientId}!\nCategories: ${categories.join(', ')}\nDuration: ${hours} hours.\nAwaiting patient approval in their sovereign vault.`);
+        alert(`✓ Consent Request Transmitted to ${res.patient_name || 'Patient #' + patientId}!\n\nRequested Scopes: ${categories.join(', ')}\nDuration: ${hours} hours.\n\nThe patient can now review and approve this request in their Sovereign Vault.`);
         const modal = bootstrap.Modal.getInstance(document.getElementById('docRequestConsentModal'));
         if (modal) modal.hide();
     } catch (err) {
-        alert("Error sending consent request: " + err.message);
+        alert("Error sending consent request: " + (err.message || err));
     } finally {
         btn.disabled = false;
         btn.innerHTML = `<i class="bi bi-send-fill me-1"></i> Send Granular Consent Request to Patient`;

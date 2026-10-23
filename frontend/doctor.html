@@ -870,9 +870,13 @@
                     <form id="docBreakGlassForm" onsubmit="executeDoctorBreakGlass(event)">
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold">Select / Enter Patient ID</label>
-                                <input type="number" id="bgPatientId" class="form-control" value="4" required>
-                                <small class="text-muted">Default patient (John Doe ID: 4)</small>
+                                <label class="form-label small fw-bold">Select Target Patient</label>
+                                <select id="bgPatientSelect" class="form-select" onchange="syncBreakGlassPatientSelect(this.value)">
+                                    <option value="5">yogesh (ID: 5)</option>
+                                    <option value="13">Rahul Verma (ID: 13)</option>
+                                </select>
+                                <input type="hidden" id="bgPatientId" value="5">
+                                <small class="text-muted d-block mt-1" id="bgPatientSelectedText"><i class="bi bi-person-check me-1"></i>Active Patient ID: <strong>5</strong></small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold">Emergency Location / Department</label>
@@ -881,9 +885,17 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Mandatory Clinical Justification Reason (Required):</label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold mb-0">Mandatory Clinical Justification Reason (Required):</label>
+                                <span class="badge bg-danger-subtle text-danger" style="font-size:0.7rem;">Minimum 10 Characters</span>
+                            </div>
+                            <div class="mb-2 d-flex flex-wrap gap-1">
+                                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill" onclick="document.getElementById('bgJustification').value='Unconscious polytrauma victim, GCS < 8, acute hypotension. Immediate allergy, blood group and cross-match verification required.'">Unconscious / GCS &lt; 8</button>
+                                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill" onclick="document.getElementById('bgJustification').value='Severe anaphylactic shock with acute respiratory compromise. Immediate steroid and epinephrine contraindication review required.'">Anaphylaxis / Shock</button>
+                                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-2 rounded-pill" onclick="document.getElementById('bgJustification').value='Cardiac arrest resuscitated in ER trauma bay. Urgent antiarrhythmic drug interaction and telemetry history check.'">Cardiac Arrest / Code Blue</button>
+                            </div>
                             <textarea id="bgJustification" class="form-control" rows="2" placeholder="e.g. Unconscious polytrauma victim, GCS 7, acute hypotension, unable to obtain verbal consent. Immediate allergy and cross-match verification required." required></textarea>
-                            <small class="text-secondary">Minimum 10 characters describing life-threatening emergency.</small>
+                            <small class="text-secondary">Mandatory clinical justification will be permanently written to the immutable blockchain audit trail.</small>
                         </div>
 
                         <div class="mb-3">
@@ -961,11 +973,21 @@
                 <div class="modal-body p-4">
                     <form id="docRequestConsentForm" onsubmit="submitDoctorConsentRequest(event)">
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">Target Patient ID / Health ID:</label>
-                            <input type="number" id="docReqPatientId" class="form-control" placeholder="e.g. 5" required>
+                            <label class="form-label small fw-bold">Select Target Patient:</label>
+                            <select id="docReqPatientSelect" class="form-select" onchange="syncConsentRequestPatientSelect(this.value)">
+                                <option value="5">yogesh (ID: 5)</option>
+                                <option value="13">Rahul Verma (ID: 13)</option>
+                            </select>
+                            <input type="hidden" id="docReqPatientId" value="5">
+                            <small class="text-muted d-block mt-1" id="docReqPatientSelectedText"><i class="bi bi-person-check me-1"></i>Target Patient ID: <strong>5</strong></small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-bold">Clinical Purpose:</label>
+                            <div class="mb-2 d-flex flex-wrap gap-1">
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" onclick="document.getElementById('docReqPurpose').value='Comprehensive Clinical Consultation & Diagnostic Workup'">General Consultation</button>
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" onclick="document.getElementById('docReqPurpose').value='Pre-Operative Anesthesia Clearance & Cardiac Risk Workup'">Pre-Op Clearance</button>
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2 rounded-pill" onclick="document.getElementById('docReqPurpose').value='Longitudinal Chronic Glycemic & Hypertension Surveillance'">Chronic Surveillance</button>
+                            </div>
                             <input type="text" id="docReqPurpose" class="form-control" value="Comprehensive Clinical Consultation & Diagnostic Workup" required>
                         </div>
                         <div class="mb-3">
@@ -1048,6 +1070,6 @@
     <!-- Bootstrap Bundle & Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/api.js"></script>
-    <script src="/static/js/doctor.js"></script>
+    <script src="/static/js/doctor.js?v=20261023_v7"></script>
 </body>
 </html>

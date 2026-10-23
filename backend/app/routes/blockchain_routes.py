@@ -7,8 +7,9 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 
 from ..database import get_db
-from ..models import User, Consultation, Prescription, MedicalReport, BlockchainBlock, ConsentRecord, EmergencyAccessAudit
+from ..models import User, Consultation, Prescription, MedicalReport, BlockchainBlock, ConsentRecord, EmergencyAccessAudit, CaretakerAlertConfig
 from ..auth import get_current_user
+from ..sms_service import send_cellular_sms
 from ..ml.blockchain_engine import (
     create_block,
     verify_blockchain_integrity,
@@ -861,16 +862,35 @@ def execute_break_glass_access(
     db.add(audit_entry)
     db.commit()
 
-    # Fetch patient critical record to return immediately
-    patient = db.query(User).filter(User.id == patient_id).first() or current_user
+    # Resolve real patient record
+    patient = db.query(User).filter(User.id == patient_id).first()
+    if not patient:
+        patient = db.query(User).filter(User.role == "patient").first() or current_user
+        patient_id = patient.id
+
+    # Retrieve real emergency contact / caretaker details
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == patient_id).first()
+    c_name = (cfg.caretaker_name if cfg and cfg.caretaker_name else getattr(patient, 'emergency_contact_name', None)) or "Primary Caregiver"
+    c_phone = (cfg.caretaker_phone if cfg and cfg.caretaker_phone else getattr(patient, 'emergency_contact_phone', None)) or getattr(patient, 'phone', 'Not Configured')
+
     emergency_payload = {
-        "patient_name": (patient.full_name if patient else None) or "Anonymous Patient",
-        "blood_group": (patient.blood_group if patient else None) or "O+",
-        "drug_allergies": (patient.drug_allergies if patient else None) or "Penicillin, Sulfa drugs",
-        "current_medications": (patient.current_medications if patient else None) or "Metformin 500mg, Lisinopril 10mg",
-        "pre_existing_conditions": (patient.pre_existing_conditions if patient else None) or "Type 2 Diabetes, Mild Hypertension",
-        "emergency_contact": "Next of Kin: Sarah (+91 98765 43210)"
+        "patient_id": patient.id,
+        "patient_name": patient.full_name or "Anonymous Patient",
+        "blood_group": patient.blood_group or "O+",
+        "drug_allergies": patient.drug_allergies or "No known drug allergies",
+        "current_medications": patient.current_medications or "None recorded",
+        "pre_existing_conditions": patient.pre_existing_conditions or "None recorded",
+        "emergency_contact": f"{c_name} ({c_phone})"
     }
+
+    # Dispatch audit SMS to patient / caretaker if phone exists
+    target_sms = c_phone if (c_phone and c_phone != 'Not Configured') else getattr(patient, 'phone', None)
+    if target_sms:
+        try:
+            audit_msg = f"EMERGENCY AUDIT: Dr. {doctor_name} activated Break-Glass Override at {hospital} for patient {patient.full_name}. Block #{block.block_index} immutably recorded."
+            send_cellular_sms(target_sms, audit_msg)
+        except Exception:
+            pass
 
     return {
         "status": "EMERGENCY_BREAK_GLASS_ACTIVE",
@@ -1013,7 +1033,13 @@ def doctor_request_consent(
     Categories requested: medical_history, lab_reports, mental_health, genetic_data.
     Duration options: 1h, 24h, 7d, 365d, custom.
     """
-    patient_id = int(payload.get("patient_id", 1))
+    patient_id = int(payload.get("patient_id", 0))
+    patient = db.query(User).filter(User.id == patient_id).first()
+    if not patient:
+        patient = db.query(User).filter(User.role == "patient").first()
+        if patient:
+            patient_id = patient.id
+
     doctor_name = current_user.full_name if current_user.role == "doctor" else payload.get("doctor_name", "Dr. Sarah Sharma")
     organization = payload.get("organization", "Apex Hospital")
     purpose = payload.get("purpose", "Comprehensive Clinical Consultation")
@@ -1036,11 +1062,109 @@ def doctor_request_consent(
     db.commit()
     db.refresh(consent)
 
+    if patient and patient.phone:
+        try:
+            req_msg = f"NeuroCare Consent Request: Dr. {doctor_name} ({organization}) requested access to your [{', '.join(requested_categories)}] for: '{purpose[:50]}'. Review & approve in your patient portal."
+            send_cellular_sms(patient.phone, req_msg)
+        except Exception:
+            pass
+
     return {
         "status": "REQUEST_SENT",
         "request_id": consent.id,
-        "message": f"Consent request transmitted to patient for categories: {', '.join(requested_categories)} ({duration_hours} hours).",
+        "patient_id": patient_id,
+        "patient_name": patient.full_name if patient else f"Patient #{patient_id}",
+        "message": f"Consent request transmitted to {patient.full_name if patient else f'Patient #{patient_id}'} for categories: {', '.join(requested_categories)} ({duration_hours} hours).",
         "expires_at": expires_at.isoformat()
     }
+
+
+@router.post("/approve-consent/{consent_id}")
+def approve_consent_request(
+    consent_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Patient approves a pending consent request from a doctor.
+    """
+    consent = db.query(ConsentRecord).filter(ConsentRecord.id == consent_id, ConsentRecord.patient_id == current_user.id).first()
+    if not consent:
+        raise HTTPException(status_code=404, detail="Consent record not found.")
+
+    consent.status = "active"
+    consent.created_at = datetime.utcnow()
+    db.commit()
+    db.refresh(consent)
+
+    # Record block on patient ledger
+    ensure_patient_genesis_block(current_user.id, db)
+    last_block = db.query(BlockchainBlock).filter(BlockchainBlock.patient_id == current_user.id).order_by(BlockchainBlock.block_index.desc()).first()
+    next_idx = (last_block.block_index + 1) if last_block else 1
+    prev_hash = last_block.block_hash if last_block else ("0" * 64)
+
+    perms = json.loads(consent.permissions) if isinstance(consent.permissions, str) else consent.permissions
+    event_data = {
+        "event": "CONSENT_APPROVED",
+        "consent_id": consent.id,
+        "grantee_name": consent.grantee_name,
+        "grantee_organization": consent.grantee_organization,
+        "permissions": perms,
+        "approved_at": datetime.utcnow().isoformat(),
+        "expires_at": consent.expires_at.isoformat() if consent.expires_at else None
+    }
+    block = BlockchainBlock(**create_block(next_idx, current_user.id, "CONSENT_APPROVE", str(consent.id), event_data, prev_hash))
+    db.add(block)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Consent granted to {consent.grantee_name}. Recorded immutably at Block #{block.block_index}.",
+        "consent_id": consent.id,
+        "status": "active"
+    }
+
+
+@router.post("/reject-consent/{consent_id}")
+def reject_consent_request(
+    consent_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Patient rejects a pending consent request from a doctor.
+    """
+    consent = db.query(ConsentRecord).filter(ConsentRecord.id == consent_id, ConsentRecord.patient_id == current_user.id).first()
+    if not consent:
+        raise HTTPException(status_code=404, detail="Consent record not found.")
+
+    consent.status = "rejected"
+    db.commit()
+    db.refresh(consent)
+
+    return {
+        "success": True,
+        "message": f"Consent request from {consent.grantee_name} declined.",
+        "consent_id": consent.id,
+        "status": "rejected"
+    }
+
+
+@router.get("/patients-list")
+def list_available_patients(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Returns list of patients available for consultation / break-glass / consent request."""
+    patients = db.query(User).filter(User.role == "patient").all()
+    return [
+        {
+            "id": p.id,
+            "full_name": p.full_name,
+            "phone": p.phone or "No phone",
+            "blood_group": p.blood_group or "Not recorded"
+        }
+        for p in patients
+    ]
 
 

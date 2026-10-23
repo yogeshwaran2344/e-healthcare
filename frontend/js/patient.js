@@ -2984,26 +2984,79 @@ async function loadConsentRecords() {
             return;
         }
 
-        container.innerHTML = consents.map(c => `
-            <div class="card p-3 rounded-3 shadow-sm border bg-white">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <strong class="text-dark">${c.grantee_name}</strong>
-                    <span class="badge ${c.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}">${c.status.toUpperCase()}</span>
+        container.innerHTML = consents.map(c => {
+            const isPending = (c.status === 'pending_patient_approval' || c.status === 'pending');
+            const isActive = (c.status === 'active');
+            let statusBadge = `<span class="badge bg-secondary-subtle text-secondary">${c.status.toUpperCase()}</span>`;
+            if (isActive) statusBadge = `<span class="badge bg-success-subtle text-success">ACTIVE CONSENT</span>`;
+            if (isPending) statusBadge = `<span class="badge bg-warning text-dark fw-bold border border-warning shadow-sm"><i class="bi bi-clock-history me-1"></i>PENDING YOUR APPROVAL</span>`;
+
+            let actionButtons = '';
+            if (isActive) {
+                actionButtons = `<button class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" onclick="revokeConsent(${c.id})">Revoke</button>`;
+            } else if (isPending) {
+                actionButtons = `
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-success btn-sm py-0 px-2 fw-semibold shadow-sm" onclick="approveDoctorConsent(${c.id})"><i class="bi bi-check-lg me-1"></i>Approve Access</button>
+                        <button class="btn btn-outline-danger btn-sm py-0 px-2 fw-semibold" onclick="rejectDoctorConsent(${c.id})"><i class="bi bi-x-lg me-1"></i>Decline</button>
+                    </div>
+                `;
+            } else {
+                actionButtons = `<span class="text-danger small fw-semibold">${c.status.toUpperCase()}</span>`;
+            }
+
+            const permsList = Array.isArray(c.permissions) ? c.permissions : (typeof c.permissions === 'string' ? JSON.parse(c.permissions || '[]') : []);
+
+            return `
+                <div class="card p-3 rounded-3 shadow-sm border ${isPending ? 'border-warning bg-warning bg-opacity-10' : 'bg-white'} mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1 flex-wrap gap-1">
+                        <strong class="text-dark"><i class="bi bi-person-badge text-primary me-1"></i>${c.grantee_name}</strong>
+                        ${statusBadge}
+                    </div>
+                    <small class="text-muted d-block mb-2">${c.grantee_organization || c.grantee_type}</small>
+                    <div class="mb-2">
+                        ${permsList.map(p => `<span class="badge bg-light text-primary border me-1 small">${p.replace('_', ' ').toUpperCase()}</span>`).join('')}
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center small text-muted border-top pt-2 flex-wrap gap-2">
+                        <span>Expires: ${new Date(c.expires_at).toLocaleDateString()}</span>
+                        ${actionButtons}
+                    </div>
                 </div>
-                <small class="text-muted d-block mb-2">${c.grantee_organization || c.grantee_type}</small>
-                <div class="mb-2">
-                    ${c.permissions.map(p => `<span class="badge bg-light text-primary border me-1 small">${p}</span>`).join('')}
-                </div>
-                <div class="d-flex justify-content-between align-items-center small text-muted border-top pt-2">
-                    <span>Expires: ${new Date(c.expires_at).toLocaleDateString()}</span>
-                    ${c.status === 'active' ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="revokeConsent(${c.id})">Revoke</button>` : '<span class="text-danger">Revoked</span>'}
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (err) {
         console.error("Error loading consents:", err);
     }
 }
+
+async function approveDoctorConsent(consentId) {
+    try {
+        const res = await API.post(`/api/blockchain/approve-consent/${consentId}`);
+        alert("✓ " + (res.message || "Doctor consent request approved successfully!"));
+        showSMSNotification({
+            title: "CONSENT APPROVED ON BLOCKCHAIN",
+            message: res.message || "Access granted to physician.",
+            channel: "sms",
+            duration: 7000
+        });
+        await loadConsentRecords();
+    } catch (err) {
+        alert("Failed to approve consent: " + (err.message || err));
+    }
+}
+
+async function rejectDoctorConsent(consentId) {
+    if (!confirm("Are you sure you want to decline this doctor's consent request?")) return;
+    try {
+        const res = await API.post(`/api/blockchain/reject-consent/${consentId}`);
+        alert(res.message || "Consent request declined.");
+        await loadConsentRecords();
+    } catch (err) {
+        alert("Failed to decline consent: " + (err.message || err));
+    }
+}
+window.approveDoctorConsent = approveDoctorConsent;
+window.rejectDoctorConsent = rejectDoctorConsent;
 
 async function verifyBlockchainLedger() {
     try {
