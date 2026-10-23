@@ -997,6 +997,8 @@ function renderCategoryFilterButtons() {
 
 function filterByCategory(cat) {
     activeCategory = cat;
+    const searchInput = document.getElementById('symptomSearchInput');
+    if (searchInput) searchInput.value = '';
     renderCategoryFilterButtons();
     filterSymptoms();
 }
@@ -3291,7 +3293,13 @@ function openSosCountdownModal() {
 
     const modalEl = document.getElementById('sosCountdownModal');
     if (modalEl) {
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else {
+            modalEl.classList.add('show');
+            modalEl.style.display = 'block';
+            document.body.classList.add('modal-open');
+        }
     }
 
     if (sosCountdownTimer) clearInterval(sosCountdownTimer);
@@ -3304,7 +3312,13 @@ function openSosCountdownModal() {
             clearInterval(sosCountdownTimer);
             sosCountdownTimer = null;
             if (modalEl) {
-                bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+                } else {
+                    modalEl.classList.remove('show');
+                    modalEl.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                }
             }
             executeOneTapSosDispatch();
         }
@@ -3318,7 +3332,13 @@ function cancelSosCountdown() {
     }
     const modalEl = document.getElementById('sosCountdownModal');
     if (modalEl) {
-        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+        } else {
+            modalEl.classList.remove('show');
+            modalEl.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
     }
     showSMSNotification({
         title: "🛡️ SOS DISPATCH CANCELLED",

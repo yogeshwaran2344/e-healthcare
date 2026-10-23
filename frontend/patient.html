@@ -48,17 +48,25 @@
 
         if (switchInput) switchInput.checked = window.isSmsEnabledGlobal;
 
+        if (headerIcon) {
+            if (window.isSmsEnabledGlobal) {
+                headerIcon.className = "bi bi-broadcast text-success";
+            } else {
+                headerIcon.className = "bi bi-bell-slash text-danger";
+            }
+        }
+
         if (headerText) {
             if (window.isSmsEnabledGlobal) {
-                headerText.className = "small fw-bold text-success d-flex align-items-center gap-1";
-                headerText.innerHTML = '<i class="bi bi-broadcast text-success" id="headerSmsIcon"></i> SMS ON';
+                headerText.className = "small fw-bold text-success text-nowrap";
+                headerText.textContent = "SMS ON";
                 if (headerContainer) {
                     headerContainer.style.borderColor = '#198754';
                     headerContainer.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
                 }
             } else {
-                headerText.className = "small fw-bold text-danger d-flex align-items-center gap-1";
-                headerText.innerHTML = '<i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS OFF';
+                headerText.className = "small fw-bold text-danger text-nowrap";
+                headerText.textContent = "SMS OFF";
                 if (headerContainer) {
                     headerContainer.style.borderColor = '#dee2e6';
                     headerContainer.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
@@ -5553,7 +5561,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261022_8"></script>
+    <script src="/static/js/patient.js?v=20261023_v5"></script>
 
 </body>
 
