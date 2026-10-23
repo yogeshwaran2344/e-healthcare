@@ -78,22 +78,31 @@ function updateSmsToggleUI(enabled) {
     // 1. Header Switch & Button
     const switchInput = document.getElementById('headerSmsSwitchInput');
     const headerText = document.getElementById('headerSmsText');
+    const headerIcon = document.getElementById('headerSmsIcon');
     const headerContainer = document.getElementById('headerSmsToggleContainer');
     const headerBtn = document.getElementById('headerSmsBtn');
 
     if (switchInput) switchInput.checked = isSmsEnabledGlobal;
 
+    if (headerIcon) {
+        if (isSmsEnabledGlobal) {
+            headerIcon.className = "bi bi-broadcast text-success";
+        } else {
+            headerIcon.className = "bi bi-bell-slash text-danger";
+        }
+    }
+
     if (headerText) {
         if (isSmsEnabledGlobal) {
-            headerText.className = "small fw-bold text-success d-flex align-items-center gap-1";
-            headerText.innerHTML = '<i class="bi bi-broadcast text-success" id="headerSmsIcon"></i> SMS ON';
+            headerText.className = "small fw-bold text-success text-nowrap";
+            headerText.textContent = "SMS ON";
             if (headerContainer) {
                 headerContainer.style.borderColor = '#198754';
                 headerContainer.title = "Cellular SMS is ON. Click to Turn OFF (protect balance)";
             }
         } else {
-            headerText.className = "small fw-bold text-danger d-flex align-items-center gap-1";
-            headerText.innerHTML = '<i class="bi bi-bell-slash text-danger" id="headerSmsIcon"></i> SMS OFF';
+            headerText.className = "small fw-bold text-danger text-nowrap";
+            headerText.textContent = "SMS OFF";
             if (headerContainer) {
                 headerContainer.style.borderColor = '#dee2e6';
                 headerContainer.title = "Cellular SMS is OFF (Balance Saver Active). Click to Turn ON";
@@ -917,6 +926,17 @@ const SYMPTOM_SYNONYMS = {
     "missed period": ["irregular_missed_periods", "pcos_pcod_symptoms"],
     "pcos": ["pcos_pcod_symptoms", "irregular_missed_periods", "cystic_hormonal_acne", "hair_thinning_scalp"],
     "pcod": ["pcos_pcod_symptoms", "irregular_missed_periods"],
+    "gyno": ["irregular_missed_periods", "severe_period_cramps", "heavy_menstrual_bleeding", "pcos_pcod_symptoms", "lower_pelvic_ovarian_pain", "abnormal_vaginal_discharge", "vaginal_itching_burning"],
+    "gynecology": ["irregular_missed_periods", "severe_period_cramps", "heavy_menstrual_bleeding", "pcos_pcod_symptoms", "lower_pelvic_ovarian_pain", "abnormal_vaginal_discharge", "vaginal_itching_burning"],
+    "women": ["irregular_missed_periods", "severe_period_cramps", "heavy_menstrual_bleeding", "pcos_pcod_symptoms", "lower_pelvic_ovarian_pain", "abnormal_vaginal_discharge", "vaginal_itching_burning", "breast_pain_tenderness", "hot_flashes_menopause"],
+    "womens health": ["irregular_missed_periods", "severe_period_cramps", "heavy_menstrual_bleeding", "pcos_pcod_symptoms", "lower_pelvic_ovarian_pain", "abnormal_vaginal_discharge", "vaginal_itching_burning", "breast_pain_tenderness", "hot_flashes_menopause"],
+    "women's health": ["irregular_missed_periods", "severe_period_cramps", "heavy_menstrual_bleeding", "pcos_pcod_symptoms", "lower_pelvic_ovarian_pain", "abnormal_vaginal_discharge", "vaginal_itching_burning", "breast_pain_tenderness", "hot_flashes_menopause"],
+    "white discharge": ["abnormal_vaginal_discharge", "vaginal_itching_burning"],
+    "vaginal discharge": ["abnormal_vaginal_discharge", "vaginal_itching_burning"],
+    "menopause": ["hot_flashes_menopause", "irregular_missed_periods"],
+    "hot flashes": ["hot_flashes_menopause"],
+    "breast pain": ["breast_pain_tenderness"],
+    "pelvic pain": ["lower_pelvic_ovarian_pain", "severe_period_cramps"],
     "bp": ["sharp_chest_pain", "palpitations_rapid_heartbeat", "dizziness_lightheadedness"],
     "high bp": ["sharp_chest_pain", "palpitations_rapid_heartbeat", "dizziness_lightheadedness"],
     "heart pain": ["sharp_chest_pain", "pain_radiating_to_arm_jaw", "palpitations_rapid_heartbeat"],
@@ -966,8 +986,9 @@ function renderCategoryFilterButtons() {
     container.innerHTML = categories.map(cat => {
         const isActive = activeCategory === cat;
         const displayName = cat === 'All' ? `All (${allSymptoms.length}+)` : cat;
+        const safeCat = cat.replace(/"/g, '&quot;');
         return `
-            <button class="btn btn-sm ${isActive ? 'btn-primary active' : 'btn-outline-secondary'} py-1 px-2 rounded-pill category-filter-btn" onclick="filterByCategory('${cat}')">
+            <button class="btn btn-sm ${isActive ? 'btn-primary active' : 'btn-outline-secondary'} py-1 px-2 rounded-pill category-filter-btn" data-category="${safeCat}" onclick="filterByCategory(this.getAttribute('data-category'))">
                 ${displayName}
             </button>
         `;
@@ -3380,13 +3401,6 @@ async function executeOneTapSosDispatch() {
         showSMSNotification({
             title: "⚠️ SOS DISPATCH WARNING",
             message: `Emergency dispatch server reported: ${err.message || err}`,
-            channel: "sms",
-            duration: 8000
-        });
-    }
-}
-            title: "⚠️ SOS DISPATCH WARNING",
-            message: `Could not reach emergency dispatch server: ${err.message || err}`,
             channel: "sms",
             duration: 8000
         });
