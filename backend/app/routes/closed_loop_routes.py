@@ -1285,13 +1285,17 @@ def get_notification_config(
         }
 
     cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    c_name = (cfg.caretaker_name if cfg and cfg.caretaker_name else current_user.emergency_contact_name) or "Primary Caregiver"
+    c_phone = (cfg.caretaker_phone if cfg and cfg.caretaker_phone else current_user.emergency_contact_phone) or ""
+    c_rel = (cfg.relationship if cfg and cfg.relationship else "Emergency Contact / Guardian")
+
     return {
         "success": True,
-        "configured": bool(cfg or current_user.phone),
+        "configured": bool((cfg and cfg.caretaker_phone) or current_user.emergency_contact_phone or current_user.phone),
         "patient_phone": current_user.phone or "",
-        "caretaker_phone": cfg.caretaker_phone if cfg else (current_user.phone or ""),
-        "caretaker_name": cfg.caretaker_name if cfg else "Primary Caregiver",
-        "relationship": cfg.relationship if cfg else "Emergency Contact / Guardian",
+        "caretaker_phone": c_phone,
+        "caretaker_name": c_name,
+        "relationship": c_rel,
         "dual_alert": bool(cfg.is_active) if cfg else True
     }
 
@@ -1321,6 +1325,13 @@ def save_notification_config(
             current_user.phone = f"+91{clean_p}" if len(clean_p) == 10 else patient_phone
             saved_patient_phone = current_user.phone
 
+        if caretaker_name:
+            current_user.emergency_contact_name = caretaker_name
+        if caretaker_phone:
+            clean_c = sanitize_indian_mobile_number(caretaker_phone)
+            current_user.emergency_contact_phone = f"+91{clean_c}" if len(clean_c) == 10 else caretaker_phone
+            saved_caretaker_phone = current_user.emergency_contact_phone
+
         cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
         if not cfg:
             cfg = CaretakerAlertConfig(patient_id=current_user.id)
@@ -1328,9 +1339,7 @@ def save_notification_config(
         if caretaker_name:
             cfg.caretaker_name = caretaker_name
         if caretaker_phone:
-            clean_c = sanitize_indian_mobile_number(caretaker_phone)
-            cfg.caretaker_phone = f"+91{clean_c}" if len(clean_c) == 10 else caretaker_phone
-            saved_caretaker_phone = cfg.caretaker_phone
+            cfg.caretaker_phone = saved_caretaker_phone
         if relationship:
             cfg.relationship = relationship
         cfg.is_active = bool(dual_alert)

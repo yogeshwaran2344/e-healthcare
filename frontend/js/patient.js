@@ -288,12 +288,21 @@ async function initContactSettings() {
             const remoteCfg = await API.get('/api/closed-loop/caregiver/notification-config');
             if (remoteCfg && remoteCfg.configured) {
                 const currentSaved = getContactSettings();
+                const rName = (remoteCfg.caretaker_name && remoteCfg.caretaker_name !== 'Primary Caregiver')
+                    ? remoteCfg.caretaker_name
+                    : (currentSaved.caretakerName || remoteCfg.caretaker_name || "Primary Caregiver");
+                const rPhone = remoteCfg.caretaker_phone || currentSaved.caretakerPhone || "";
+                const rPatient = remoteCfg.patient_phone || currentSaved.patientPhone || "";
+                const rRel = (remoteCfg.relationship && remoteCfg.relationship !== 'Emergency Contact / Guardian' && remoteCfg.relationship !== 'Guardian')
+                    ? remoteCfg.relationship
+                    : (currentSaved.caretakerRelation || remoteCfg.relationship || "Guardian");
+
                 const merged = {
-                    patientPhone: remoteCfg.patient_phone || currentSaved.patientPhone || "",
-                    patientWhatsapp: remoteCfg.patient_phone || currentSaved.patientWhatsapp || "",
-                    caretakerName: remoteCfg.caretaker_name || currentSaved.caretakerName || "Primary Caregiver",
-                    caretakerPhone: remoteCfg.caretaker_phone || currentSaved.caretakerPhone || "",
-                    caretakerRelation: remoteCfg.relationship || currentSaved.caretakerRelation || "Guardian",
+                    patientPhone: rPatient,
+                    patientWhatsapp: currentSaved.patientWhatsapp || rPatient,
+                    caretakerName: rName,
+                    caretakerPhone: rPhone,
+                    caretakerRelation: rRel,
                     dualAlert: remoteCfg.dual_alert !== false
                 };
                 localStorage.setItem('ehealth_contact_routing', JSON.stringify(merged));
@@ -311,6 +320,16 @@ async function initContactSettings() {
     if (cNameElem) cNameElem.textContent = cfg.caretakerName || "Primary Caregiver";
     if (cPhoneElem) cPhoneElem.textContent = cfg.caretakerPhone || "Not Set";
     if (cRelElem) cRelElem.textContent = cfg.caretakerRelation || "Guardian";
+
+    // Also update SOS tab caretaker info displays
+    const sosName = document.getElementById('sosCaretakerNameDisplay');
+    const sosPhone = document.getElementById('sosCaretakerPhoneDisplay');
+    const sosRel = document.getElementById('sosCaretakerRelDisplay');
+    const sosCall = document.getElementById('sosCallCaretakerBtn');
+    if (sosName) sosName.textContent = cfg.caretakerName || "Primary Caregiver";
+    if (sosPhone) sosPhone.textContent = cfg.caretakerPhone || "Not Configured";
+    if (sosRel) sosRel.textContent = cfg.caretakerRelation || "Guardian";
+    if (sosCall) sosCall.href = cfg.caretakerPhone ? `tel:${cfg.caretakerPhone}` : "javascript:void(0)";
 }
 
 function openContactSettingsModal() {
@@ -512,12 +531,26 @@ function saveContactSettings(e) {
         dualAlert: dualAlert
     };
     localStorage.setItem('ehealth_contact_routing', JSON.stringify(cfg));
-    if (typeof currentProfile !== 'undefined' && currentProfile && pPhone) {
-        currentProfile.phone = pPhone;
+
+    try {
+        const cachedStr = localStorage.getItem('ehealth_saved_profile');
+        if (cachedStr) {
+            const cached = JSON.parse(cachedStr);
+            if (pPhone) cached.phone = pPhone;
+            cached.emergency_contact_name = cName;
+            cached.emergency_contact_phone = cPhone;
+            localStorage.setItem('ehealth_saved_profile', JSON.stringify(cached));
+        }
+    } catch (_) {}
+
+    if (typeof currentProfile !== 'undefined' && currentProfile) {
+        if (pPhone) currentProfile.phone = pPhone;
+        currentProfile.emergency_contact_name = cName;
+        currentProfile.emergency_contact_phone = cPhone;
     }
     initContactSettings();
 
-    // Sync to backend DB permanently
+    // Sync to backend DB permanently (both caregiver table and user table)
     API.post('/api/closed-loop/caregiver/save-notification-config', {
         phone: cPhone,
         caretaker_phone: cPhone,
@@ -526,6 +559,15 @@ function saveContactSettings(e) {
         relationship: cfg.caretakerRelation,
         dual_alert: dualAlert
     }).catch(err => console.warn("Failed to save contact settings remotely:", err));
+
+    API.request('/api/profile', {
+        method: 'PUT',
+        body: {
+            emergency_contact_name: cName,
+            emergency_contact_phone: cPhone,
+            phone: pPhone
+        }
+    }).catch(() => {});
 
     // Sync into profile form if open
     const profPhone = document.getElementById('profPhone');
@@ -1813,6 +1855,12 @@ async function loadProfileData() {
             try { localCached = JSON.parse(localCachedStr); } catch (_) {}
         }
 
+        const savedRoutingStr = localStorage.getItem('ehealth_contact_routing');
+        let localRouting = null;
+        if (savedRoutingStr) {
+            try { localRouting = JSON.parse(savedRoutingStr); } catch (_) {}
+        }
+
         let user = null;
         try {
             user = await API.get('/api/profile');
@@ -1822,15 +1870,30 @@ async function loadProfileData() {
             user = localCached || {};
         }
 
-        // Merge remote profile with local cache
-        const pName = user.full_name || localCached?.full_name || '';
-        const pDob = user.date_of_birth || localCached?.date_of_birth || '';
-        const pGender = user.gender || localCached?.gender || '';
-        const pPhone = user.phone || localCached?.phone || '';
-        const pBlood = user.blood_group || localCached?.blood_group || '';
-        const pAllergies = user.drug_allergies !== undefined ? user.drug_allergies : (localCached?.drug_allergies || '');
-        const pConditions = user.pre_existing_conditions !== undefined ? user.pre_existing_conditions : (localCached?.pre_existing_conditions || '');
-        const pMeds = user.current_medications !== undefined ? user.current_medications : (localCached?.current_medications || '');
+        // Helper: pick non-empty value (remote DB prioritized if non-empty, otherwise local cache)
+        const pickVal = (remoteVal, localVal) => {
+            if (remoteVal !== null && remoteVal !== undefined && String(remoteVal).trim() !== '') {
+                return String(remoteVal).trim();
+            }
+            if (localVal !== null && localVal !== undefined && String(localVal).trim() !== '') {
+                return String(localVal).trim();
+            }
+            return '';
+        };
+
+        const pName = pickVal(user?.full_name, localCached?.full_name);
+        const pDob = pickVal(user?.date_of_birth, localCached?.date_of_birth);
+        const pGender = pickVal(user?.gender, localCached?.gender) || 'Male';
+        const pPhone = pickVal(user?.phone, localCached?.phone);
+        const pBlood = pickVal(user?.blood_group, localCached?.blood_group) || 'O+';
+        const pAllergies = pickVal(user?.drug_allergies, localCached?.drug_allergies);
+        const pConditions = pickVal(user?.pre_existing_conditions, localCached?.pre_existing_conditions);
+        const pMeds = pickVal(user?.current_medications, localCached?.current_medications);
+
+        // Caretaker details
+        const cName = pickVal(user?.emergency_contact_name, localCached?.emergency_contact_name || localRouting?.caretakerName);
+        const cPhone = pickVal(user?.emergency_contact_phone, localCached?.emergency_contact_phone || localRouting?.caretakerPhone);
+        const cRel = pickVal(localRouting?.caretakerRelation, 'Daughter / Primary Guardian');
 
         if (document.getElementById('profName')) document.getElementById('profName').value = pName;
         if (document.getElementById('profDob')) document.getElementById('profDob').value = pDob;
@@ -1845,20 +1908,46 @@ async function loadProfileData() {
         if (pDob) {
             calculateAgeFromDobInput();
         } else if (document.getElementById('profAge')) {
-            document.getElementById('profAge').value = user.age || localCached?.age || '';
+            document.getElementById('profAge').value = user?.age || localCached?.age || '';
         }
 
-        // Load contact routing details
-        try { await initContactSettings(); } catch (_) {}
-        const cfg = getContactSettings();
-        const pWhatsapp = document.getElementById('profWhatsapp');
-        const pCName = document.getElementById('profCaretakerName');
-        const pCPhone = document.getElementById('profCaretakerPhone');
-        const pCRel = document.getElementById('profCaretakerRelation');
-        if (pWhatsapp) pWhatsapp.value = cfg.patientWhatsapp || pPhone || '';
-        if (pCName) pCName.value = cfg.caretakerName || '';
-        if (pCPhone) pCPhone.value = cfg.caretakerPhone || '';
-        if (pCRel) pCRel.value = cfg.caretakerRelation || '';
+        // Caretaker fields in profile form
+        if (document.getElementById('profCaretakerName')) document.getElementById('profCaretakerName').value = cName;
+        if (document.getElementById('profCaretakerPhone')) document.getElementById('profCaretakerPhone').value = cPhone;
+        if (document.getElementById('profCaretakerRelation')) document.getElementById('profCaretakerRelation').value = cRel;
+        if (document.getElementById('profWhatsapp')) document.getElementById('profWhatsapp').value = localRouting?.patientWhatsapp || pPhone;
+
+        // Update local caches so both are fresh and synchronized
+        const mergedProfile = {
+            full_name: pName,
+            date_of_birth: pDob,
+            age: document.getElementById('profAge')?.value || user?.age || localCached?.age || 0,
+            gender: pGender,
+            phone: pPhone,
+            blood_group: pBlood,
+            drug_allergies: pAllergies,
+            pre_existing_conditions: pConditions,
+            current_medications: pMeds,
+            emergency_contact_name: cName,
+            emergency_contact_phone: cPhone
+        };
+        localStorage.setItem('ehealth_saved_profile', JSON.stringify(mergedProfile));
+
+        if (cName || cPhone || pPhone) {
+            const mergedRouting = {
+                patientPhone: pPhone,
+                patientWhatsapp: localRouting?.patientWhatsapp || pPhone,
+                caretakerName: cName || "Primary Caregiver",
+                caretakerPhone: cPhone,
+                caretakerRelation: cRel,
+                dualAlert: localRouting?.dualAlert !== false
+            };
+            localStorage.setItem('ehealth_contact_routing', JSON.stringify(mergedRouting));
+        }
+
+        // Load contact routing details & displays
+        await initContactSettings();
+        if (typeof initSosTab === 'function') initSosTab();
 
         const welcomeEl = document.getElementById('userWelcomeText');
         if (welcomeEl && pName) {
@@ -1889,7 +1978,9 @@ async function saveProfile(e) {
         blood_group: document.getElementById('profBlood')?.value || 'O+',
         drug_allergies: document.getElementById('profAllergies')?.value.trim() || '',
         pre_existing_conditions: document.getElementById('profConditions')?.value.trim() || '',
-        current_medications: document.getElementById('profMeds')?.value.trim() || ''
+        current_medications: document.getElementById('profMeds')?.value.trim() || '',
+        emergency_contact_name: cName,
+        emergency_contact_phone: cPhone
     };
 
     // Permanently persist to local storage cache so it NEVER resets on refresh
@@ -1922,8 +2013,8 @@ async function saveProfile(e) {
         const updated = await API.request('/api/profile', { method: 'PUT', body: payload });
         currentProfile = updated;
 
-        if (cPhone || phoneVal) {
-            API.post('/api/closed-loop/caregiver/save-notification-config', {
+        if (cPhone || phoneVal || cName) {
+            await API.post('/api/closed-loop/caregiver/save-notification-config', {
                 phone: cPhone,
                 caretaker_phone: cPhone,
                 patient_phone: phoneVal,
@@ -1932,6 +2023,9 @@ async function saveProfile(e) {
                 dual_alert: true
             }).catch(err => console.warn("Failed to sync caretaker config to DB:", err));
         }
+
+        initContactSettings();
+        if (typeof initSosTab === 'function') initSosTab();
 
         showSMSNotification({
             title: "PROFILE PERMANENTLY SAVED",

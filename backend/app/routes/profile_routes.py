@@ -5,7 +5,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import User, FamilyMember
+from ..models import User, FamilyMember, CaretakerAlertConfig
 from ..schemas import (
     UserOut, UserProfileUpdate,
     FamilyMemberCreate, FamilyMemberUpdate, FamilyMemberOut, FamilyMemberEmergencyLookupOut
@@ -32,7 +32,7 @@ def generate_family_emergency_hash(user_id: int, full_name: str, blood_group: Op
     return hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
 @router.get("", response_model=UserOut)
-def get_profile(current_user: User = Depends(get_current_user)):
+def get_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Fetch current user's personal health profile with dynamic auto-incrementing age."""
     spec = None
     if current_user.doctor_profile:
@@ -40,6 +40,10 @@ def get_profile(current_user: User = Depends(get_current_user)):
 
     # Compute dynamic age if date_of_birth is present
     dynamic_age = compute_age_from_dob(current_user.date_of_birth) if current_user.date_of_birth else current_user.age
+
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    c_name = (cfg.caretaker_name if cfg and cfg.caretaker_name else current_user.emergency_contact_name) or None
+    c_phone = (cfg.caretaker_phone if cfg and cfg.caretaker_phone else current_user.emergency_contact_phone) or None
 
     return UserOut(
         id=current_user.id,
@@ -54,6 +58,8 @@ def get_profile(current_user: User = Depends(get_current_user)):
         pre_existing_conditions=current_user.pre_existing_conditions,
         current_medications=current_user.current_medications,
         drug_allergies=current_user.drug_allergies,
+        emergency_contact_name=c_name,
+        emergency_contact_phone=c_phone,
         specialization=spec,
         created_at=current_user.created_at
     )
@@ -92,6 +98,18 @@ def update_profile(
     if req.emergency_contact_phone is not None:
         current_user.emergency_contact_phone = req.emergency_contact_phone.strip()
 
+    # Automatically keep CaretakerAlertConfig in sync
+    if req.emergency_contact_name or req.emergency_contact_phone:
+        cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+        if not cfg:
+            cfg = CaretakerAlertConfig(patient_id=current_user.id)
+            db.add(cfg)
+        if req.emergency_contact_name:
+            cfg.caretaker_name = req.emergency_contact_name.strip()
+        if req.emergency_contact_phone:
+            cfg.caretaker_phone = req.emergency_contact_phone.strip()
+        cfg.updated_at = datetime.utcnow()
+
     current_user.profile_updated_at = datetime.utcnow()
     db.commit()
     db.refresh(current_user)
@@ -101,6 +119,10 @@ def update_profile(
         spec = current_user.doctor_profile.specialization
 
     dynamic_age = compute_age_from_dob(current_user.date_of_birth) if current_user.date_of_birth else current_user.age
+
+    cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+    c_name = (cfg.caretaker_name if cfg and cfg.caretaker_name else current_user.emergency_contact_name) or None
+    c_phone = (cfg.caretaker_phone if cfg and cfg.caretaker_phone else current_user.emergency_contact_phone) or None
 
     return UserOut(
         id=current_user.id,
@@ -115,6 +137,8 @@ def update_profile(
         pre_existing_conditions=current_user.pre_existing_conditions,
         current_medications=current_user.current_medications,
         drug_allergies=current_user.drug_allergies,
+        emergency_contact_name=c_name,
+        emergency_contact_phone=c_phone,
         specialization=spec,
         created_at=current_user.created_at
     )
