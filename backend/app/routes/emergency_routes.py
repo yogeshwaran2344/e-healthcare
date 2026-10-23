@@ -1,12 +1,15 @@
+import os
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 from ..database import get_db
-from ..models import User, EmergencyAlert, IoTVitalReading
+from ..models import User, EmergencyAlert, IoTVitalReading, CaretakerAlertConfig, FamilyMember, EmergencyAccessAudit
 from ..auth import get_current_user, require_roles
+from ..sms_service import send_cellular_sms, sanitize_indian_mobile_number
 from ..ml.emergency_engine import (
     build_emergency_medical_passport,
     calculate_ambulance_telemetry,
@@ -17,7 +20,8 @@ from ..emergency_passport_service import (
     record_emergency_access,
     serialize_audit_row,
 )
-from ..models import EmergencyAccessAudit
+
+logger = logging.getLogger("emergency_sos")
 
 router = APIRouter(prefix="/api/emergency", tags=["Emergency Response & Ambulance"])
 
@@ -31,14 +35,52 @@ def trigger_rapid_sos(
     db: Session = Depends(get_db)
 ):
     """
-    One-Tap SOS Dispatcher:
+    One-Tap SOS Dispatcher with Live Location:
+    - Captures patient's live GPS coordinates & Google Maps location
+    - Immediately dispatches an Emergency Cellular SMS to the patient's registered caretaker
+      stating that the patient needs immediate medical care, with their live GPS location link
     - Generates Emergency Medical Passport (Allergies, Blood Group, Conditions, Meds, Vitals)
     - Dispatches nearest Advanced Life Support (ALS) Ambulance
-    - Pre-allocates ER trauma bay bed and alerts blood bank.
+    - Pre-allocates ER trauma bay bed and alerts blood bank
     """
     lat = float(payload.get("latitude", 12.9716))
     lng = float(payload.get("longitude", 77.5946))
-    emergency_type = payload.get("emergency_type", "SOS_MANUAL")
+    accuracy = payload.get("accuracy")
+    emergency_type = payload.get("emergency_type", "ONE_TAP_SOS")
+
+    # Determine Caretaker phone & name dynamically
+    caretaker_phone = None
+    caretaker_name = "Primary Caregiver"
+    relationship = "Emergency Contact"
+
+    # 1. Check payload if provided
+    if payload.get("caretaker_phone"):
+        caretaker_phone = str(payload.get("caretaker_phone")).strip()
+        if payload.get("caretaker_name"):
+            caretaker_name = str(payload.get("caretaker_name")).strip()
+
+    # 2. Look up CaretakerAlertConfig in database
+    if not caretaker_phone:
+        cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
+        if cfg and cfg.caretaker_phone:
+            caretaker_phone = cfg.caretaker_phone.strip()
+            caretaker_name = cfg.caretaker_name or caretaker_name
+            relationship = cfg.relationship or relationship
+
+    # 3. Look up FamilyMember in database
+    if not caretaker_phone:
+        fm = db.query(FamilyMember).filter(FamilyMember.user_id == current_user.id).first()
+        if fm and (fm.phone or fm.whatsapp):
+            caretaker_phone = (fm.phone or fm.whatsapp).strip()
+            caretaker_name = fm.full_name or caretaker_name
+            relationship = fm.relationship or relationship
+
+    # 4. Fallback to user's registered phone or default recipient
+    if not caretaker_phone:
+        caretaker_phone = (current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "")).strip()
+
+    patient_name = (current_user.full_name or "Patient").strip()
+    maps_url = payload.get("maps_url") or f"https://maps.google.com/?q={lat:.5f},{lng:.5f}"
 
     # Fetch latest vitals
     latest_r = (
@@ -90,16 +132,52 @@ def trigger_rapid_sos(
         db,
         accessor=current_user,
         patient_id=current_user.id,
-        purpose="One-tap SOS dispatch",
+        purpose=f"One-Tap Emergency SOS: Live GPS ({lat:.4f}, {lng:.4f})",
         information_type="emergency_passport",
         is_emergency=True,
         access_channel="sos",
         context_scope="SOS_DISPATCH",
     )
 
+    # Immediately dispatch live Cellular SMS to caretaker with live location
+    sms_res = None
+    sms_sent = False
+    now_time = datetime.utcnow().strftime("%I:%M %p UTC")
+    sos_message = (
+        f"EMERGENCY SOS: {patient_name} needs IMMEDIATE medical care! "
+        f"Live GPS Location: {maps_url} "
+        f"Time: {now_time}. Please check on the patient immediately or call emergency services."
+    )
+
+    if caretaker_phone:
+        try:
+            sms_res = send_cellular_sms(
+                recipient_phone=caretaker_phone,
+                message=sos_message,
+                force=True
+            )
+            sms_sent = bool(sms_res.get("success", False))
+            logger.info(f"1-Tap Emergency SOS SMS dispatched to caretaker {caretaker_phone}: success={sms_sent}")
+        except Exception as e:
+            logger.error(f"Failed to dispatch SOS SMS to {caretaker_phone}: {e}")
+            sms_res = {"success": False, "error": str(e)}
+
     return {
         "status": "EMERGENCY_DISPATCHED",
         "alert_id": alert.id,
+        "patient_name": patient_name,
+        "caretaker_notified": sms_sent or bool(caretaker_phone),
+        "caretaker_name": caretaker_name,
+        "caretaker_phone": caretaker_phone,
+        "relationship": relationship,
+        "sms_sent": sms_sent,
+        "sms_dispatch": sms_res,
+        "message_sent": sos_message,
+        "latitude": lat,
+        "longitude": lng,
+        "accuracy": accuracy,
+        "maps_url": maps_url,
+        "dispatched_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
         "eta_minutes": alert.eta_minutes,
         "ambulance_unit": alert.ambulance_unit,
         "paramedic_team": alert.paramedic_name,

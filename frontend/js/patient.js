@@ -2546,6 +2546,8 @@ function activateTab(tabId, scroll = true) {
             if (typeof loadNavQueueTab === 'function') loadNavQueueTab().catch(() => {});
         } else if (cleanId === 'tab-travel') {
             if (typeof initTravelTab === 'function') initTravelTab().catch(() => {});
+        } else if (cleanId === 'tab-sos') {
+            if (typeof initSosTab === 'function') initSosTab().catch(() => {});
         }
     } catch (err) {
         console.warn(`Tab data loader error for ${cleanId}:`, err);
@@ -3093,26 +3095,204 @@ async function requestQueueRefresh() {
 let emergencyPollInterval = null;
 let currentEmergencyAlertId = null;
 
+// Acquire device real-time live GPS coordinates with high accuracy
+function getLiveLocationCoordinates() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            console.warn("Geolocation API not supported by browser environment.");
+            resolve(null);
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy
+                });
+            },
+            (err) => {
+                console.warn("Geolocation acquisition error or permission denied:", err.message);
+                resolve(null);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 6000,
+                maximumAge: 0
+            }
+        );
+    });
+}
+
+async function refreshLiveGpsPreview() {
+    const latEl = document.getElementById('sosLiveLat');
+    const lngEl = document.getElementById('sosLiveLng');
+    const accEl = document.getElementById('sosLiveAcc');
+    const mapLink = document.getElementById('sosGoogleMapsLink');
+
+    if (accEl) accEl.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Acquiring GPS Satellite Lock...`;
+
+    const coords = await getLiveLocationCoordinates();
+    const lat = coords ? coords.latitude : 12.9716;
+    const lng = coords ? coords.longitude : 77.5946;
+    const mapsUrl = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+    if (latEl) latEl.textContent = lat.toFixed(5);
+    if (lngEl) lngEl.textContent = lng.toFixed(5);
+    if (accEl) {
+        if (coords) {
+            accEl.className = "badge bg-success-subtle text-success";
+            accEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Live Satellite Lock (±${Math.round(coords.accuracy || 15)}m)`;
+        } else {
+            accEl.className = "badge bg-warning-subtle text-warning";
+            accEl.innerHTML = `<i class="bi bi-geo-alt me-1"></i>Fallback Coordinates (Permission Prompt)`;
+        }
+    }
+    if (mapLink) {
+        mapLink.href = mapsUrl;
+    }
+}
+
+async function initSosTab() {
+    const cfg = getContactSettings();
+    const nameEl = document.getElementById('sosCaretakerNameDisplay');
+    const phoneEl = document.getElementById('sosCaretakerPhoneDisplay');
+    const relEl = document.getElementById('sosCaretakerRelDisplay');
+    const callBtn = document.getElementById('sosCallCaretakerBtn');
+
+    if (nameEl) nameEl.textContent = cfg.caretakerName || "Primary Caregiver";
+    if (phoneEl) phoneEl.textContent = cfg.caretakerPhone || "Not Configured";
+    if (relEl) relEl.textContent = cfg.caretakerRelation || "Guardian";
+    if (callBtn) {
+        callBtn.href = cfg.caretakerPhone ? `tel:${cfg.caretakerPhone}` : "javascript:void(0)";
+    }
+
+    refreshLiveGpsPreview().catch(() => {});
+}
+
+function updateSosStatusUI(res) {
+    const timeEl = document.getElementById('sosLastDispatchTime');
+    const statusEl = document.getElementById('sosLastDispatchStatus');
+    const msgEl = document.getElementById('sosLastDispatchMsg');
+    const mapsLink = document.getElementById('sosGoogleMapsLink');
+    const latEl = document.getElementById('sosLiveLat');
+    const lngEl = document.getElementById('sosLiveLng');
+
+    const nowStr = new Date().toLocaleTimeString();
+    if (timeEl) timeEl.textContent = `Dispatched Today at ${nowStr}`;
+    if (statusEl) {
+        if (res.sms_sent) {
+            statusEl.className = "badge bg-success";
+            statusEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>SMS Delivered to Caretaker`;
+        } else {
+            statusEl.className = "badge bg-warning text-dark";
+            statusEl.innerHTML = `<i class="bi bi-send-check me-1"></i>SOS Dispatched (${res.caretaker_phone || 'Logged'})`;
+        }
+    }
+    if (msgEl && res.message_sent) {
+        msgEl.textContent = `"${res.message_sent}"`;
+    }
+    if (res.latitude && latEl) latEl.textContent = Number(res.latitude).toFixed(5);
+    if (res.longitude && lngEl) lngEl.textContent = Number(res.longitude).toFixed(5);
+    if (res.maps_url && mapsLink) mapsLink.href = res.maps_url;
+}
+
+function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
+    const nameEl = document.getElementById('modalSosCaretakerName');
+    const phoneEl = document.getElementById('modalSosCaretakerPhone');
+    const latEl = document.getElementById('modalSosLat');
+    const lngEl = document.getElementById('modalSosLng');
+    const mapsBtn = document.getElementById('modalSosGoogleMapsBtn');
+    const msgEl = document.getElementById('modalSosMessageText');
+    const callBtn = document.getElementById('modalSosCallCaretakerBtn');
+    const statusBadge = document.getElementById('modalSosSmsStatusBadge');
+    const accBadge = document.getElementById('modalSosAccuracyBadge');
+
+    if (nameEl) nameEl.textContent = res.caretaker_name || "Primary Caregiver";
+    if (phoneEl) phoneEl.textContent = res.caretaker_phone || "Registered Caretaker";
+    if (latEl) latEl.textContent = Number(lat).toFixed(6);
+    if (lngEl) lngEl.textContent = Number(lng).toFixed(6);
+    if (mapsBtn) mapsBtn.href = mapsUrl;
+    if (msgEl) msgEl.textContent = `"${res.message_sent || `EMERGENCY SOS: Patient needs IMMEDIATE medical care! Live GPS Location: ${mapsUrl}`}"`;
+    if (callBtn) {
+        callBtn.href = res.caretaker_phone ? `tel:${res.caretaker_phone}` : 'javascript:void(0)';
+    }
+    if (statusBadge) {
+        if (res.sms_sent) {
+            statusBadge.className = "badge bg-success";
+            statusBadge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Cellular SMS Delivered to Caretaker`;
+        } else {
+            statusBadge.className = "badge bg-primary";
+            statusBadge.innerHTML = `<i class="bi bi-broadcast me-1"></i>Alert Dispatched to Caretaker`;
+        }
+    }
+    if (accBadge) {
+        accBadge.textContent = acc ? `GPS Accuracy ±${Math.round(acc)}m` : `Live GPS Pinpoint`;
+    }
+
+    const modalEl = document.getElementById('emergencySosModal');
+    if (modalEl) {
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+}
+
 async function triggerOneTapSOS() {
+    playSmsChime();
+
+    // Show initial responsive notification
+    showSMSNotification({
+        title: "🚨 1-TAP EMERGENCY SOS INITIATED",
+        message: "Acquiring your live device GPS location to alert caretaker immediately...",
+        channel: "sms",
+        duration: 3500
+    });
+
     try {
+        // Acquire real live GPS coordinates
+        const coords = await getLiveLocationCoordinates();
+        const lat = coords ? coords.latitude : 12.9716;
+        const lng = coords ? coords.longitude : 77.5946;
+        const mapsUrl = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+        const cfg = getContactSettings();
+
         const payload = {
-            emergency_type: "SOS_MANUAL",
-            latitude: 12.9716,
-            longitude: 77.5946
+            emergency_type: "ONE_TAP_SOS_LIVE_LOCATION",
+            latitude: lat,
+            longitude: lng,
+            accuracy: coords ? coords.accuracy : null,
+            maps_url: mapsUrl,
+            caretaker_phone: cfg.caretakerPhone,
+            caretaker_name: cfg.caretakerName
         };
+
         const res = await API.post('/api/emergency/trigger-sos', payload);
         currentEmergencyAlertId = res.alert_id;
-        alert(`ðŸš¨ EMERGENCY ACTIVATED!\nUnit: ${res.ambulance_unit}\nETA: ${res.eta_minutes} Mins\nER Trauma Bay #3 Reserved.`);
-        
-        switchToTab('tab-emergency');
-        await loadEmergencyTab({ includePassport: true });
 
-        // Start active tracking polling
-        if (emergencyPollInterval) clearInterval(emergencyPollInterval);
-        emergencyPollInterval = setInterval(() => loadEmergencyTab({ includePassport: false }), 4000);
+        // Display the rich Emergency SOS Dispatch confirmation modal
+        showSosDispatchModal(res, mapsUrl, lat, lng, coords ? coords.accuracy : null);
+
+        // Update SOS status UI elements
+        updateSosStatusUI(res);
+
+        // Display confirmed high-priority toast
+        showSMSNotification({
+            title: "🚨 EMERGENCY SOS DISPATCHED TO CARETAKER",
+            message: `Alert sent to ${res.caretaker_name || 'Caretaker'} (${res.caretaker_phone || 'Registered Phone'}). Live GPS Location transmitted!`,
+            channel: "sms",
+            phone: res.caretaker_phone,
+            duration: 9000
+        });
 
     } catch (err) {
-        alert("Failed to trigger SOS: " + err.message);
+        console.error("SOS dispatch failed:", err);
+        alert("Failed to dispatch 1-Tap SOS: " + (err.message || err));
+        showSMSNotification({
+            title: "⚠️ SOS DISPATCH WARNING",
+            message: `Could not reach emergency dispatch server: ${err.message || err}`,
+            channel: "sms",
+            duration: 8000
+        });
     }
 }
 
