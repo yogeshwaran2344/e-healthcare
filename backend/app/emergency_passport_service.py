@@ -1,6 +1,6 @@
 """Shared live emergency passport assembly and access auditing."""
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy.orm import Session
@@ -351,6 +351,15 @@ def serialize_audit_row(row: EmergencyAccessAudit) -> Dict[str, Any]:
     elif row.status == "RATE_LIMITED":
         status_badge = "bg-danger text-white"
 
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    timestamp_ist = None
+    if row.accessed_at:
+        try:
+            dt_utc = row.accessed_at if row.accessed_at.tzinfo else row.accessed_at.replace(tzinfo=timezone.utc)
+            timestamp_ist = dt_utc.astimezone(ist_tz).strftime("%d %b %Y, %I:%M:%S %p IST")
+        except Exception:
+            timestamp_ist = row.accessed_at.strftime("%d %b %Y, %I:%M:%S %p IST")
+
     return {
         "id": row.id,
         "accessor_id": row.accessor_id,
@@ -358,6 +367,7 @@ def serialize_audit_row(row: EmergencyAccessAudit) -> Dict[str, Any]:
         "accessor_role": row.accessor_role,
         "patient_id": row.patient_id,
         "timestamp": row.accessed_at.isoformat() if row.accessed_at else None,
+        "timestamp_ist": timestamp_ist,
         "purpose": row.purpose,
         "information_type": row.information_type,
         "is_emergency": bool(row.is_emergency),

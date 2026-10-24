@@ -5,7 +5,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from ..database import get_db
 from ..models import User, EmergencyAlert, IoTVitalReading, CaretakerAlertConfig, FamilyMember, EmergencyAccessAudit
@@ -84,48 +84,94 @@ def trigger_rapid_sos(
             "patient_passport_shared": passport_data
         }
 
-    # Generate Unique Incident ID
-    incident_id = f"INC-{datetime.utcnow().strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
+    # 1. Indian Standard Time (IST, UTC+5:30)
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    ist_now = datetime.now(ist_tz)
+    now_time = ist_now.strftime("%I:%M %p IST (%d/%m/%Y)")
+    dispatched_at_ist = ist_now.strftime("%d/%m/%Y, %I:%M:%S %p IST")
+
+    # Generate Unique Incident ID with IST date stamp
+    incident_id = f"INC-{ist_now.strftime('%Y%m%d')}-{secrets.token_hex(3).upper()}"
 
     # 2. Multi-Contact Lookup (Primary Caregiver & Secondary Contact)
     contacts_to_notify = []
     cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
 
-    # Primary Contact
-    primary_phone = payload.get("caretaker_phone") or (cfg.caretaker_phone if cfg else None)
-    primary_name = payload.get("caretaker_name") or (cfg.caretaker_name if cfg else "Primary Caregiver")
+    # Primary Contact priority:
+    # 1) Explicit payload caretaker_phone
+    # 2) CaretakerAlertConfig caretaker_phone
+    # 3) User model emergency_contact_phone
+    # 4) FamilyMember phone/whatsapp
+    # 5) User model primary phone
+    # 6) System environment default recipient
+    primary_phone = (payload.get("caretaker_phone") or "").strip()
+    primary_name = (payload.get("caretaker_name") or "").strip()
+
+    if not primary_phone and cfg and cfg.caretaker_phone:
+        primary_phone = cfg.caretaker_phone.strip()
+        primary_name = cfg.caretaker_name or primary_name
+
+    if not primary_phone and getattr(current_user, "emergency_contact_phone", None):
+        primary_phone = str(current_user.emergency_contact_phone).strip()
+        primary_name = getattr(current_user, "emergency_contact_name", None) or primary_name
+
     if not primary_phone:
         fm = db.query(FamilyMember).filter(FamilyMember.user_id == current_user.id).first()
         if fm:
-            primary_phone = fm.phone or fm.whatsapp
+            primary_phone = (fm.phone or fm.whatsapp or "").strip()
             primary_name = fm.full_name or primary_name
 
     if not primary_phone:
-        primary_phone = current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "")
+        primary_phone = (current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+        if not primary_name:
+            primary_name = current_user.full_name or "Primary Caregiver"
 
-    if primary_phone and str(primary_phone).strip():
+    if not primary_name:
+        primary_name = "Primary Caregiver"
+
+    clean_primary_phone = sanitize_indian_mobile_number(primary_phone)
+    if clean_primary_phone:
         contacts_to_notify.append({
             "name": primary_name,
-            "phone": str(primary_phone).strip(),
+            "phone": clean_primary_phone,
             "role": "Primary Caregiver"
         })
 
-    # Secondary Contact (if configured)
-    if cfg and cfg.secondary_phone and str(cfg.secondary_phone).strip():
+    # Secondary Contact (if configured and distinct from primary)
+    sec_phone = (payload.get("secondary_phone") or "").strip()
+    sec_name = (payload.get("secondary_name") or "").strip()
+
+    if not sec_phone and cfg and cfg.secondary_phone:
+        sec_phone = cfg.secondary_phone.strip()
+        sec_name = cfg.secondary_name or "Secondary Emergency Contact"
+
+    if not sec_phone and getattr(current_user, "emergency_contact_phone", None):
+        ec_phone = str(current_user.emergency_contact_phone).strip()
+        if sanitize_indian_mobile_number(ec_phone) != clean_primary_phone:
+            sec_phone = ec_phone
+            sec_name = getattr(current_user, "emergency_contact_name", None) or "Secondary Emergency Contact"
+
+    clean_sec_phone = sanitize_indian_mobile_number(sec_phone)
+    if clean_sec_phone and clean_sec_phone != clean_primary_phone:
         contacts_to_notify.append({
-            "name": cfg.secondary_name or "Secondary Emergency Contact",
-            "phone": str(cfg.secondary_phone).strip(),
+            "name": sec_name or "Secondary Emergency Contact",
+            "phone": clean_sec_phone,
             "role": "Secondary Caregiver"
         })
 
     patient_name = (current_user.full_name or "Patient").strip()
     maps_url = payload.get("maps_url") or f"https://maps.google.com/?q={lat:.5f},{lng:.5f}"
-    now_time = datetime.utcnow().strftime("%I:%M %p UTC")
+
+    # Location name / address
+    loc_name = (payload.get("location_name") or payload.get("address") or "").strip()
+    if not loc_name:
+        loc_name = f"GPS Pin ({lat:.4f}, {lng:.4f})"
+    clean_loc = (loc_name[:50] + "..") if len(loc_name) > 50 else loc_name
 
     sos_message = (
         f"EMERGENCY SOS: {patient_name} needs IMMEDIATE medical care! "
-        f"Live GPS Location: {maps_url} "
-        f"Incident: {incident_id} Time: {now_time}. Please check immediately or call emergency services."
+        f"Location: {maps_url} ({clean_loc}). "
+        f"Time: {now_time}. Incident: {incident_id}."
     )
 
     passport = build_live_passport(db, current_user)
@@ -142,6 +188,7 @@ def trigger_rapid_sos(
                 force=True
             )
             is_success = bool(sms_res.get("success", False))
+            status_code = sms_res.get("status", "failed")
             if is_success:
                 overall_delivery_status = "GATEWAY_ACCEPTED"
             dispatches.append({
@@ -149,12 +196,13 @@ def trigger_rapid_sos(
                 "contact_phone": contact["phone"],
                 "role": contact["role"],
                 "success": is_success,
-                "status": "GATEWAY_ACCEPTED" if is_success else "FAILED",
+                "status": "GATEWAY_ACCEPTED" if is_success else status_code.upper(),
                 "error": sms_res.get("error") if not is_success else None,
                 "provider": "Fast2SMS Quick SMS Gateway (Route 'q')",
-                "delivery_timestamp": datetime.utcnow().isoformat()
+                "delivery_timestamp": ist_now.isoformat(),
+                "delivery_timestamp_ist": dispatched_at_ist
             })
-            logger.info(f"1-Tap SOS SMS to {contact['phone']}: success={is_success}")
+            logger.info(f"1-Tap SOS SMS to {contact['phone']}: success={is_success}, status={status_code}")
         except Exception as e:
             logger.error(f"Error dispatching SOS to {contact['phone']}: {e}")
             dispatches.append({
@@ -164,7 +212,8 @@ def trigger_rapid_sos(
                 "success": False,
                 "status": "FAILED",
                 "error": str(e),
-                "delivery_timestamp": datetime.utcnow().isoformat()
+                "delivery_timestamp": ist_now.isoformat(),
+                "delivery_timestamp_ist": dispatched_at_ist
             })
 
     # 4. Save Emergency Alert Record
@@ -203,14 +252,14 @@ def trigger_rapid_sos(
         db,
         accessor=current_user,
         patient_id=current_user.id,
-        purpose=f"1-Tap SOS Incident {incident_id} (GPS {lat:.4f}, {lng:.4f})",
+        purpose=f"1-Tap SOS Incident {incident_id} at {clean_loc} at {now_time}",
         information_type="emergency_sos_dispatch",
         is_emergency=True,
         access_channel="sos",
         context_scope="SOS_DISPATCH",
         status="SUCCESS" if overall_delivery_status == "GATEWAY_ACCEPTED" else "DISPATCH_FALLBACK",
         consent_status="EXPLICIT_OVERRIDE",
-        fields_viewed=["patient_name", "live_latitude", "live_longitude", "maps_url", "timestamp"],
+        fields_viewed=["patient_name", "live_latitude", "live_longitude", "location_name", "maps_url", "timestamp_ist"],
         accessor_name=current_user.full_name or "Patient",
         accessor_role="patient"
     )
@@ -231,8 +280,11 @@ def trigger_rapid_sos(
         "latitude": lat,
         "longitude": lng,
         "accuracy": accuracy,
+        "location_name": clean_loc,
         "maps_url": maps_url,
-        "dispatched_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "dispatched_at": dispatched_at_ist,
+        "dispatched_at_ist": dispatched_at_ist,
+        "dispatched_at_iso": ist_now.isoformat(),
         "eta_minutes": alert.eta_minutes,
         "ambulance_unit": alert.ambulance_unit,
         "paramedic_team": alert.paramedic_name,

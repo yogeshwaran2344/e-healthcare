@@ -3265,11 +3265,63 @@ async function requestQueueRefresh() {
 let emergencyPollInterval = null;
 let currentEmergencyAlertId = null;
 
-// Acquire device real-time live GPS coordinates with high accuracy
-function getLiveLocationCoordinates() {
-    return new Promise((resolve) => {
+// Format timestamps reliably in Indian Standard Time (IST, UTC+5:30)
+function formatIndianStandardTime(dateInput = new Date(), includeDate = true) {
+    if (!dateInput) return '—';
+    try {
+        const d = (dateInput instanceof Date) ? dateInput : new Date(dateInput);
+        if (isNaN(d.getTime())) return String(dateInput);
+        const options = {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        };
+        if (includeDate) {
+            options.day = '2-digit';
+            options.month = 'short';
+            options.year = 'numeric';
+        }
+        return new Intl.DateTimeFormat('en-IN', options).format(d) + ' IST';
+    } catch (e) {
+        return new Date(dateInput).toLocaleString() + ' IST';
+    }
+}
+
+// Client-side reverse geocoding to display friendly Indian locality and city
+async function fetchLocalityName(lat, lng) {
+    if (!lat || !lng) return null;
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+            const data = await res.json();
+            const parts = [];
+            if (data.locality) parts.push(data.locality);
+            else if (data.neighbourhood) parts.push(data.neighbourhood);
+            
+            if (data.city && !parts.includes(data.city)) parts.push(data.city);
+            if (data.principalSubdivision && !parts.includes(data.principalSubdivision)) parts.push(data.principalSubdivision);
+            if (parts.length > 0) {
+                return parts.join(", ");
+            }
+        }
+    } catch (e) {
+        console.warn("Locality reverse-geocoding lookup notice:", e.message);
+    }
+    return null;
+}
+
+// Acquire device real-time live GPS coordinates with high accuracy and IP fallback
+async function getLiveLocationCoordinates() {
+    // 1. Try Browser Geolocation first
+    const gpsPromise = new Promise((resolve) => {
         if (!navigator.geolocation) {
-            console.warn("Geolocation API not supported by browser environment.");
+            console.warn("Browser Geolocation API not supported in current environment.");
             resolve(null);
             return;
         }
@@ -3278,20 +3330,60 @@ function getLiveLocationCoordinates() {
                 resolve({
                     latitude: pos.coords.latitude,
                     longitude: pos.coords.longitude,
-                    accuracy: pos.coords.accuracy
+                    accuracy: pos.coords.accuracy,
+                    source: "GPS_SATELLITE"
                 });
             },
             (err) => {
-                console.warn("Geolocation acquisition error or permission denied:", err.message);
+                console.warn("Browser GPS lock notice (timeout/permission):", err.message);
                 resolve(null);
             },
             {
                 enableHighAccuracy: true,
-                timeout: 6000,
-                maximumAge: 0
+                timeout: 5000,
+                maximumAge: 5000
             }
         );
     });
+
+    const gpsResult = await gpsPromise;
+    if (gpsResult && gpsResult.latitude && gpsResult.longitude) {
+        return gpsResult;
+    }
+
+    // 2. Fallback to Network IP-based Geolocation if GPS is blocked or timed out
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        const ipRes = await fetch("https://ipwho.is/", { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (ipRes.ok) {
+            const data = await ipRes.json();
+            if (data && data.success !== false && data.latitude && data.longitude) {
+                return {
+                    latitude: data.latitude,
+                    longitude: data.longitude,
+                    accuracy: 1200,
+                    source: "NETWORK_IP",
+                    city: data.city,
+                    region: data.region,
+                    country: data.country
+                };
+            }
+        }
+    } catch (ipErr) {
+        console.warn("IP geolocation fallback lookup notice:", ipErr.message);
+    }
+
+    // 3. Fallback coordinates (Bengaluru Center)
+    return {
+        latitude: 12.9716,
+        longitude: 77.5946,
+        accuracy: 2500,
+        source: "DEFAULT_FALLBACK",
+        city: "Bengaluru",
+        region: "Karnataka"
+    };
 }
 
 async function refreshLiveGpsPreview() {
@@ -3299,8 +3391,11 @@ async function refreshLiveGpsPreview() {
     const lngEl = document.getElementById('sosLiveLng');
     const accEl = document.getElementById('sosLiveAcc');
     const mapLink = document.getElementById('sosGoogleMapsLink');
+    const locNameEl = document.getElementById('sosLiveLocName');
+    const gpsTimeEl = document.getElementById('sosLiveGpsTime');
 
-    if (accEl) accEl.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Acquiring GPS Satellite Lock...`;
+    if (accEl) accEl.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Acquiring Live GPS Lock...`;
+    if (locNameEl) locNameEl.innerHTML = `<span class="spinner-border spinner-border-sm me-1 text-primary"></span> Resolving location...`;
 
     const coords = await getLiveLocationCoordinates();
     const lat = coords ? coords.latitude : 12.9716;
@@ -3309,13 +3404,27 @@ async function refreshLiveGpsPreview() {
 
     if (latEl) latEl.textContent = lat.toFixed(5);
     if (lngEl) lngEl.textContent = lng.toFixed(5);
+
+    // Current IST Time
+    const currentIst = formatIndianStandardTime(new Date());
+    if (gpsTimeEl) gpsTimeEl.textContent = currentIst;
+
+    // Locality
+    let locality = coords && coords.city ? `${coords.city}, ${coords.region || ''}` : null;
+    const resolvedLoc = await fetchLocalityName(lat, lng);
+    if (resolvedLoc) locality = resolvedLoc;
+    if (locNameEl) locNameEl.textContent = locality || `GPS Fix (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
     if (accEl) {
-        if (coords) {
+        if (coords && coords.source === "GPS_SATELLITE") {
             accEl.className = "badge bg-success-subtle text-success";
-            accEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Live Satellite Lock (±${Math.round(coords.accuracy || 15)}m)`;
+            accEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>Live Satellite Lock (±${Math.round(coords.accuracy || 10)}m)`;
+        } else if (coords && coords.source === "NETWORK_IP") {
+            accEl.className = "badge bg-info-subtle text-info";
+            accEl.innerHTML = `<i class="bi bi-wifi me-1"></i>Network IP Geolocation (${coords.city || 'India'})`;
         } else {
             accEl.className = "badge bg-warning-subtle text-warning";
-            accEl.innerHTML = `<i class="bi bi-geo-alt me-1"></i>Fallback Coordinates (Permission Prompt)`;
+            accEl.innerHTML = `<i class="bi bi-geo-alt me-1"></i>Default Center Coordinates`;
         }
     }
     if (mapLink) {
@@ -3347,13 +3456,14 @@ function updateSosStatusUI(res) {
     const mapsLink = document.getElementById('sosGoogleMapsLink');
     const latEl = document.getElementById('sosLiveLat');
     const lngEl = document.getElementById('sosLiveLng');
+    const locNameEl = document.getElementById('sosLiveLocName');
 
-    const nowStr = new Date().toLocaleTimeString();
-    if (timeEl) timeEl.textContent = `Dispatched Today at ${nowStr}`;
+    const nowIst = res.dispatched_at_ist || formatIndianStandardTime(new Date());
+    if (timeEl) timeEl.textContent = `Dispatched: ${nowIst}`;
     if (statusEl) {
-        if (res.sms_sent) {
+        if (res.delivery_status === 'GATEWAY_ACCEPTED' || res.delivery_status === 'DELIVERED') {
             statusEl.className = "badge bg-success";
-            statusEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>SMS Delivered to Caretaker`;
+            statusEl.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i>SMS Gateway Accepted`;
         } else {
             statusEl.className = "badge bg-warning text-dark";
             statusEl.innerHTML = `<i class="bi bi-send-check me-1"></i>SOS Dispatched (${res.caretaker_phone || 'Logged'})`;
@@ -3364,10 +3474,11 @@ function updateSosStatusUI(res) {
     }
     if (res.latitude && latEl) latEl.textContent = Number(res.latitude).toFixed(5);
     if (res.longitude && lngEl) lngEl.textContent = Number(res.longitude).toFixed(5);
+    if (res.location_name && locNameEl) locNameEl.textContent = res.location_name;
     if (res.maps_url && mapsLink) mapsLink.href = res.maps_url;
 }
 
-function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
+function showSosDispatchModal(res, mapsUrl, lat, lng, acc, locality) {
     const incEl = document.getElementById('modalSosIncidentId');
     const nameEl = document.getElementById('modalSosCaretakerName');
     const phoneEl = document.getElementById('modalSosCaretakerPhone');
@@ -3381,10 +3492,14 @@ function showSosDispatchModal(res, mapsUrl, lat, lng, acc) {
     const callBtn = document.getElementById('modalSosCallCaretakerBtn');
     const statusBadge = document.getElementById('modalSosSmsStatusBadge');
     const accBadge = document.getElementById('modalSosAccuracyBadge');
+    const timeIstEl = document.getElementById('modalSosTimeIst');
+    const localityEl = document.getElementById('modalSosLocality');
 
     if (incEl) incEl.textContent = res.incident_id || `INC-${Date.now().toString().slice(-6)}`;
     if (nameEl) nameEl.textContent = res.caretaker_name || "Primary Caregiver";
     if (phoneEl) phoneEl.textContent = res.caretaker_phone || "Registered Caretaker";
+    if (timeIstEl) timeIstEl.textContent = res.dispatched_at_ist || formatIndianStandardTime(new Date());
+    if (localityEl) localityEl.textContent = res.location_name || locality || "Live GPS Location";
 
     // Secondary contact details if dispatched
     const contacts = res.contacts_dispatched || [];
@@ -3517,7 +3632,7 @@ async function executeOneTapSosDispatch() {
 
     showSMSNotification({
         title: "🚨 1-TAP EMERGENCY SOS DISPATCHING",
-        message: "Acquiring live high-accuracy GPS coordinates & generating incident dossier...",
+        message: "Acquiring live high-accuracy GPS coordinates & resolving locality...",
         channel: "sms",
         duration: 3500
     });
@@ -3528,6 +3643,12 @@ async function executeOneTapSosDispatch() {
         const lng = coords ? coords.longitude : 77.5946;
         const mapsUrl = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
 
+        // Resolve locality
+        let locality = coords && coords.city ? `${coords.city}, ${coords.region || ''}` : null;
+        const resolved = await fetchLocalityName(lat, lng);
+        if (resolved) locality = resolved;
+        if (!locality) locality = `GPS Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
         const cfg = getContactSettings();
 
         const payload = {
@@ -3536,6 +3657,7 @@ async function executeOneTapSosDispatch() {
             latitude: lat,
             longitude: lng,
             accuracy: coords ? coords.accuracy : null,
+            location_name: locality,
             maps_url: mapsUrl,
             caretaker_phone: cfg.caretakerPhone,
             caretaker_name: cfg.caretakerName
@@ -3545,7 +3667,7 @@ async function executeOneTapSosDispatch() {
         currentEmergencyAlertId = res.alert_id;
 
         // Display the rich Emergency SOS Dispatch confirmation modal
-        showSosDispatchModal(res, mapsUrl, lat, lng, coords ? coords.accuracy : null);
+        showSosDispatchModal(res, mapsUrl, lat, lng, coords ? coords.accuracy : null, locality);
 
         // Update SOS status UI elements
         updateSosStatusUI(res);
@@ -3554,9 +3676,11 @@ async function executeOneTapSosDispatch() {
             ? "Gateway Accepted (Carrier Hand-Off in Progress)"
             : (res.delivery_status === 'DELIVERED' ? "Carrier Delivered" : "SMS Rejected/Blocked");
 
+        const istTime = res.dispatched_at_ist || formatIndianStandardTime(new Date());
+
         showSMSNotification({
             title: `🚨 EMERGENCY SOS [${res.incident_id || 'INC-LIVE'}]`,
-            message: `Alert sent to ${res.caretaker_name || 'Caregiver'} (${res.caretaker_phone || 'Registered Phone'}). Status: ${statusLabel}`,
+            message: `Alert sent to ${res.caretaker_name || 'Caregiver'} (${res.caretaker_phone || 'Registered Phone'}). Status: ${statusLabel}. Time: ${istTime}`,
             channel: "sms",
             phone: res.caretaker_phone,
             duration: 9000
@@ -4363,7 +4487,7 @@ async function loadPatientEmergencyAudit() {
 
             return `
                 <tr>
-                    <td class="small text-nowrap">${ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit', month:'short', day:'numeric'}) : '—'}</td>
+                    <td class="small text-nowrap">${ev.timestamp_ist || (ev.timestamp ? formatIndianStandardTime(ev.timestamp) : '—')}</td>
                     <td class="small">
                         <strong>${ev.accessor_name || 'Bystander'}</strong>
                         <span class="text-muted d-block" style="font-size:0.7rem;">${ev.accessor_role || 'Responder'}</span>
