@@ -757,7 +757,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadCommunityTab().catch(() => {});
     loadAdaptiveRemindersTab().catch(() => {});
     loadConsultations().catch(() => {});
-    loadNavQueueTab().catch(() => {});
     fetchAndRenderPassport('PUBLIC_BASIC').catch(() => {});
 
     // Check URL hash for direct tab linking (e.g. #tab-profile, #tab-iot)
@@ -2661,7 +2660,6 @@ function activateTab(tabId, scroll = true) {
     if (!cleanId.startsWith('tab-') && document.getElementById(`tab-${cleanId}`)) {
         cleanId = `tab-${cleanId}`;
     }
-    if (cleanId === 'tab-navigation') cleanId = 'tab-navigation-pane';
 
     // Every tab (including Profile and IoT) maps to its own pane
     const paneId = cleanId;
@@ -2758,8 +2756,6 @@ function activateTab(tabId, scroll = true) {
             if (typeof loadAdaptiveRemindersTab === 'function') loadAdaptiveRemindersTab().catch(() => {});
         } else if (cleanId === 'tab-history') {
             if (typeof loadConsultations === 'function') loadConsultations().catch(() => {});
-        } else if (cleanId === 'tab-navigation-pane') {
-            if (typeof loadNavQueueTab === 'function') loadNavQueueTab().catch(() => {});
         } else if (cleanId === 'tab-travel') {
             if (typeof initTravelTab === 'function') initTravelTab().catch(() => {});
         } else if (cleanId === 'tab-sos') {
@@ -3210,151 +3206,6 @@ async function revokeConsent(consentId) {
         await loadBlockchainTab();
     } catch (err) {
         alert("Failed to revoke: " + err.message);
-    }
-}
-
-// ===================================================================
-// 4. INDOOR AR HOSPITAL NAVIGATION & LIVE QUEUE CONTROLLER
-// ===================================================================
-let hospitalFloorsData = null;
-let currentNavFloor = "Ground Floor";
-
-async function loadNavQueueTab() {
-    try {
-        hospitalFloorsData = await API.get('/api/navigation/floors');
-        await switchFloor(currentNavFloor);
-        await calculateNavRoute();
-        await requestQueueRefresh();
-    } catch (err) {
-        console.error("Error loading navigation tab:", err);
-    }
-}
-
-function switchFloor(floorName) {
-    currentNavFloor = floorName;
-    ['btnFloorGF', 'btnFloor1F', 'btnFloor2F'].forEach(id => {
-        const b = document.getElementById(id);
-        if (b) b.classList.remove('active');
-    });
-    if (floorName === 'Ground Floor') document.getElementById('btnFloorGF')?.classList.add('active');
-    else if (floorName === '1st Floor') document.getElementById('btnFloor1F')?.classList.add('active');
-    else if (floorName === '2nd Floor') document.getElementById('btnFloor2F')?.classList.add('active');
-
-    renderHospitalSvgMap();
-}
-
-function renderHospitalSvgMap(routeWaypoints = []) {
-    const svg = document.getElementById('hospitalMapSvg');
-    if (!svg || !hospitalFloorsData) return;
-
-    const waypoints = hospitalFloorsData.floors[currentNavFloor] || [];
-    let innerHtml = `
-        <defs>
-            <linearGradient id="wallGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#e2e8f0"/>
-                <stop offset="100%" stop-color="#cbd5e1"/>
-            </linearGradient>
-        </defs>
-        <!-- Hospital Floor Outline -->
-        <rect x="20" y="20" width="560" height="460" rx="20" fill="url(#wallGrad)" stroke="#94a3b8" stroke-width="3"/>
-        <rect x="40" y="40" width="520" height="420" rx="14" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
-        
-        <!-- Floor Header Label -->
-        <text x="50" y="75" font-family="Segoe UI, sans-serif" font-size="16" font-weight="bold" fill="#0d6efd">
-            Apex Hospital - ${currentNavFloor} Blueprint
-        </text>
-    `;
-
-    // Draw Route Polyline if present for this floor
-    if (routeWaypoints && routeWaypoints.length > 1) {
-        const floorPoints = routeWaypoints.filter(w => w.floor === currentNavFloor);
-        if (floorPoints.length > 1) {
-            const ptsStr = floorPoints.map(p => `${p.x},${p.y}`).join(' ');
-            innerHtml += `<polyline points="${ptsStr}" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="6,4"/>`;
-        }
-    }
-
-    // Draw Department Rooms & Waypoint Nodes
-    waypoints.forEach(wp => {
-        const isEmergency = wp.category === 'emergency';
-        const isElevator = wp.category === 'elevator';
-        const nodeColor = isEmergency ? '#ef4444' : isElevator ? '#8b5cf6' : '#0d6efd';
-
-        innerHtml += `
-            <g class="map-node" style="cursor: pointer;">
-                <circle cx="${wp.x}" cy="${wp.y}" r="22" fill="${nodeColor}" opacity="0.15"/>
-                <circle cx="${wp.x}" cy="${wp.y}" r="14" fill="${nodeColor}"/>
-                <circle cx="${wp.x}" cy="${wp.y}" r="6" fill="#ffffff"/>
-                <text x="${wp.x}" y="${wp.y + 28}" font-family="Segoe UI, sans-serif" font-size="11" font-weight="600" text-anchor="middle" fill="#1e293b">
-                    ${wp.name.split('-')[0].slice(0, 18)}
-                </text>
-            </g>
-        `;
-    });
-
-    svg.innerHTML = innerHtml;
-}
-
-async function calculateNavRoute() {
-    const dest = document.getElementById('navDestinationSelect')?.value || 'OPD_PULMONOLOGY';
-    try {
-        const route = await API.get(`/api/navigation/route?start=ENTRANCE&destination=${dest}`);
-        
-        // Auto-switch to destination floor if different
-        if (route.target_floor && route.target_floor !== currentNavFloor) {
-            currentNavFloor = route.target_floor;
-            switchFloor(currentNavFloor);
-        } else {
-            renderHospitalSvgMap(route.waypoints);
-        }
-
-        // Render directions list
-        const dirList = document.getElementById('navDirectionsList');
-        if (dirList) {
-            dirList.innerHTML = route.directions.map(d => `<li class="mb-1">${d}</li>`).join('');
-        }
-
-        // Update AR HUD components
-        const distEl = document.getElementById('arDistanceText');
-        const instEl = document.getElementById('arInstructionText');
-        if (distEl) distEl.textContent = `${route.total_distance_meters} m`;
-        if (instEl) instEl.textContent = route.directions[0] || "Proceed toward department";
-
-        const pills = document.getElementById('arWaypointsPills');
-        if (pills && route.ar_camera_hud) {
-            pills.innerHTML = route.ar_camera_hud.slice(0, 3).map(h => `
-                <span class="ar-waypoint-pin"><i class="bi bi-geo-alt-fill text-info"></i> ${h.target.slice(0, 15)} (${h.distance_m}m)</span>
-            `).join('');
-        }
-
-    } catch (err) {
-        console.error("Error calculating navigation route:", err);
-    }
-}
-
-function toggleARView() {
-    const v = document.getElementById('arViewfinderContainer');
-    const text = document.getElementById('arBtnText');
-    if (!v) return;
-    if (v.classList.contains('d-none')) {
-        v.classList.remove('d-none');
-        if (text) text.textContent = "Close AR Camera HUD";
-    } else {
-        v.classList.add('d-none');
-        if (text) text.textContent = "Open AR Camera HUD";
-    }
-}
-
-async function requestQueueRefresh() {
-    try {
-        const q = await API.get('/api/queue/my-token');
-        document.getElementById('queueTokenCode').textContent = q.token_code;
-        document.getElementById('queueDeptBadge').textContent = q.department;
-        document.getElementById('queueServingCode').textContent = q.currently_serving_token;
-        document.getElementById('queueWaitMinutes').textContent = `${q.estimated_wait_minutes} mins`;
-        document.getElementById('queuePriorityText').textContent = q.priority_level === 'EMERGENCY_CRITICAL' ? 'EMERGENCY BYPASS (Priority P0)' : `Normal OPD (${q.patients_ahead} ahead)`;
-    } catch (err) {
-        console.error("Error refreshing queue:", err);
     }
 }
 
@@ -7201,8 +7052,6 @@ function getContextualReadAloudText() {
         return `Data Access Audit Trail. Viewing all clinician and emergency access timestamps and cryptographic permission tokens.`;
     } else if (paneId === 'tab-predictive') {
         return `AI Chronic Deterioration Predictor. Analyzing vital trends and multi-week risk trajectories.`;
-    } else if (paneId === 'tab-navigation-pane') {
-        return `Augmented Reality Indoor Hospital Navigation. Turn-by-turn waypoints and OPD queue tokens.`;
     } else if (paneId === 'tab-travel') {
         return `Global Travel Health Passport. Multi-country vaccination and travel clearance passes verified.`;
     } else if (paneId === 'tab-community') {

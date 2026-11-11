@@ -498,18 +498,6 @@
 
                     <li class="nav-item">
 
-                        <button class="sidebar-tab-btn nav-link" id="tab-navigation-btn" onclick="activateTab('tab-navigation-pane')" type="button">
-
-                            <i class="bi bi-geo-alt-fill text-warning"></i>
-
-                            <span class="tab-label">AR Hospital Nav</span>
-
-                        </button>
-
-                    </li>
-
-                    <li class="nav-item">
-
                         <button class="sidebar-tab-btn nav-link" id="tab-travel-btn" onclick="activateTab('tab-travel')" type="button">
 
                             <i class="bi bi-airplane-fill text-info"></i>
@@ -3268,188 +3256,6 @@
 
             <!-- =========================================================
 
-                 TAB 8: SMART INDOOR AR HOSPITAL NAVIGATION & QUEUE
-
-                 ========================================================= -->
-
-            <div class="tab-pane fade" id="tab-navigation-pane">
-
-                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-
-                    <div>
-
-                        <h4 class="fw-bold mb-1 text-warning"><i class="bi bi-geo-alt-fill me-2"></i>Indoor Hospital AR Navigation & Smart Queue</h4>
-
-                        <p class="text-muted small mb-0">Multi-floor topological routing, AR camera waypoints, and priority queue management.</p>
-
-                    </div>
-
-                    <!-- AR Camera Toggle -->
-
-                    <button class="btn btn-outline-primary btn-sm fw-semibold" id="arToggleBtn" onclick="toggleARView()">
-
-                        <i class="bi bi-camera-video-fill me-1"></i> <span id="arBtnText">Open AR Camera HUD</span>
-
-                    </button>
-
-                </div>
-
-                <div class="row g-4">
-
-                    <!-- Navigation Floor Map & AR Viewfinder -->
-
-                    <div class="col-lg-8">
-
-                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-
-                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-
-                                <div class="btn-group btn-group-sm" role="group">
-
-                                    <button class="btn btn-outline-secondary active" id="btnFloorGF" onclick="switchFloor('Ground Floor')">Ground Floor</button>
-
-                                    <button class="btn btn-outline-secondary" id="btnFloor1F" onclick="switchFloor('1st Floor')">1st Floor (OPD)</button>
-
-                                    <button class="btn btn-outline-secondary" id="btnFloor2F" onclick="switchFloor('2nd Floor')">2nd Floor (Diagnostics)</button>
-
-                                </div>
-
-                                <div class="d-flex align-items-center gap-2">
-
-                                    <label class="small text-muted fw-bold">Destination:</label>
-
-                                    <select class="form-select form-select-sm" id="navDestinationSelect" onchange="calculateNavRoute()" style="width: auto;">
-
-                                        <option value="OPD_GASTRO">Dr. Yogeshwaran (Suite 101 - Gastroenterology &amp; Physician)</option>
-
-                                        <option value="EMERGENCY_ER">Emergency Room &amp; Trauma Bay</option>
-
-                                        <option value="PATHOLOGY_LAB">Central Pathology Diagnostic Lab</option>
-
-                                        <option value="RADIOLOGY">Radiology &amp; Scans</option>
-
-                                        <option value="PHARMACY">24/7 Outpatient Pharmacy</option>
-
-                                    </select>
-
-                                </div>
-
-                            </div>
-
-                            <!-- Interactive Floor Map SVG Canvas -->
-
-                            <div id="mapCanvasContainer" class="position-relative mb-3">
-
-                                <svg id="hospitalMapSvg" class="hospital-map-svg" viewBox="0 0 600 500">
-
-                                    <!-- Dynamic SVG elements inserted via JS -->
-
-                                </svg>
-
-                            </div>
-
-                            <!-- AR Viewfinder Overlay (Hidden by default) -->
-
-                            <div id="arViewfinderContainer" class="ar-hud-viewfinder p-4 d-none mb-3">
-
-                                <div class="ar-crosshair"></div>
-
-                                <div class="d-flex justify-content-between align-items-center">
-
-                                    <span class="badge bg-info text-dark"><i class="bi bi-camera me-1"></i>AR Camera HUD Mode</span>
-
-                                    <span class="small" id="arHeadingText">Heading: 045° NE | Pitch: -5°</span>
-
-                                </div>
-
-                                <div class="text-center my-4">
-
-                                    <div class="display-6 fw-bold text-info" id="arDistanceText">35 m</div>
-
-                                    <p class="lead mb-0 text-white" id="arInstructionText">Head straight through Central Lobby toward Elevators</p>
-
-                                </div>
-
-                                <div class="d-flex justify-content-center gap-2" id="arWaypointsPills"></div>
-
-                            </div>
-
-                            <!-- Turn by Turn Guidance Steps -->
-
-                            <div>
-
-                                <strong class="small text-muted text-uppercase d-block mb-2"><i class="bi bi-signpost-2 me-1"></i>Turn-by-Turn Waypoint Guidance:</strong>
-
-                                <ol id="navDirectionsList" class="small text-dark mb-0 ps-3"></ol>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <!-- Live Queue Ticket & Priority Management -->
-
-                    <div class="col-lg-4">
-
-                        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
-
-                            <h5 class="fw-bold mb-3"><i class="bi bi-ticket-perforated-fill text-primary me-2"></i>Live OPD Queue Ticket</h5>
-
-                            
-
-                            <div class="queue-ticket text-center mb-3">
-
-                                <small class="text-muted fw-bold text-uppercase d-block">Your Appointment Token</small>
-
-                                <div class="queue-token-display" id="queueTokenCode">A-114</div>
-
-                                <span class="badge bg-primary-subtle text-primary mb-2" id="queueDeptBadge">OPD Pulmonology</span>
-
-                                <div class="d-flex justify-content-around border-top pt-2 mt-2">
-
-                                    <div>
-
-                                        <small class="text-muted d-block">Serving Now</small>
-
-                                        <strong class="text-success fs-5" id="queueServingCode">A-112</strong>
-
-                                    </div>
-
-                                    <div class="border-start ps-3">
-
-                                        <small class="text-muted d-block">Est. Wait</small>
-
-                                        <strong class="text-warning fs-5" id="queueWaitMinutes">12 mins</strong>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <div class="alert alert-info py-2 small mb-3" id="queuePriorityAlert">
-
-                                <i class="bi bi-info-circle me-1"></i> <strong>Priority Status:</strong> <span id="queuePriorityText">Normal OPD Turn</span>
-
-                            </div>
-
-                            <button class="btn btn-outline-primary btn-sm w-100 fw-semibold" onclick="requestQueueRefresh()">
-
-                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Queue Position
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- =========================================================
-
                  TAB: ONE-TAP EMERGENCY SOS WITH LIVE LOCATION
 
                  ========================================================= -->
@@ -5617,7 +5423,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261111_v1"></script>
+    <script src="/static/js/patient.js?v=20261111_v2"></script>
 
 </body>
 
