@@ -19,7 +19,7 @@ import hashlib
 import logging
 import urllib.request
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Header, Body, Query
 from sqlalchemy.orm import Session
@@ -72,7 +72,7 @@ from ..models import (
     User, Consultation, MedicalReport,
     ClinicalTimelineEntry, AdaptiveDiagnosticSession,
     ClinicalDisagreementRecord, ClinicalOutcomeRecord, ContextualQRToken,
-    CaretakerAlertConfig
+    CaretakerAlertConfig, MedicationSchedule
 )
 from ..auth import get_current_user, get_optional_current_user
 from ..schemas import (
@@ -1038,10 +1038,160 @@ def add_timeline_entry(
 from ..ml.adaptive_reminders_engine import DEFAULT_SCHEDULES, calculate_adaptive_reminder
 from ..ml.caregiver_escalation_engine import evaluate_contextual_caregiver_alert
 
+def _format_schedule_label(frequency: str, target_date: Optional[str], day_of_week: Optional[str]) -> str:
+    freq = (frequency or "daily").lower()
+    if freq == "tomorrow":
+        return f"Tomorrow Only ({target_date})" if target_date else "Tomorrow Only"
+    if freq == "weekly":
+        return f"Every Week ({day_of_week or 'Same Day'})"
+    if freq == "specific_date":
+        return f"Specific Date ({target_date})" if target_date else "Specific Date"
+    return "Every Day (Daily)"
+
+
 @router.get("/reminders/adaptive-schedules")
-def get_adaptive_schedules(current_user: User = Depends(get_current_user)):
-    """Returns AI-adjusted behavioral medication reminder schedules."""
-    return {"schedules": DEFAULT_SCHEDULES}
+def get_adaptive_schedules(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Returns AI-adjusted behavioral medication reminder schedules plus user's custom schedules."""
+    schedules = []
+    for item in DEFAULT_SCHEDULES:
+        copy_item = dict(item)
+        copy_item.setdefault("frequency", "daily")
+        copy_item.setdefault("target_date", None)
+        copy_item.setdefault("day_of_week", None)
+        copy_item.setdefault("schedule_label", "Every Day (Daily)")
+        copy_item.setdefault("is_custom", False)
+        schedules.append(copy_item)
+
+    custom_rows = (
+        db.query(MedicationSchedule)
+        .filter(
+            MedicationSchedule.patient_id == current_user.id,
+            MedicationSchedule.is_active == True
+        )
+        .order_by(MedicationSchedule.id.desc())
+        .all()
+    )
+    for row in custom_rows:
+        freq = getattr(row, "frequency", None) or "daily"
+        t_date = getattr(row, "target_date", None)
+        d_week = getattr(row, "day_of_week", None)
+        label = _format_schedule_label(freq, t_date, d_week)
+        schedules.append({
+            "id": 10000 + row.id,
+            "db_id": row.id,
+            "medicine_name": row.medication_name,
+            "dosage": row.dosage or "1 Dose",
+            "condition": row.condition or "General Care",
+            "prescribed_time": row.scheduled_time,
+            "current_reminder_time": row.scheduled_time,
+            "frequency": freq,
+            "target_date": t_date,
+            "day_of_week": d_week,
+            "schedule_label": label,
+            "is_adapted": False,
+            "shift_minutes": 0,
+            "adherence_rate_pct": 100.0,
+            "is_custom": True,
+            "adaptation_rationale": f"Custom patient medication reminder ({label}). Monitoring intake habits to optimize reminder delivery."
+        })
+
+    return {"schedules": schedules}
+
+
+@router.post("/reminders/create")
+def create_adaptive_reminder(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Creates a persisted medication reminder with frequency: daily, tomorrow, weekly, or specific_date."""
+    med_name = (payload.get("medicine_name") or "").strip()
+    dosage = (payload.get("dosage") or "1 Dose").strip()
+    condition = (payload.get("condition") or "General Care").strip()
+    sched_time = (payload.get("prescribed_time") or payload.get("scheduled_time") or "08:00").strip()
+    frequency = (payload.get("frequency") or "daily").strip().lower()
+    target_date = (payload.get("target_date") or "").strip() or None
+    day_of_week = (payload.get("day_of_week") or "").strip() or None
+
+    if not med_name:
+        raise HTTPException(status_code=400, detail="medicine_name is required.")
+
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    ist_now = datetime.now(ist_tz)
+
+    if frequency == "tomorrow" and not target_date:
+        target_date = (ist_now + timedelta(days=1)).strftime("%Y-%m-%d")
+    elif frequency == "weekly" and not day_of_week:
+        day_of_week = ist_now.strftime("%A")
+    elif frequency == "specific_date" and not target_date:
+        target_date = ist_now.strftime("%Y-%m-%d")
+
+    phone = (payload.get("phone") or current_user.phone or "").strip() or None
+
+    row = MedicationSchedule(
+        patient_id=current_user.id,
+        medication_name=med_name,
+        dosage=dosage,
+        condition=condition,
+        scheduled_time=sched_time,
+        frequency=frequency,
+        target_date=target_date,
+        day_of_week=day_of_week,
+        patient_phone=phone,
+        is_active=True
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    label = _format_schedule_label(frequency, target_date, day_of_week)
+    return {
+        "success": True,
+        "schedule": {
+            "id": 10000 + row.id,
+            "db_id": row.id,
+            "medicine_name": row.medication_name,
+            "dosage": row.dosage,
+            "condition": row.condition or "General Care",
+            "prescribed_time": row.scheduled_time,
+            "current_reminder_time": row.scheduled_time,
+            "frequency": frequency,
+            "target_date": target_date,
+            "day_of_week": day_of_week,
+            "schedule_label": label,
+            "is_adapted": False,
+            "shift_minutes": 0,
+            "adherence_rate_pct": 100.0,
+            "is_custom": True,
+            "adaptation_rationale": f"Personalized medication reminder ({label}). Monitoring intake habits to adapt reminder slot."
+        }
+    }
+
+
+@router.delete("/reminders/{schedule_id}")
+def delete_adaptive_reminder(
+    schedule_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Deletes or deactivates a user's persisted medication schedule."""
+    db_id = schedule_id - 10000 if schedule_id >= 10000 else schedule_id
+    row = (
+        db.query(MedicationSchedule)
+        .filter(
+            MedicationSchedule.id == db_id,
+            MedicationSchedule.patient_id == current_user.id
+        )
+        .first()
+    )
+    if row:
+        row.is_active = False
+        db.commit()
+        return {"success": True, "deleted_id": schedule_id}
+    return {"success": True, "deleted_id": schedule_id}
 
 @router.post("/reminders/adapt")
 def adapt_medication_reminder(

@@ -1,6 +1,7 @@
 import json
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 from sqlalchemy.orm import Session
+from typing import Dict, Any
 from ..database import get_db
 from ..models import User, MedicalReport
 from ..schemas import (
@@ -8,9 +9,27 @@ from ..schemas import (
     NavigatorAssessmentRequest, NavigatorAssessmentResponse
 )
 from ..auth import get_current_user
-from ..ml.adaptive_engine import generate_adaptive_questions, compute_explainable_diagnosis
+from ..ml.adaptive_engine import (
+    generate_adaptive_questions,
+    compute_explainable_diagnosis,
+    get_recommended_report_types
+)
 
 router = APIRouter(prefix="/api/navigator", tags=["AI Personal Health Navigator"])
+
+
+@router.post("/recommended-reports")
+def get_context_aware_recommended_reports(
+    payload: Dict[str, Any] = Body(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Returns symptom- and severity-appropriate Step 3 medical report upload types
+    and clinical necessity guidance (avoids recommending X-rays/CBC for mild acne, etc.).
+    """
+    symptoms = payload.get("symptoms") or []
+    qa_answers = payload.get("qa_answers") or {}
+    return get_recommended_report_types(symptoms=symptoms, qa_answers=qa_answers)
 
 @router.post("/questions", response_model=AdaptiveQuestionsResponse)
 def get_adaptive_questions(

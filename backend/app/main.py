@@ -30,19 +30,38 @@ from .routes import (
 # Initialize database tables
 Base.metadata.create_all(bind=engine)
 
-def auto_migrate():
-    """Ensures newly added columns are automatically migrated into existing database tables and dummy data is purged."""
+
+def migrate_schema_columns():
+    """Safely adds newly introduced columns to existing SQLite/PostgreSQL tables at import/startup."""
     try:
-        from sqlalchemy import text
+        from sqlalchemy import text, inspect
+        insp = inspect(engine)
+        tables = set(insp.get_table_names())
         with engine.connect() as conn:
-            # Check users table columns
-            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-            col_names = [r[1] for r in res]
-            if "date_of_birth" not in col_names and len(col_names) > 0:
-                conn.execute(text("ALTER TABLE users ADD COLUMN date_of_birth VARCHAR(30)"))
+            if "users" in tables:
+                u_cols = {c["name"] for c in insp.get_columns("users")}
+                if "date_of_birth" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN date_of_birth VARCHAR(30)"))
+                    conn.commit()
+            if "medication_schedules" in tables:
+                s_cols = {c["name"] for c in insp.get_columns("medication_schedules")}
+                if "frequency" not in s_cols:
+                    conn.execute(text("ALTER TABLE medication_schedules ADD COLUMN frequency VARCHAR(30) DEFAULT 'daily'"))
+                if "target_date" not in s_cols:
+                    conn.execute(text("ALTER TABLE medication_schedules ADD COLUMN target_date VARCHAR(20)"))
+                if "day_of_week" not in s_cols:
+                    conn.execute(text("ALTER TABLE medication_schedules ADD COLUMN day_of_week VARCHAR(20)"))
                 conn.commit()
     except Exception as e:
-        print(f"Auto-migration notice: {e}")
+        print(f"Schema migration notice: {e}")
+
+
+migrate_schema_columns()
+
+
+def auto_migrate():
+    """Ensures newly added columns are automatically migrated into existing database tables and dummy data is purged."""
+    migrate_schema_columns()
 
     # Ensure dummy doctors/patients are purged and Dr. Yogeshwaran is configured
     try:

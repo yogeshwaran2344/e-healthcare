@@ -139,9 +139,12 @@ def create_medication_schedule(
         patient_id=current_user.id,
         medication_name=med_name,
         dosage=payload.get("dosage", ""),
+        condition=payload.get("condition") or payload.get("notes") or "General Care",
         scheduled_time=sched_time,
+        frequency=payload.get("frequency", "daily"),
+        target_date=payload.get("target_date"),
+        day_of_week=payload.get("day_of_week"),
         patient_phone=phone,
-        notes=payload.get("notes", ""),
         is_active=True
     )
     db.add(sched)
@@ -155,7 +158,11 @@ def create_medication_schedule(
             "id": sched.id,
             "medication_name": sched.medication_name,
             "dosage": sched.dosage,
+            "condition": sched.condition,
             "scheduled_time": sched.scheduled_time,
+            "frequency": sched.frequency,
+            "target_date": sched.target_date,
+            "day_of_week": sched.day_of_week,
             "patient_phone": sched.patient_phone,
             "is_active": sched.is_active
         }
@@ -177,9 +184,12 @@ def list_medication_schedules(
             "id": s.id,
             "medication_name": s.medication_name,
             "dosage": s.dosage,
+            "condition": s.condition,
             "scheduled_time": s.scheduled_time,
+            "frequency": getattr(s, "frequency", "daily") or "daily",
+            "target_date": getattr(s, "target_date", None),
+            "day_of_week": getattr(s, "day_of_week", None),
             "patient_phone": s.patient_phone,
-            "notes": s.notes,
             "is_active": s.is_active,
             "last_reminded_date": s.last_reminded_date,
             "last_status": s.last_status,

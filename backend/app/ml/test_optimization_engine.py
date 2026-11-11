@@ -93,8 +93,12 @@ def optimize_minimum_diagnostic_test_set(
     if any(s in symptoms_joined for s in ["flank", "dysuria", "hematuria"]):
         mandatory_tests.add("Urinalysis Routine & Microscopic (Urine R/M)")
 
-    # If no mandatory test was triggered, default to basic CBC
-    if not mandatory_tests:
+    # Dermatology / Acne / Mild Skin (Do NOT force routine CBC unless systemic fever/rash or severe)
+    is_mild_dermatology_or_cold = (
+        ("acne" in top_disease.lower() or "viral upper respiratory" in top_disease.lower() or "common cold" in top_disease.lower())
+        and "Self-Care" in (triage_level or "")
+    )
+    if not mandatory_tests and not is_mild_dermatology_or_cold and "Self-Care" not in (triage_level or ""):
         mandatory_tests.add("Complete Blood Count (CBC)")
 
     # Add all mandatory tests first with specific rationales
@@ -118,10 +122,13 @@ def optimize_minimum_diagnostic_test_set(
         cumulative_utility += meta["diagnostic_utility"]
 
     # 2. Add recommended tests strictly from top_disease if needed for complete workup
+    # Skip routine testing for mild self-care acne / common cold unless cystic/hormonal
+    skip_optional_tests = is_mild_dermatology_or_cold and ("cystic" not in symptoms_joined)
     candidate_test_pool = set()
-    for r_test in top_info.get("recommended_tests", []):
-        if r_test in TESTS_CATALOG and r_test not in mandatory_tests:
-            candidate_test_pool.add(r_test)
+    if not skip_optional_tests:
+        for r_test in top_info.get("recommended_tests", []):
+            if r_test in TESTS_CATALOG and r_test not in mandatory_tests:
+                candidate_test_pool.add(r_test)
 
     # 3. Score candidate tests by Cost-Benefit Pareto Ratio
     scored_candidates = []

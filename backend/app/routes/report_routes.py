@@ -17,6 +17,42 @@ router = APIRouter(prefix="/api/reports", tags=["Medical Reports & Biomarker Ext
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".webp", ".txt"}
 
+
+@router.get("")
+@router.get("/")
+def list_my_medical_reports(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Lists all medical reports uploaded by the current patient, newest first."""
+    reports = (
+        db.query(MedicalReport)
+        .filter(MedicalReport.patient_id == current_user.id)
+        .order_by(MedicalReport.uploaded_at.desc(), MedicalReport.id.desc())
+        .all()
+    )
+    results = []
+    for r in reports:
+        findings = {}
+        if r.extracted_findings:
+            try:
+                findings = json.loads(r.extracted_findings)
+            except Exception:
+                findings = {}
+        results.append({
+            "id": r.id,
+            "consultation_id": r.consultation_id,
+            "patient_id": r.patient_id,
+            "report_type": r.report_type,
+            "original_filename": r.original_filename,
+            "file_name": r.original_filename,
+            "stored_filename": r.stored_filename,
+            "file_url": f"/api/reports/{r.id}/file",
+            "extracted_findings": findings,
+            "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else None,
+        })
+    return results
+
 @router.post("/upload", response_model=MedicalReportOut)
 async def upload_medical_report(
     report_type: str = Form(...),

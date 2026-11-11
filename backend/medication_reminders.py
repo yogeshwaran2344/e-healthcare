@@ -8,7 +8,7 @@ preventing duplicate alerts and supporting background scheduled execution.
 import sys
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -125,8 +125,10 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
         return []
 
     dispatched = []
-    now = datetime.now()
+    ist_tz = timezone(timedelta(hours=5, minutes=30))
+    now = datetime.now(ist_tz)
     today_str = now.strftime("%Y-%m-%d")
+    today_weekday = now.strftime("%A").lower()
     current_hhmm = current_time_str or now.strftime("%H:%M")
 
     try:
@@ -139,10 +141,21 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
             norm_sched = sched_time.zfill(5) if len(sched_time) == 4 and ":" in sched_time else sched_time
             norm_curr = current_hhmm.zfill(5) if len(current_hhmm) == 4 and ":" in current_hhmm else current_hhmm
 
-            is_due = (norm_sched == norm_curr)
+            is_due_time = (norm_sched == norm_curr)
             already_reminded_today = (sched.last_reminded_date == today_str)
 
-            if is_due and not already_reminded_today:
+            # Check frequency & date rules
+            freq = (getattr(sched, "frequency", None) or "daily").lower()
+            target_date = (getattr(sched, "target_date", None) or "").strip()
+            day_of_week = (getattr(sched, "day_of_week", None) or "").strip().lower()
+
+            date_matches = True
+            if freq in ("tomorrow", "specific_date"):
+                date_matches = bool(target_date and target_date == today_str)
+            elif freq == "weekly":
+                date_matches = (not day_of_week) or (day_of_week == today_weekday)
+
+            if is_due_time and date_matches and not already_reminded_today:
                 phone = sched.patient_phone
                 patient_name = "Patient"
                 if not phone and sched.patient_id:
@@ -164,6 +177,9 @@ def check_and_send_due_reminders(db=None, current_time_str: Optional[str] = None
 
                 sched.last_reminded_date = today_str
                 sched.last_status = "SENT" if result.get("success") else "FAILED"
+                if freq in ("tomorrow", "specific_date") and result.get("success"):
+                    sched.is_active = False
+                    sched.last_status = "COMPLETED_ONETIME"
                 db.commit()
 
                 dispatched.append({

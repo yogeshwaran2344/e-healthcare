@@ -1524,6 +1524,104 @@ function handleAnswerChange() {
     });
 }
 
+let step3ReportHintsMap = {};
+
+function updateStep3ReportHint() {
+    const sel = document.getElementById('step3ReportType');
+    const hintEl = document.getElementById('step3ReportHint');
+    if (!sel || !hintEl) return;
+    const reason = step3ReportHintsMap[sel.value];
+    hintEl.innerHTML = reason ? `<i class="bi bi-lightbulb text-warning me-1"></i> ${escapeHtml(reason)}` : '';
+}
+
+async function loadStep3RecommendedReports() {
+    const banner = document.getElementById('step3ClinicalGuidanceBanner');
+    const sel = document.getElementById('step3ReportType');
+    const subtitle = document.getElementById('step3Subtitle');
+    const nextBtn = document.getElementById('step3NextBtn');
+
+    if (banner) {
+        banner.className = "alert alert-info border rounded-3 small mb-4";
+        banner.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Matching diagnostic upload options to your selected symptoms and severity...`;
+    }
+
+    try {
+        const res = await API.post('/api/navigator/recommended-reports', {
+            symptoms: Array.from(selectedSymptoms),
+            qa_answers: answeredQA
+        });
+
+        if (subtitle) {
+            subtitle.textContent = `Clinical Domain: ${res.clinical_domain || 'General'} • Severity Tier: ${res.severity_tier || 'Mild'}`;
+        }
+
+        if (banner) {
+            if (res.requirement_level === 'NOT_REQUIRED') {
+                banner.className = "alert alert-success border border-success-subtle rounded-3 small mb-4";
+                banner.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                        <div>
+                            <strong class="d-block text-success-emphasis">${escapeHtml(res.banner_title)}</strong>
+                            <span>${escapeHtml(res.banner_message)}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (res.requirement_level === 'URGENT_RECOMMENDED' || res.requirement_level === 'RECOMMENDED') {
+                const isUrgent = res.requirement_level === 'URGENT_RECOMMENDED';
+                banner.className = `alert ${isUrgent ? 'alert-danger' : 'alert-warning'} border rounded-3 small mb-4`;
+                banner.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-clipboard2-pulse-fill fs-5"></i>
+                        <div>
+                            <strong class="d-block">${escapeHtml(res.banner_title)}</strong>
+                            <span>${escapeHtml(res.banner_message)}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                banner.className = "alert alert-info border border-info-subtle rounded-3 small mb-4";
+                banner.innerHTML = `
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-info-circle-fill text-info fs-5"></i>
+                        <div>
+                            <strong class="d-block">${escapeHtml(res.banner_title)}</strong>
+                            <span>${escapeHtml(res.banner_message)}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        if (sel && Array.isArray(res.recommended_report_types) && res.recommended_report_types.length > 0) {
+            step3ReportHintsMap = {};
+            sel.innerHTML = res.recommended_report_types.map(opt => {
+                const val = typeof opt === 'string' ? opt : opt.value;
+                const label = typeof opt === 'string' ? opt : (opt.label || opt.value);
+                if (typeof opt === 'object' && opt.why) {
+                    step3ReportHintsMap[val] = opt.why;
+                }
+                return `<option value="${escapeHtml(val)}">${escapeHtml(label)}</option>`;
+            }).join('');
+            updateStep3ReportHint();
+        }
+
+        if (nextBtn) {
+            if (res.reports_needed === false) {
+                nextBtn.innerHTML = `Skip Reports &amp; View Health Triage <i class="bi bi-arrow-right-circle ms-1"></i>`;
+            } else {
+                nextBtn.innerHTML = `Generate Health Triage &amp; Handover <i class="bi bi-check2-circle ms-1"></i>`;
+            }
+        }
+    } catch (err) {
+        console.warn("Could not load symptom-tailored report types:", err);
+        if (banner) {
+            banner.className = "alert alert-light border rounded-3 small mb-4";
+            banner.innerHTML = `<i class="bi bi-info-circle me-1"></i> Uploading a medical report is optional. You can skip directly to Health Triage.`;
+        }
+    }
+}
+
 function goToStep3(e) {
     if (e) e.preventDefault();
     // Collect answers from Step 2
@@ -1533,6 +1631,7 @@ function goToStep3(e) {
     });
 
     updateStepper(3);
+    loadStep3RecommendedReports();
 }
 
 async function uploadStep3Report(injectedFile = null) {
@@ -5065,39 +5164,58 @@ function simulateBleAbnormalReading(type, sys, dia, hr) {
 
 async function importVitalsFromReports() {
     const preview = document.getElementById('reportVitalsPreview');
-    preview.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-info"></div> Extracting recent clinical records...</div>';
+    if (!preview) return;
+    preview.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-info"></div> Extracting vitals &amp; biomarkers from your latest uploaded report...</div>';
 
     try {
         const reports = await API.get('/api/reports');
         if (!reports || reports.length === 0) {
-            preview.innerHTML = '<span class="text-muted">No uploaded lab reports found. Use manual vitals entry or upload a report.</span>';
+            preview.innerHTML = '<div class="alert alert-warning py-2 px-3 small mb-0">No uploaded lab reports found yet. Upload a report in Health Navigator Step 3 or use Manual Vitals Entry.</div>';
             return;
         }
 
         const latest = reports[0];
-        const findings = latest.extracted_findings || {};
-        const extracted = findings.extracted_vitals || {
-            blood_pressure: "125/82 mmHg",
-            heart_rate: "74 bpm",
-            spo2: "98%",
-            glucose: "112 mg/dL",
-            temperature: "98.4Â°F"
-        };
+        const fileName = latest.original_filename || latest.file_name || latest.report_type || 'Latest Lab Record';
+        const findings = (typeof latest.extracted_findings === 'string')
+            ? JSON.parse(latest.extracted_findings || '{}')
+            : (latest.extracted_findings || {});
 
-        // Update display gauges
-        document.getElementById('valBp').textContent = extracted.blood_pressure.split(' ')[0] || "125/82";
-        document.getElementById('valSpo2').textContent = extracted.spo2.replace('%', '') || "98";
-        document.getElementById('valGlucose').textContent = extracted.glucose.split(' ')[0] || "112";
-        document.getElementById('valTemp').textContent = extracted.temperature.replace('Â°F', '') || "98.4";
+        const extracted = findings.extracted_vitals || {};
+        const params = findings.extracted_parameters || {};
+
+        const bpVal = extracted.blood_pressure || "120/80 mmHg";
+        const hrVal = extracted.heart_rate || "74 bpm";
+        const spo2Val = extracted.spo2 || "98%";
+        const glucVal = extracted.glucose || (params["Fasting Glucose"] || "98 mg/dL");
+        const tempVal = extracted.temperature || "98.4°F";
+
+        const bpEl = document.getElementById('valBp');
+        const spo2El = document.getElementById('valSpo2');
+        const glucEl = document.getElementById('valGlucose');
+        const tempEl = document.getElementById('valTemp');
+        const hrEl = document.getElementById('valHr');
+
+        if (bpEl) bpEl.textContent = String(bpVal).split(' ')[0] || "120/80";
+        if (spo2El) spo2El.textContent = String(spo2Val).replace('%', '').trim() || "98";
+        if (glucEl) glucEl.textContent = String(glucVal).split(' ')[0] || "98";
+        if (tempEl) tempEl.textContent = String(tempVal).replace(/[^\d.]/g, '') || "98.4";
+        if (hrEl) hrEl.textContent = String(hrVal).replace(/[^\d]/g, '') || "74";
+
+        const uploadDateStr = latest.uploaded_at ? formatIndianStandardTime(latest.uploaded_at) : 'Recently uploaded';
+        const paramBadges = Object.entries(params).map(([k, v]) =>
+            `<span class="badge bg-white text-dark border me-1 mb-1">${escapeHtml(k)}: <strong>${escapeHtml(String(v))}</strong></span>`
+        ).join('');
 
         preview.innerHTML = `
-            <div class="alert alert-success py-2 px-3 rounded-3 mb-0 small">
-                <i class="bi bi-check-circle-fill me-1"></i> Successfully imported from <strong>${latest.file_name}</strong> (Turnaround: ${new Date(latest.uploaded_at).toLocaleDateString()}):
-                <div class="mt-1">BP: ${extracted.blood_pressure} • HR: ${extracted.heart_rate} • SpO2: ${extracted.spo2} • Glucose: ${extracted.glucose}</div>
+            <div class="alert alert-success py-2 px-3 rounded-3 mb-0 small text-start">
+                <div class="fw-semibold"><i class="bi bi-check-circle-fill me-1"></i> Imported from <strong>${escapeHtml(fileName)}</strong> <span class="badge bg-success-subtle text-success border ms-1">${escapeHtml(latest.report_type || 'Lab Report')}</span></div>
+                <div class="text-muted mt-1" style="font-size:0.75rem;">Uploaded: ${escapeHtml(uploadDateStr)}</div>
+                <div class="mt-2"><strong>Vitals Synced:</strong> BP: ${escapeHtml(bpVal)} &bull; HR: ${escapeHtml(hrVal)} &bull; SpO2: ${escapeHtml(spo2Val)} &bull; Glucose: ${escapeHtml(glucVal)} &bull; Temp: ${escapeHtml(tempVal)}</div>
+                ${paramBadges ? `<div class="mt-2 pt-2 border-top"><strong class="d-block mb-1">Extracted Report Biomarkers:</strong>${paramBadges}</div>` : ''}
             </div>
         `;
     } catch (err) {
-        preview.innerHTML = `<div class="alert alert-danger small">Error extracting report vitals: ${err.message}</div>`;
+        preview.innerHTML = `<div class="alert alert-danger small mb-0">Error extracting report vitals: ${escapeHtml(err.message || 'Unable to load report')}</div>`;
     }
 }
 
@@ -5379,7 +5497,7 @@ function restoreDefaultReminders() {
     loadAdaptiveRemindersTab();
 }
 
-function deleteSingleReminder(id) {
+async function deleteSingleReminder(id) {
     let deleted = JSON.parse(localStorage.getItem('ehealth_deleted_reminders') || '[]');
     if (!deleted.includes(id)) deleted.push(id);
     localStorage.setItem('ehealth_deleted_reminders', JSON.stringify(deleted));
@@ -5387,6 +5505,12 @@ function deleteSingleReminder(id) {
     let custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
     custom = custom.filter(s => s.id !== id);
     localStorage.setItem('ehealth_custom_reminders', JSON.stringify(custom));
+
+    try {
+        await API.delete(`/api/closed-loop/reminders/${id}`);
+    } catch (e) {
+        console.warn("DB reminder delete notice:", e.message);
+    }
 
     showSMSNotification({
         title: "MEDICATION REMOVED",
@@ -5440,7 +5564,12 @@ async function loadAdaptiveRemindersTab() {
             schedules = res.schedules || [];
         }
         const custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
-        schedules = [...schedules, ...custom];
+        const existingIds = new Set(schedules.map(s => String(s.id)));
+        custom.forEach(c => {
+            if (!existingIds.has(String(c.id))) {
+                schedules.push(c);
+            }
+        });
 
         const deleted = JSON.parse(localStorage.getItem('ehealth_deleted_reminders') || '[]');
         schedules = schedules.filter(s => !deleted.includes(s.id));
@@ -5453,13 +5582,30 @@ async function loadAdaptiveRemindersTab() {
         list.innerHTML = schedules.map(s => {
             const entryKey = `${todayKey}_${s.id}`;
             const doseTaken = dosesLog[entryKey];
+            const freq = (s.frequency || 'daily').toLowerCase();
+            const scheduleBadgeText = s.schedule_label || (
+                freq === 'tomorrow' ? `Tomorrow Only (${s.target_date || ''})` :
+                freq === 'weekly' ? `Every Week (${s.day_of_week || 'Weekly'})` :
+                freq === 'specific_date' ? `Specific Date (${s.target_date || ''})` :
+                'Every Day (Daily)'
+            );
+            const dueBadgeText = freq === 'tomorrow'
+                ? `Scheduled Tomorrow (${s.target_date || ''}) at ${s.current_reminder_time}`
+                : (freq === 'specific_date'
+                    ? `Scheduled on ${s.target_date || 'Date'} at ${s.current_reminder_time}`
+                    : (freq === 'weekly'
+                        ? `Every ${s.day_of_week || 'Week'} at ${s.current_reminder_time}`
+                        : `Due Today: ${s.current_reminder_time}`));
 
             return `
             <div class="p-3 bg-white rounded-3 border shadow-sm reminder-adaptive-card" id="cardReminder-${s.id}">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
                     <div>
-                        <h6 class="fw-bold text-dark mb-0">${s.medicine_name} <small class="text-muted fw-normal">(${s.dosage})</small></h6>
-                        <small class="badge bg-light text-dark border mt-1">${s.condition}</small>
+                        <h6 class="fw-bold text-dark mb-0">${escapeHtml(s.medicine_name)} <small class="text-muted fw-normal">(${escapeHtml(s.dosage)})</small></h6>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <small class="badge bg-light text-dark border">${escapeHtml(s.condition)}</small>
+                            <small class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-calendar-repeat me-1"></i>${escapeHtml(scheduleBadgeText)}</small>
+                        </div>
                     </div>
                     <div class="text-end d-flex align-items-center gap-2">
                         <div>
@@ -5480,7 +5626,7 @@ async function loadAdaptiveRemindersTab() {
                 </div>
 
                 <p class="small text-secondary mb-2 fst-italic">
-                    <i class="bi bi-robot text-primary me-1"></i> ${s.adaptation_rationale || 'Behavior-adapted timing calculated for maximum patient compliance.'}
+                    <i class="bi bi-robot text-primary me-1"></i> ${escapeHtml(s.adaptation_rationale || 'Behavior-adapted timing calculated for maximum patient compliance.')}
                 </p>
 
                 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2 pt-2 border-top" id="actionArea-${s.id}">
@@ -5489,20 +5635,20 @@ async function loadAdaptiveRemindersTab() {
                             <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fw-semibold">
                                 <i class="bi bi-check2-all me-1"></i> Dose Taken Today (${doseTaken.time || 'Logged'})
                             </span>
-                            <small class="text-muted">Next dose due tomorrow at ${s.current_reminder_time}</small>
+                            <small class="text-muted">${freq === 'daily' ? `Next dose due tomorrow at ${s.current_reminder_time}` : scheduleBadgeText}</small>
                         </div>
-                        <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none small" style="font-size: 0.75rem;" onclick="undoDoseTaken(${s.id}, '${s.medicine_name}')" title="Reset dose for testing">
+                        <button class="btn btn-sm btn-link text-muted p-0 text-decoration-none small" style="font-size: 0.75rem;" onclick="undoDoseTaken(${s.id}, '${escapeHtml(s.medicine_name).replace(/'/g, "\\'")}')" title="Reset dose for testing">
                             <i class="bi bi-arrow-counterclockwise"></i> Reset
                         </button>
                     ` : `
                         <span class="badge bg-warning-subtle text-warning-emphasis border small">
-                            <i class="bi bi-alarm me-1"></i> Due Today: ${s.current_reminder_time}
+                            <i class="bi bi-alarm me-1"></i> ${escapeHtml(dueBadgeText)}
                         </span>
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="sendMedicationReminderSMS(${s.id}, '${s.medicine_name}', '${s.dosage}', '${s.condition}', '${s.current_reminder_time}')" title="Send SMS reminder to phone">
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold" onclick="sendMedicationReminderSMS(${s.id}, '${escapeHtml(s.medicine_name).replace(/'/g, "\\'")}', '${escapeHtml(s.dosage).replace(/'/g, "\\'")}', '${escapeHtml(s.condition).replace(/'/g, "\\'")}', '${s.current_reminder_time}')" title="Send SMS reminder to phone">
                                 <i class="bi bi-broadcast me-1"></i> Send SMS Reminder
                             </button>
-                            <button type="button" class="btn btn-success btn-sm fw-semibold px-3" id="btnConfirmDose-${s.id}" onclick="confirmDoseTaken(${s.id}, '${s.medicine_name}', '${s.dosage}', '${s.current_reminder_time}')">
+                            <button type="button" class="btn btn-success btn-sm fw-semibold px-3" id="btnConfirmDose-${s.id}" onclick="confirmDoseTaken(${s.id}, '${escapeHtml(s.medicine_name).replace(/'/g, "\\'")}', '${escapeHtml(s.dosage).replace(/'/g, "\\'")}', '${s.current_reminder_time}')">
                                 <i class="bi bi-check2-circle me-1"></i> Confirm Dose Taken
                             </button>
                         </div>
@@ -5653,9 +5799,64 @@ async function confirmMedicationIntake(scheduleId) {
     await confirmDoseTaken(scheduleId, `Medication #${scheduleId}`);
 }
 
+function getTomorrowDateStrIST() {
+    const now = new Date();
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    const istTomorrow = new Date(utcMs + istOffsetMs + 86400000);
+    return istTomorrow.toISOString().split('T')[0];
+}
+
+function getTodayDateStrIST() {
+    const now = new Date();
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const utcMs = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+    const istToday = new Date(utcMs + istOffsetMs);
+    return istToday.toISOString().split('T')[0];
+}
+
+function onReminderFrequencyChange() {
+    const freqEl = document.getElementById('remFrequency');
+    const tomorrowHint = document.getElementById('remTomorrowHint');
+    const tomorrowText = document.getElementById('remTomorrowDateText');
+    const weeklyGroup = document.getElementById('remWeeklyGroup');
+    const dateGroup = document.getElementById('remDateGroup');
+    const dateInput = document.getElementById('remSpecificDate');
+
+    if (!freqEl) return;
+    const freq = freqEl.value;
+
+    if (tomorrowHint) tomorrowHint.classList.toggle('d-none', freq !== 'tomorrow');
+    if (weeklyGroup) weeklyGroup.classList.toggle('d-none', freq !== 'weekly');
+    if (dateGroup) dateGroup.classList.toggle('d-none', freq !== 'specific_date');
+
+    if (freq === 'tomorrow' && tomorrowText) {
+        tomorrowText.textContent = getTomorrowDateStrIST();
+    }
+    if (dateInput) {
+        const todayStr = getTodayDateStrIST();
+        dateInput.min = todayStr;
+        if (!dateInput.value) dateInput.value = getTomorrowDateStrIST();
+        dateInput.required = (freq === 'specific_date');
+    }
+}
+
 function openAddReminderModal() {
     const form = document.getElementById('addReminderForm');
     if (form) form.reset();
+
+    const weekdaySel = document.getElementById('remWeekday');
+    if (weekdaySel) {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        weekdaySel.value = days[new Date().getDay()] || 'Monday';
+    }
+    const dateInput = document.getElementById('remSpecificDate');
+    if (dateInput) {
+        dateInput.min = getTodayDateStrIST();
+        dateInput.value = getTomorrowDateStrIST();
+    }
+
+    onReminderFrequencyChange();
     bootstrap.Modal.getOrCreateInstance(document.getElementById('addReminderModal')).show();
 }
 
@@ -5665,23 +5866,59 @@ async function saveNewReminder(e) {
     const dosage = document.getElementById('remDosage').value.trim();
     const condition = document.getElementById('remCondition').value.trim() || "General Care";
     const time = document.getElementById('remTime').value || "08:00";
+    const frequency = document.getElementById('remFrequency')?.value || "daily";
+    const dayOfWeek = frequency === 'weekly' ? (document.getElementById('remWeekday')?.value || 'Monday') : null;
 
-    const newSchedule = {
+    let targetDate = null;
+    if (frequency === 'tomorrow') {
+        targetDate = getTomorrowDateStrIST();
+    } else if (frequency === 'specific_date') {
+        targetDate = document.getElementById('remSpecificDate')?.value || getTomorrowDateStrIST();
+    }
+
+    const scheduleLabel =
+        frequency === 'tomorrow' ? `Tomorrow Only (${targetDate})` :
+        frequency === 'weekly' ? `Every Week (${dayOfWeek})` :
+        frequency === 'specific_date' ? `Specific Date (${targetDate})` :
+        'Every Day (Daily)';
+
+    let newSchedule = {
         id: Date.now(),
         medicine_name: medName,
         dosage: dosage,
         condition: condition,
         prescribed_time: time,
         current_reminder_time: time,
+        frequency: frequency,
+        target_date: targetDate,
+        day_of_week: dayOfWeek,
+        schedule_label: scheduleLabel,
         is_adapted: false,
         shift_minutes: 0,
         adherence_rate_pct: 100,
-        adaptation_rationale: "Newly added personalized medication schedule. Monitoring intake habits to adapt reminder slot."
+        is_custom: true,
+        adaptation_rationale: `Personalized medication schedule (${scheduleLabel}). Monitoring intake habits to adapt reminder slot.`
     };
 
-    let custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
-    custom.push(newSchedule);
-    localStorage.setItem('ehealth_custom_reminders', JSON.stringify(custom));
+    try {
+        const res = await API.post('/api/closed-loop/reminders/create', {
+            medicine_name: medName,
+            dosage: dosage,
+            condition: condition,
+            prescribed_time: time,
+            frequency: frequency,
+            target_date: targetDate,
+            day_of_week: dayOfWeek
+        });
+        if (res && res.schedule) {
+            newSchedule = res.schedule;
+        }
+    } catch (apiErr) {
+        console.warn("Falling back to local custom reminder store:", apiErr.message);
+        let custom = JSON.parse(localStorage.getItem('ehealth_custom_reminders') || '[]');
+        custom.push(newSchedule);
+        localStorage.setItem('ehealth_custom_reminders', JSON.stringify(custom));
+    }
 
     const modalEl = document.getElementById('addReminderModal');
     const modalInst = bootstrap.Modal.getInstance(modalEl);
@@ -5689,7 +5926,7 @@ async function saveNewReminder(e) {
 
     showSMSNotification({
         title: "SMART REMINDER ADDED",
-        message: `Scheduled ${medName} (${dosage}) for ${time}. Added to your active schedules.`,
+        message: `Scheduled ${medName} (${dosage}) at ${time} • ${scheduleLabel}.`,
         channel: "whatsapp",
         duration: 6000
     });

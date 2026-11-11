@@ -852,9 +852,13 @@
 
                 <div id="wizardStep3" class="card border-0 shadow-sm rounded-4 p-4 mb-4 d-none">
 
-                    <h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-medical text-primary me-2"></i>Step 3: Medical Report & Scan Upload (Optional)</h4>
+                    <h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-medical text-primary me-2"></i>Step 3: Medical Report &amp; Upload (Tailored to Your Symptoms)</h4>
 
-                    <p class="text-muted small mb-4">Upload lab blood tests, X-rays, or scans. Our multimodal engine will automatically extract parameters (Platelets, WBC, Bilirubin, radiology opacities) and flag abnormalities.</p>
+                    <p id="step3Subtitle" class="text-muted small mb-3">Report requirements are dynamically tailored to your selected symptoms and severity.</p>
+
+                    <div id="step3ClinicalGuidanceBanner" class="alert alert-info border rounded-3 small mb-4">
+                        <i class="bi bi-info-circle me-1"></i> Evaluating clinical report requirements based on your symptoms and severity...
+                    </div>
 
                     <div class="row g-4">
 
@@ -862,25 +866,21 @@
 
                             <div class="p-3 bg-light rounded-3 border">
 
-                                <h6 class="fw-bold mb-3"><i class="bi bi-cloud-arrow-up text-primary me-1"></i> Upload Test File</h6>
+                                <h6 class="fw-bold mb-3"><i class="bi bi-cloud-arrow-up text-primary me-1"></i> Upload Test / Clinical Document</h6>
 
                                 <div class="mb-3">
 
-                                    <label class="form-label small fw-semibold">Report Type</label>
+                                    <label class="form-label small fw-semibold">Recommended Report / Upload Type</label>
 
-                                    <select id="step3ReportType" class="form-select">
+                                    <select id="step3ReportType" class="form-select" onchange="updateStep3ReportHint()">
 
                                         <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
-
-                                        <option value="Chest X-Ray">Chest X-Ray</option>
-
-                                        <option value="CT Scan">CT Scan</option>
-
-                                        <option value="Liver Function Test (LFT)">Liver Function Test (LFT)</option>
 
                                         <option value="Other Diagnostic Document">Other Diagnostic Document</option>
 
                                     </select>
+
+                                    <div id="step3ReportHint" class="form-text small text-muted mt-1"></div>
 
                                 </div>
 
@@ -924,7 +924,7 @@
 
                         </button>
 
-                        <button type="button" class="btn btn-success px-4 fw-semibold" onclick="goToStep4()">
+                        <button type="button" id="step3NextBtn" class="btn btn-success px-4 fw-semibold" onclick="goToStep4()">
 
                             Generate Health Triage & Handover <i class="bi bi-check2-circle ms-1"></i>
 
@@ -5499,12 +5499,56 @@
 
                         </div>
 
-                        <div class="mb-3">
+                        <div class="row g-3 mb-3">
 
-                            <label class="form-label small fw-semibold">Prescribed Time</label>
+                            <div class="col-md-6">
 
-                            <input type="time" id="remTime" class="form-control" value="08:00" required>
+                                <label class="form-label small fw-semibold">Prescribed Time</label>
 
+                                <input type="time" id="remTime" class="form-control" value="08:00" required>
+
+                            </div>
+
+                            <div class="col-md-6">
+
+                                <label class="form-label small fw-semibold">Reminder Frequency</label>
+
+                                <select id="remFrequency" class="form-select" onchange="onReminderFrequencyChange()" required>
+
+                                    <option value="daily">Every Day (Daily)</option>
+
+                                    <option value="tomorrow">Tomorrow Only</option>
+
+                                    <option value="weekly">Every Week (Weekly)</option>
+
+                                    <option value="specific_date">Specific Date</option>
+
+                                </select>
+
+                            </div>
+
+                        </div>
+
+                        <div id="remTomorrowHint" class="alert alert-info py-2 px-3 small mb-3 d-none">
+                            <i class="bi bi-calendar-event me-1"></i> Reminder will trigger once tomorrow (<strong id="remTomorrowDateText"></strong>).
+                        </div>
+
+                        <div id="remWeeklyGroup" class="mb-3 d-none">
+                            <label class="form-label small fw-semibold">Select Day of Every Week</label>
+                            <select id="remWeekday" class="form-select">
+                                <option value="Monday">Every Monday</option>
+                                <option value="Tuesday">Every Tuesday</option>
+                                <option value="Wednesday">Every Wednesday</option>
+                                <option value="Thursday">Every Thursday</option>
+                                <option value="Friday">Every Friday</option>
+                                <option value="Saturday">Every Saturday</option>
+                                <option value="Sunday">Every Sunday</option>
+                            </select>
+                        </div>
+
+                        <div id="remDateGroup" class="mb-3 d-none">
+                            <label class="form-label small fw-semibold">Choose Specific Date</label>
+                            <input type="date" id="remSpecificDate" class="form-control">
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 pt-2 border-top">
@@ -5573,7 +5617,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261024_v1"></script>
+    <script src="/static/js/patient.js?v=20261111_v1"></script>
 
 </body>
 

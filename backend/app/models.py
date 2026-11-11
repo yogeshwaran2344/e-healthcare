@@ -573,6 +573,9 @@ class MedicationSchedule(Base):
     dosage = Column(String(100), default="1 Dose")
     condition = Column(String(150), nullable=True)
     scheduled_time = Column(String(10), nullable=False)  # e.g. "08:00", "13:00", "20:00"
+    frequency = Column(String(30), default="daily")  # "daily", "tomorrow", "weekly", "specific_date"
+    target_date = Column(String(20), nullable=True)  # "YYYY-MM-DD" for tomorrow / specific_date
+    day_of_week = Column(String(20), nullable=True)  # "Monday".."Sunday" for weekly
     patient_phone = Column(String(30), nullable=True)
     is_active = Column(Boolean, default=True)
     last_reminded_date = Column(String(20), nullable=True)  # "YYYY-MM-DD" prevents double dispatch

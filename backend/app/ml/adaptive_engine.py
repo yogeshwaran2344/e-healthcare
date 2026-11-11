@@ -189,6 +189,343 @@ def generate_adaptive_questions(selected_symptoms: List[str], patient_context: O
 
     return questions
 
+
+def get_recommended_report_types(
+    symptoms: List[str],
+    qa_answers: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Determines context-aware diagnostic upload options and clinical necessity
+    strictly based on selected symptoms and reported severity/duration.
+    Prevents irrelevant prompts (e.g., Chest X-Ray or CBC for mild acne).
+    """
+    qa_answers = qa_answers or {}
+    symptoms_lower = [s.lower() for s in (symptoms or [])]
+    symptoms_joined = " ".join(symptoms_lower)
+    severity_ans = str(qa_answers.get("severity_scale", "")).lower()
+    duration_ans = str(qa_answers.get("duration_days", "")).lower()
+    qa_blob = " ".join(str(v) for v in qa_answers.values()).lower()
+
+    is_severe = ("7 - 8" in severity_ans) or ("9 - 10" in severity_ans) or ("severe" in severity_ans) or ("extreme" in severity_ans)
+    is_moderate = ("4 - 6" in severity_ans) or ("moderate" in severity_ans)
+    is_chronic = ("month" in duration_ans) or ("1-3 weeks" in duration_ans)
+
+    if is_severe:
+        severity_tier = "Severe / Acute"
+    elif is_moderate or is_chronic:
+        severity_tier = "Moderate / Persistent"
+    else:
+        severity_tier = "Mild"
+
+    def item(value: str, why: str, label: Optional[str] = None) -> Dict[str, str]:
+        return {"value": value, "label": label or value, "why": why}
+
+    has_cardiac = any(k in symptoms_joined for k in ["sharp_chest_pain", "pain_radiating", "palpitations", "angina"])
+    has_respiratory = any(k in symptoms_joined for k in ["breathlessness", "wheezing", "chest_tightness", "cough", "sputum", "phlegm"])
+    has_neuro_red = any(k in symptoms_joined for k in ["thunderclap", "facial_droop", "limb_weakness", "slurred_speech", "stiff_neck"])
+    has_gastro = any(k in symptoms_joined for k in ["abdominal", "stomach", "epigastric", "acidity", "vomiting", "diarrhea", "jaundice", "dark_urine", "indigestion"])
+    has_gyno = any(k in symptoms_joined for k in ["period", "menstrual", "pcos", "pelvic", "ovarian", "vaginal"])
+    has_urinary = any(k in symptoms_joined for k in ["flank", "dysuria", "hematuria", "urinary"])
+    has_fever = any(k in symptoms_joined for k in ["high_fever", "fever", "chills", "petechiae"])
+    has_acne = any(k in symptoms_joined for k in ["acne", "pimple", "blackhead", "whitehead", "oily_skin", "post_acne", "rosacea", "dry_peeling_skin"])
+    has_hair = any(k in symptoms_joined for k in ["hair", "scalp", "dandruff", "alopecia"])
+    has_skin_rash = any(k in symptoms_joined for k in ["skin_rash", "hives", "urticaria", "itching_pruritus", "blisters", "skin_redness"])
+    has_joint = any(k in symptoms_joined for k in ["joint", "arthritis", "swelling_in_legs", "calf_tenderness"])
+    has_headache = any(k in symptoms_joined for k in ["headache", "migraine", "vertigo", "photophobia", "dizziness"])
+
+    # 1. Cardiac / Acute Neurological / Severe Respiratory always take safety priority
+    if has_cardiac:
+        return {
+            "reports_needed": True,
+            "requirement_level": "URGENT_RECOMMENDED",
+            "clinical_domain": "Cardiology & Vascular Assessment",
+            "severity_tier": severity_tier,
+            "banner_title": "Cardiac Diagnostic Reports Recommended (If Available)",
+            "banner_message": "Because cardiac/chest symptoms were selected, ECG, Troponin, or recent BP/Lipid logs are highly relevant. Do not delay emergency care to upload files.",
+            "recommended_report_types": [
+                item("12-Lead ECG Report", "Detects myocardial ischemia, rhythm blocks, or acute arrhythmia."),
+                item("Cardiac Troponin-I / Lipid Panel", "Checks myocardial injury biomarkers and cardiovascular risk."),
+                item("Chest X-Ray", "Evaluates cardiac silhouette and pulmonary congestion."),
+                item("Complete Blood Count (CBC)", "Baseline anemia and systemic infection screening."),
+                item("Other Diagnostic Document", "Any prior cardiology consultation or stress test.")
+            ]
+        }
+
+    if has_neuro_red or (has_headache and is_severe):
+        return {
+            "reports_needed": True,
+            "requirement_level": "RECOMMENDED" if not has_neuro_red else "URGENT_RECOMMENDED",
+            "clinical_domain": "Neurology & Neuro-Vascular Care",
+            "severity_tier": severity_tier,
+            "banner_title": "Neurological Scan / Vitals Workup (Severe Headache / Red-Flag Symptoms)",
+            "banner_message": "For severe or sudden neurological symptoms, prior Brain CT/MRI scans or Blood Pressure logs assist rapid specialist review.",
+            "recommended_report_types": [
+                item("Brain CT Scan", "Rules out acute hemorrhage or structural mass effect."),
+                item("Brain MRI", "Detailed vascular and parenchymal brain evaluation."),
+                item("Vitals / Blood Pressure Log", "Checks hypertensive spikes triggering severe headache."),
+                item("Complete Blood Count (CBC)", "Screens for systemic inflammation or infection."),
+                item("Other Diagnostic Document", "Previous neurology prescription or eye exam report.")
+            ]
+        }
+
+    # 2. Acne & Facial Dermatology (without systemic infection/red flags)
+    if has_acne and not (has_respiratory or has_fever or has_gastro or has_gyno):
+        is_cystic_or_hormonal = ("cystic" in symptoms_joined) or ("hormonal" in qa_blob) or ("menstrual" in qa_blob)
+        if not is_severe and not is_moderate and not is_cystic_or_hormonal:
+            return {
+                "reports_needed": False,
+                "requirement_level": "NOT_REQUIRED",
+                "clinical_domain": "Dermatology (Acne & Facial Skin)",
+                "severity_tier": severity_tier,
+                "banner_title": "No Lab Blood Tests, X-Rays, or Scans Needed",
+                "banner_message": (
+                    "For mild/surface acne or facial skincare concerns, X-rays, CT scans, and routine CBC blood tests are NOT required. "
+                    "You can skip directly to Health Triage, or optionally upload a clear photo of the affected area or skincare prescription."
+                ),
+                "recommended_report_types": [
+                    item("Skin / Acne Lesion Photo", "Optional visual reference for dermatologist review (no radiation or blood draw needed)."),
+                    item("Dermatology Prescription / Skincare Record", "Optional record of topical creams, cleansers, or prior treatments."),
+                    item("Other Diagnostic Document", "Any other relevant dermatology note.")
+                ]
+            }
+        else:
+            return {
+                "reports_needed": False,
+                "requirement_level": "OPTIONAL_TARGETED",
+                "clinical_domain": "Dermatology (Persistent / Cystic Acne)",
+                "severity_tier": severity_tier,
+                "banner_title": "X-Rays & Routine CBC Not Needed — Optional Acne / Hormonal Workup",
+                "banner_message": (
+                    "Chest X-rays and CT scans are never needed for acne. For persistent, moderate-to-severe, or cystic jawline breakouts, "
+                    "only a clear lesion photo or a targeted Hormone/LFT panel (if on prescription isotretinoin/PCOS workup) is relevant."
+                ),
+                "recommended_report_types": [
+                    item("Skin / Acne Lesion Photo", "Helps the dermatologist grade comedonal vs cystic inflammation severity."),
+                    item("Female Hormone Panel (PCOS / Testosterone / DHEA-S)", "Helpful only if cystic jawline acne is linked to irregular cycles or hormonal imbalance."),
+                    item("Liver Function Test (LFT)", "Relevant only if monitoring baseline liver enzymes before/during oral isotretinoin therapy."),
+                    item("Dermatology Prescription / Skincare Record", "Share active retinoid, benzoyl peroxide, or antibiotic cream history."),
+                    item("Other Diagnostic Document", "Any other dermatology evaluation.")
+                ]
+            }
+
+    # 3. Hair & Scalp
+    if has_hair and not (has_fever or has_respiratory or has_gastro):
+        opts = [
+            item("Scalp / Hair Density Photo", "Visualizes thinning pattern, scalp flaking, or patchy hair loss."),
+            item("Serum Ferritin & Iron Studies", "Evaluates iron stores — a primary driver of telogen effluvium hair fall."),
+            item("Thyroid (TSH) & Vitamin D3 / B12 Panel", "Checks common nutritional and endocrine triggers of hair shedding.")
+        ]
+        if is_severe or is_moderate:
+            opts.append(item("Complete Blood Count (CBC)", "Checks hemoglobin levels for anemia-related hair thinning."))
+        opts.append(item("Other Diagnostic Document", "Trichoscopy or prior dermatology note."))
+        return {
+            "reports_needed": is_severe or is_chronic,
+            "requirement_level": "OPTIONAL_TARGETED" if (is_severe or is_chronic or is_moderate) else "NOT_REQUIRED",
+            "clinical_domain": "Trichology & Scalp Care",
+            "severity_tier": severity_tier,
+            "banner_title": "Targeted Hair & Scalp Workup (No X-Ray / CT Needed)",
+            "banner_message": "Imaging scans are unnecessary for hair or scalp concerns. Ferritin, Thyroid/Vitamin levels, or a scalp photo are most useful if available.",
+            "recommended_report_types": opts
+        }
+
+    # 4. Gynaecology & Women's Health
+    if has_gyno:
+        return {
+            "reports_needed": is_moderate or is_severe or is_chronic,
+            "requirement_level": "RECOMMENDED" if (is_moderate or is_severe or is_chronic) else "OPTIONAL_TARGETED",
+            "clinical_domain": "Gynaecology & Reproductive Health",
+            "severity_tier": severity_tier,
+            "banner_title": "Targeted Gynaecological & Hormonal Reports",
+            "banner_message": "For menstrual irregularity, PCOS, or pelvic symptoms, Pelvic Ultrasound and Hormone Panels provide key diagnostic clarity (no chest imaging needed).",
+            "recommended_report_types": [
+                item("Pelvic Ultrasound (USG Pelvis)", "Evaluates ovarian morphology, cysts, and endometrial thickness."),
+                item("Female Hormone Panel (LH / FSH / Testosterone / TSH)", "Profiles ovulatory, androgen, and thyroid balance."),
+                item("Complete Blood Count (CBC)", "Checks hemoglobin for anemia especially with heavy menstrual bleeding."),
+                item("Other Diagnostic Document", "Prior gynaecology consultation or prescription.")
+            ]
+        }
+
+    # 5. Skin Rash / Allergy
+    if has_skin_rash and not (has_fever or "petechiae" in symptoms_joined):
+        opts = [
+            item("Skin Rash / Hives Photo", "Captures rash distribution and morphology before lesions fade."),
+            item("Allergy / IgE Panel", "Identifies allergen sensitization if chronic or recurrent."),
+            item("Other Diagnostic Document", "Prior dermatology prescription or patch test.")
+        ]
+        if is_severe:
+            opts.insert(2, item("Complete Blood Count (CBC)", "Evaluates eosinophils and inflammatory response in severe flares."))
+        return {
+            "reports_needed": False,
+            "requirement_level": "OPTIONAL_TARGETED" if is_severe else "NOT_REQUIRED",
+            "clinical_domain": "Dermatology & Allergy",
+            "severity_tier": severity_tier,
+            "banner_title": "Skin Photo Optional — Lab Tests Not Required for Mild Rashes",
+            "banner_message": "Routine blood tests or scans are not needed for mild skin rashes/hives. Uploading a clear photo helps clinical assessment.",
+            "recommended_report_types": opts
+        }
+
+    # 6. Respiratory / Cough
+    if has_respiratory:
+        if not is_severe and not is_moderate and "breathlessness" not in symptoms_joined:
+            return {
+                "reports_needed": False,
+                "requirement_level": "NOT_REQUIRED",
+                "clinical_domain": "Upper Respiratory / Mild Cough",
+                "severity_tier": severity_tier,
+                "banner_title": "No Chest X-Ray or CT Scan Required for Mild Cold/Cough",
+                "banner_message": "For mild acute cough without shortness of breath, imaging is unnecessary. You can skip directly to Health Triage or attach a viral test if already done.",
+                "recommended_report_types": [
+                    item("RT-PCR Viral Panel (COVID / Influenza)", "Optional viral swab confirmation if already tested."),
+                    item("Vitals / SpO2 & Temperature Log", "Optional oxygen saturation and fever reading."),
+                    item("Other Diagnostic Document", "Previous physician note.")
+                ]
+            }
+        opts = [
+            item("Chest X-Ray", "Screens lung fields for consolidation, pneumonia, or effusion."),
+            item("Complete Blood Count (CBC)", "Assesses WBC count to differentiate bacterial vs viral infection."),
+            item("RT-PCR Viral Panel (COVID / Influenza)", "Identifies specific respiratory viral pathogens."),
+        ]
+        if is_severe or "breathlessness" in symptoms_joined:
+            opts.append(item("CT Scan", "High-resolution CT chest if severe hypoxia or complex pneumonia is suspected."))
+        opts.append(item("Other Diagnostic Document", "Spirometry, SpO2 log, or pulmonology note."))
+        return {
+            "reports_needed": True,
+            "requirement_level": "RECOMMENDED",
+            "clinical_domain": "Pulmonology & Respiratory Medicine",
+            "severity_tier": severity_tier,
+            "banner_title": "Targeted Respiratory & Lung Evaluation Reports",
+            "banner_message": "Because persistent/moderate-to-severe cough or breathlessness was reported, a Chest X-Ray, CBC, or Viral Panel can meaningfully refine diagnosis.",
+            "recommended_report_types": opts
+        }
+
+    # 7. Gastrointestinal / Liver
+    if has_gastro:
+        if not is_severe and not is_moderate and not any(k in symptoms_joined for k in ["jaundice", "dark_urine", "right_upper"]):
+            return {
+                "reports_needed": False,
+                "requirement_level": "NOT_REQUIRED",
+                "clinical_domain": "Digestive Care (Mild Acidity / Stomach)",
+                "severity_tier": severity_tier,
+                "banner_title": "No Scans or Blood Tests Required for Mild Digestive Discomfort",
+                "banner_message": "For mild acidity or brief stomach upset, CT scans and X-rays are not needed. Skip directly to Health Triage unless you already have a gastro report.",
+                "recommended_report_types": [
+                    item("Other Diagnostic Document", "Optional prior endoscopy, prescription, or H. pylori report."),
+                    item("Liver Function Test (LFT)", "Only if advised for persistent upper abdominal discomfort.")
+                ]
+            }
+        return {
+            "reports_needed": True,
+            "requirement_level": "RECOMMENDED",
+            "clinical_domain": "Gastroenterology & Hepatology",
+            "severity_tier": severity_tier,
+            "banner_title": "Targeted Gastro & Liver Function Reports",
+            "banner_message": "For moderate/severe abdominal pain, vomiting, or jaundice indicators, LFT, Abdominal Ultrasound, or CBC are most informative (no Chest X-Ray needed).",
+            "recommended_report_types": [
+                item("Liver Function Test (LFT)", "Checks bilirubin, SGOT/SGPT, and hepatobiliary enzymes."),
+                item("Abdominal Ultrasound (USG)", "Evaluates gallbladder, liver, appendix, and abdominal organs."),
+                item("Complete Blood Count (CBC)", "Screens for acute abdominal infection or anemia."),
+                item("Other Diagnostic Document", "Endoscopy, stool test, or gastro prescription.")
+            ]
+        }
+
+    # 8. Urinary / Kidney
+    if has_urinary:
+        return {
+            "reports_needed": True,
+            "requirement_level": "RECOMMENDED",
+            "clinical_domain": "Urology & Nephrology",
+            "severity_tier": severity_tier,
+            "banner_title": "Targeted Urinary & Kidney Reports",
+            "banner_message": "Urinalysis and Renal Function (KFT) directly evaluate urinary infections or kidney stone risk.",
+            "recommended_report_types": [
+                item("Urinalysis Routine & Culture (Urine R/M)", "Detects pus cells, nitrites, bacteria, or microscopic hematuria."),
+                item("Kidney Function Test (KFT / Creatinine)", "Measures serum creatinine, urea, and electrolytes."),
+                item("Abdominal Ultrasound (USG)", "Checks kidneys and bladder for calculi or obstruction."),
+                item("Complete Blood Count (CBC)", "Evaluates systemic infection response."),
+                item("Other Diagnostic Document", "Any prior urology report.")
+            ]
+        }
+
+    # 9. Fever / Systemic Infection
+    if has_fever or "petechiae" in symptoms_joined:
+        return {
+            "reports_needed": is_moderate or is_severe or is_chronic or ("petechiae" in symptoms_joined),
+            "requirement_level": "RECOMMENDED" if (is_moderate or is_severe or is_chronic) else "OPTIONAL_TARGETED",
+            "clinical_domain": "Systemic Febrile & Infection Workup",
+            "severity_tier": severity_tier,
+            "banner_title": "Febrile Blood & Serology Panel (If Available)",
+            "banner_message": "For fever workup, CBC (platelets & WBC), Dengue/Malaria antigen tests, or LFT help distinguish viral vs bacterial causes.",
+            "recommended_report_types": [
+                item("Complete Blood Count (CBC)", "Critical for checking Platelet count, WBC/leukocytes, and hemoglobin."),
+                item("Dengue / Malaria / Typhoid Panel", "Rapid serology for endemic causes of acute fever."),
+                item("Liver Function Test (LFT)", "Helpful if fever accompanies jaundice, nausea, or dengue suspicion."),
+                item("Other Diagnostic Document", "Temperature log or prior clinic note.")
+            ]
+        }
+
+    # 10. Musculoskeletal / Joint Pain
+    if has_joint:
+        return {
+            "reports_needed": is_severe or is_chronic,
+            "requirement_level": "OPTIONAL_TARGETED" if (is_severe or is_chronic) else "NOT_REQUIRED",
+            "clinical_domain": "Orthopedics & Rheumatology",
+            "severity_tier": severity_tier,
+            "banner_title": "Targeted Joint & Inflammatory Workup" if (is_severe or is_chronic) else "No Lab Tests Required for Mild Joint Strain",
+            "banner_message": "Mild soreness does not require scans. For persistent or severe joint swelling, Joint X-ray or RF/CRP/Uric Acid panels are relevant.",
+            "recommended_report_types": [
+                item("Joint / Musculoskeletal X-Ray", "Evaluates joint space narrowing, fractures, or structural wear."),
+                item("CRP / Rheumatoid Factor / Uric Acid Panel", "Screens for inflammatory arthritis or gout."),
+                item("Complete Blood Count (CBC)", "Baseline inflammatory screening."),
+                item("Other Diagnostic Document", "Orthopedic consultation or physiotherapy note.")
+            ]
+        }
+
+    # 11. Mild Headache without red flags
+    if has_headache:
+        return {
+            "reports_needed": False,
+            "requirement_level": "NOT_REQUIRED",
+            "clinical_domain": "Headache & Migraine Care",
+            "severity_tier": severity_tier,
+            "banner_title": "No Scans or Blood Tests Required for Mild/Moderate Headache",
+            "banner_message": "Routine Brain CT/MRI or CBC are not required for mild uncomplicated headaches. You may skip directly to Health Triage or upload a BP log if measured.",
+            "recommended_report_types": [
+                item("Vitals / Blood Pressure Log", "Checks if blood pressure fluctuations correlate with headache episodes."),
+                item("Other Diagnostic Document", "Eye/vision checkup or prior migraine prescription.")
+            ]
+        }
+
+    # 12. General Fallback (Respects severity!)
+    if not is_severe and not is_moderate:
+        return {
+            "reports_needed": False,
+            "requirement_level": "NOT_REQUIRED",
+            "clinical_domain": "Primary Care & Wellness",
+            "severity_tier": severity_tier,
+            "banner_title": "Reports Optional for Mild Symptoms",
+            "banner_message": "For mild symptoms, diagnostic scans and lab panels are generally unnecessary. Skip directly to Health Triage or attach an existing record if available.",
+            "recommended_report_types": [
+                item("Vitals / Health Checkup Summary", "Recent BP, Heart Rate, Blood Sugar, or SpO2 measurement."),
+                item("Complete Blood Count (CBC)", "Optional general baseline blood screening."),
+                item("Other Diagnostic Document", "Any existing prescription or medical document.")
+            ]
+        }
+
+    return {
+        "reports_needed": True,
+        "requirement_level": "OPTIONAL_TARGETED",
+        "clinical_domain": "General Internal Medicine",
+        "severity_tier": severity_tier,
+        "banner_title": "Relevant Clinical Reports (Optional Based on Severity)",
+        "banner_message": "Because moderate-to-severe or persistent symptoms were reported, uploading relevant lab results improves triage precision.",
+        "recommended_report_types": [
+            item("Complete Blood Count (CBC)", "Baseline infection, hemoglobin, and platelet assessment."),
+            item("Vitals / Health Checkup Summary", "Blood pressure, blood glucose, and general metabolic screen."),
+            item("Liver Function Test (LFT)", "Hepatic enzyme screening if systemic malaise is present."),
+            item("Other Diagnostic Document", "Any scan or consultation document.")
+        ]
+    }
+
 def evaluate_risk_triage(
     symptoms: List[str],
     top_disease: str,
