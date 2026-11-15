@@ -616,13 +616,12 @@
 
                     <!-- Search Filter & Category Tabs -->
 
-                    <div class="input-group mb-2">
-
-                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-
-                        <input type="text" id="symptomSearchInput" class="form-control border-start-0" placeholder="Filter 75+ multi-system symptoms (e.g. chest pain, dyspnea, chills, numbness, rash)..." oninput="filterSymptoms()">
-
-                    </div>
+                    <form class="w-100 mb-2" autocomplete="off" onsubmit="event.preventDefault(); return false;">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                            <input type="search" id="symptomSearchInput" name="symptom_search_query" class="form-control border-start-0" placeholder="Filter 75+ multi-system symptoms (e.g. chest pain, dyspnea, chills, numbness, rash)..." oninput="filterSymptoms()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="searchbox" aria-autocomplete="none" data-lpignore="true" data-form-type="other" data-1p-ignore="true">
+                        </div>
+                    </form>
 
                     <!-- Category Filter Tabs -->
 
@@ -5423,7 +5422,7 @@
 
     <script src="/static/js/api.js"></script>
 
-    <script src="/static/js/patient.js?v=20261111_v2"></script>
+    <script src="/static/js/patient.js?v=20261115_v1"></script>
 
 </body>
 

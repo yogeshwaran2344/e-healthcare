@@ -744,6 +744,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { await loadFamilyMembers(); } catch (e) { console.warn("Family members init:", e); }
     try { await loadDoctorsDropdown(); } catch (e) { console.warn("Doctors dropdown init:", e); }
     try { setupSpeechRecognition(); } catch (e) { console.warn("Speech recognition init:", e); }
+    try { preventEmailAutofillInSymptomSearch(); } catch (e) { console.warn("Search autofill guard init:", e); }
     try { renderFamilyVaultButtons(); switchFamilyVault('self', true); } catch (e) { console.warn("Family Vault init:", e); }
 
     // Proactively pre-populate modules so the UI is immediately populated
@@ -1007,6 +1008,11 @@ async function loadSymptoms() {
         // Dynamically build category filter buttons
         renderCategoryFilterButtons();
         renderSymptomChips(allSymptoms);
+        const searchInput = document.getElementById('symptomSearchInput');
+        if (searchInput) searchInput.value = '';
+        if (typeof preventEmailAutofillInSymptomSearch === 'function') {
+            preventEmailAutofillInSymptomSearch();
+        }
     } catch (err) {
         console.error("Error loading categorized symptoms, falling back:", err);
         try {
@@ -1118,8 +1124,46 @@ function clearSelectedSymptoms() {
     filterSymptoms();
 }
 
+function preventEmailAutofillInSymptomSearch() {
+    const input = document.getElementById('symptomSearchInput');
+    if (!input) return;
+
+    const sanitizeIfEmail = () => {
+        if (input.value && (input.value.includes('@') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim()))) {
+            input.value = '';
+            if (typeof filterSymptoms === 'function') {
+                filterSymptoms();
+            }
+        }
+    };
+
+    sanitizeIfEmail();
+    input.addEventListener('input', sanitizeIfEmail);
+    input.addEventListener('change', sanitizeIfEmail);
+    input.addEventListener('focus', sanitizeIfEmail);
+    input.addEventListener('animationstart', (e) => {
+        if (e.animationName && e.animationName.toLowerCase().includes('autofill')) {
+            sanitizeIfEmail();
+        }
+    });
+
+    // Handle delayed browser autofills (Chrome often populates fields 50-1200ms after load)
+    [50, 150, 300, 600, 1200, 2500].forEach(delay => {
+        setTimeout(sanitizeIfEmail, delay);
+    });
+}
+
 function filterSymptoms() {
-    let rawQuery = document.getElementById('symptomSearchInput').value.toLowerCase().trim();
+    const searchInput = document.getElementById('symptomSearchInput');
+    if (!searchInput) return;
+
+    let rawVal = searchInput.value || '';
+    if (rawVal.includes('@') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawVal.trim())) {
+        searchInput.value = '';
+        rawVal = '';
+    }
+
+    let rawQuery = rawVal.toLowerCase().trim();
     
     if (!rawQuery) {
         let filtered = allSymptoms;
@@ -1359,6 +1403,11 @@ window.undoLastAnsweredQuestion = undoLastAnsweredQuestion;
 
 function goToStep1() {
     updateStepper(1);
+    const searchInput = document.getElementById('symptomSearchInput');
+    if (searchInput && (searchInput.value.includes('@') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(searchInput.value.trim()))) {
+        searchInput.value = '';
+        filterSymptoms();
+    }
 }
 
 async function goToStep2() {
