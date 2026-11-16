@@ -6805,7 +6805,7 @@ async function performEmergencyHashLookup() {
 
     const hash = input.value.trim();
     if (!hash) {
-        alert("Please enter or paste an emergency hashcode.");
+        alert("Please enter a patient or family member's name (or emergency code).");
         return;
     }
 
@@ -6813,7 +6813,7 @@ async function performEmergencyHashLookup() {
     box.innerHTML = `
         <div class="text-center py-3 text-muted">
             <div class="spinner-border spinner-border-sm text-primary me-2"></div>
-            Verifying cryptographic emergency hash on NeuroCare network...
+            Searching verified emergency medical records for "${escapeHtml(hash)}"...
         </div>
     `;
 

@@ -451,7 +451,7 @@ def get_own_live_emergency_passport(
 
 @router.get("/live-passport/{patient_id}")
 def get_patient_live_emergency_passport(
-    patient_id: int,
+    patient_id: str,
     purpose: str = Query(..., min_length=8, description="Clinical purpose / reason for access"),
     is_emergency: bool = Query(True),
     current_user: User = Depends(get_current_user),
@@ -459,10 +459,27 @@ def get_patient_live_emergency_passport(
 ):
     """
     Role-gated live emergency passport. Doctors/admins provide a purpose; patients may only read self.
+    Supports looking up patient by integer ID OR by patient name.
     """
-    patient = db.query(User).filter(User.id == patient_id, User.role == "patient").first()
+    query_ident = str(patient_id).strip()
+    patient = None
+    if query_ident.isdigit():
+        patient = db.query(User).filter(User.id == int(query_ident), User.role == "patient").first()
+    
     if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found.")
+        patient = db.query(User).filter(
+            User.role == "patient",
+            User.full_name.ilike(f"%{query_ident}%")
+        ).first()
+
+    if not patient:
+        patient = db.query(User).filter(
+            User.role == "patient",
+            User.email.ilike(f"%{query_ident}%")
+        ).first()
+
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient '{query_ident}' not found. Please enter a valid patient name or ID.")
 
     _authorize_passport_access(current_user, patient)
 

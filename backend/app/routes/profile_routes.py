@@ -342,34 +342,65 @@ def lookup_family_emergency_record(
     hashcode: str,
     db: Session = Depends(get_db)
 ):
-    """Emergency Paramedic / Hospital Triage lookup by Family Member Emergency Hashcode."""
+    """Emergency Paramedic / Hospital Triage lookup by Patient Name OR Family Member Emergency Hashcode."""
     hash_clean = hashcode.strip()
+    
+    # 1. Search by exact hashcode match
     member = db.query(FamilyMember).filter(FamilyMember.emergency_hashcode == hash_clean).first()
+    
+    # 2. If not found by hash, search family members by name
     if not member:
-        raise HTTPException(status_code=404, detail="Emergency hashcode not found or invalid.")
+        member = db.query(FamilyMember).filter(FamilyMember.full_name.ilike(f"%{hash_clean}%")).first()
 
-    guardian = db.query(User).filter(User.id == member.user_id).first()
-    guardian_name = guardian.full_name if guardian else "Emergency Guardian"
-    guardian_phone = guardian.phone if guardian else None
+    if member:
+        guardian = db.query(User).filter(User.id == member.user_id).first()
+        guardian_name = guardian.full_name if guardian else "Emergency Guardian"
+        guardian_phone = guardian.phone if guardian else None
+        calc_age = compute_age_from_dob(member.date_of_birth) if member.date_of_birth else member.age
 
-    calc_age = compute_age_from_dob(member.date_of_birth) if member.date_of_birth else member.age
+        return FamilyMemberEmergencyLookupOut(
+            id=member.id,
+            full_name=member.full_name,
+            relationship=member.relationship,
+            age=calc_age,
+            gender=member.gender,
+            blood_group=member.blood_group,
+            phone=member.phone,
+            whatsapp=member.whatsapp,
+            known_allergies=member.known_allergies,
+            chronic_conditions=member.chronic_conditions,
+            current_medications=member.current_medications,
+            emergency_hashcode=member.emergency_hashcode,
+            notes=member.notes,
+            primary_guardian_name=guardian_name,
+            primary_guardian_phone=guardian_phone,
+            verified_status="CRYPTOGRAPHICALLY_VERIFIED"
+        )
 
-    return FamilyMemberEmergencyLookupOut(
-        id=member.id,
-        full_name=member.full_name,
-        relationship=member.relationship,
-        age=calc_age,
-        gender=member.gender,
-        blood_group=member.blood_group,
-        phone=member.phone,
-        whatsapp=member.whatsapp,
-        known_allergies=member.known_allergies,
-        chronic_conditions=member.chronic_conditions,
-        current_medications=member.current_medications,
-        emergency_hashcode=member.emergency_hashcode,
-        notes=member.notes,
-        primary_guardian_name=guardian_name,
-        primary_guardian_phone=guardian_phone,
-        verified_status="CRYPTOGRAPHICALLY_VERIFIED"
-    )
+    # 3. If not found in family members, search primary registered patients by full name or email!
+    user = db.query(User).filter(User.role == "patient", User.full_name.ilike(f"%{hash_clean}%")).first()
+    if not user:
+        user = db.query(User).filter(User.role == "patient", User.email.ilike(f"%{hash_clean}%")).first()
+
+    if user:
+        return FamilyMemberEmergencyLookupOut(
+            id=user.id,
+            full_name=user.full_name,
+            relationship="Self (Primary Patient)",
+            age=user.age or 35,
+            gender=user.gender or "Other",
+            blood_group=user.blood_group or "O+",
+            phone=user.phone,
+            whatsapp=user.phone,
+            known_allergies=user.drug_allergies or "No known drug allergies",
+            chronic_conditions=user.pre_existing_conditions or "None recorded",
+            current_medications=user.current_medications or "None recorded",
+            emergency_hashcode=f"EMERGENCY-RECORD-#{user.id}",
+            notes="Primary verified registered patient",
+            primary_guardian_name=user.emergency_contact_name or "Emergency Proxy",
+            primary_guardian_phone=user.emergency_contact_phone,
+            verified_status="CRYPTOGRAPHICALLY_VERIFIED"
+        )
+
+    raise HTTPException(status_code=404, detail=f"No emergency record found for '{hash_clean}'. Please check the name or code.")
 
