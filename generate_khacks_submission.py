@@ -1,621 +1,444 @@
-import os
+"""Fills the K! Hacks 4.0 online-submission template with Team Proxy's E-Healthcare content."""
+import copy
 import pptx
 from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
+from pptx.oxml.ns import qn
+from lxml import etree
 
-SRC_PPTX = r"C:\Users\yoges\Downloads\Khacks_4.0_ppt.pptx"
-OUT_PPTX_DOWNLOADS = r"C:\Users\yoges\Downloads\Khacks_4.0_Proxy_Submission.pptx"
-OUT_PPTX_WORKSPACE = r"c:\Users\yoges\Downloads\e-healthcare\Khacks_4.0_Proxy_Submission.pptx"
+SRC = r"C:\Users\yoges\Downloads\Khacks_4.0_ppt.pptx"
+OUTS = [
+    r"c:\Users\yoges\Downloads\e-healthcare\Khacks_4.0_Proxy_Submission.pptx",
+    r"C:\Users\yoges\Downloads\Khacks_4.0_Proxy_Submission.pptx",
+]
 
-prs = pptx.Presentation(SRC_PPTX)
-print(f"Loaded template with {len(prs.slides)} slides.")
+FONT = "Calibri"
+LIME = RGBColor(214, 250, 62)
+TEAL = RGBColor(56, 210, 235)
+WHITE = RGBColor(255, 255, 255)
+LIGHT = RGBColor(214, 222, 235)
+DIM = RGBColor(160, 174, 196)
+CARD = RGBColor(12, 20, 42)
+HEAD = RGBColor(24, 58, 92)
 
-# Color Palette (Dark Theme / High Contrast Tech Stack)
-C_BG_CARD = RGBColor(15, 23, 42)        # Slate 900
-C_CARD_BORDER = RGBColor(30, 41, 59)    # Slate 800
-C_CYAN_ACCENT = RGBColor(56, 189, 248)  # Sky 400
-C_AMBER_ACCENT = RGBColor(251, 191, 36) # Amber 400
-C_RED_ACCENT = RGBColor(248, 113, 113)  # Red 400
-C_GREEN_ACCENT = RGBColor(74, 222, 128) # Emerald 400
-C_WHITE = RGBColor(255, 255, 255)
-C_TEXT_MUTED = RGBColor(226, 232, 240)  # Slate 200 (clean, readable)
-C_TEXT_DIM = RGBColor(148, 163, 184)    # Slate 400
+prs = pptx.Presentation(SRC)
 
-FONT_NAME = "Segoe UI"
 
-def remove_placeholder_type_here(slide):
-    for shape in list(slide.shapes):
-        if shape.has_text_frame:
-            txt = shape.text.strip().lower()
-            if txt in ["type here", "type here\n"]:
-                sp = shape._element
-                sp.getparent().remove(sp)
+# ---------------------------------------------------------------- helpers
+def drop_placeholder(slide):
+    for sh in list(slide.shapes):
+        if sh.has_text_frame and sh.text.strip().lower() == "type here":
+            sh._element.getparent().remove(sh._element)
 
-def add_card(slide, left, top, width, height, bg_rgb=C_BG_CARD, border_rgb=C_CARD_BORDER, border_width_pt=1):
-    card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
-    card.fill.solid()
-    card.fill.fore_color.rgb = bg_rgb
-    card.line.color.rgb = border_rgb
-    card.line.width = Pt(border_width_pt)
-    tf = card.text_frame
+
+def set_alpha(shape, pct):
+    sf = shape.fill._xPr.find(qn("a:solidFill"))
+    clr = sf[0]
+    a = etree.SubElement(clr, qn("a:alpha"))
+    a.set("val", str(int(pct * 1000)))
+
+
+def R(text, size=12, bold=False, color=LIGHT, italic=False):
+    return (text, size, bold, color, italic)
+
+
+def card(slide, x, y, w, h, paras, fill=CARD, alpha=82, line=TEAL, line_w=0.75,
+         shape=MSO_SHAPE.ROUNDED_RECTANGLE, anchor=MSO_ANCHOR.TOP, margin=0.16, radius=0.04):
+    sh = slide.shapes.add_shape(shape, Inches(x), Inches(y), Inches(w), Inches(h))
+    sh.shadow.inherit = False
+    if shape == MSO_SHAPE.ROUNDED_RECTANGLE:
+        sh.adjustments[0] = radius
+    if fill is None:
+        sh.fill.background()
+    else:
+        sh.fill.solid()
+        sh.fill.fore_color.rgb = fill
+        if alpha < 100:
+            set_alpha(sh, alpha)
+    if line is None:
+        sh.line.fill.background()
+    else:
+        sh.line.color.rgb = line
+        sh.line.width = Pt(line_w)
+    tf = sh.text_frame
     tf.word_wrap = True
-    tf.vertical_anchor = MSO_ANCHOR.TOP
-    tf.margin_left = Inches(0.18)
-    tf.margin_right = Inches(0.18)
-    tf.margin_top = Inches(0.16)
-    tf.margin_bottom = Inches(0.16)
-    return card
+    tf.vertical_anchor = anchor
+    tf.margin_left = tf.margin_right = Inches(margin)
+    tf.margin_top = tf.margin_bottom = Inches(margin * 0.75)
+    write(tf, paras)
+    return sh
 
-# ==========================================
-# SLIDE 1: ONLINE SUBMISSION
-# ==========================================
-s1 = prs.slides[0]
-for shape in s1.shapes:
-    if shape.has_text_frame:
-        if "ONLINE SUBMISSION" in shape.text:
-            shape.text = "ONLINE SUBMISSION"
-            p = shape.text_frame.paragraphs[0]
-            p.font.name = FONT_NAME
-            p.font.size = Pt(28)
-            p.font.bold = True
-            p.font.color.rgb = C_CYAN_ACCENT
-        elif "Team Name" in shape.text:
-            shape.text_frame.clear()
-            lines = [
-                ("Project Name", "AEGISHEALTH (SOVEREIGN EMERGENCY EHR)"),
-                ("Team Name", "Proxy"),
-                ("College Name", "New Horizon College of Engineering"),
-                ("Problem Track", "Health Tech Track"),
-                ("Hackathon", "K! HACKS 4.0 — CEG Tech Forum, Anna University, Chennai")
-            ]
-            for idx, (lbl, val) in enumerate(lines):
-                p = shape.text_frame.add_paragraph() if idx > 0 else shape.text_frame.paragraphs[0]
-                run_lbl = p.add_run()
-                run_lbl.text = f"{lbl:<16}:   "
-                run_lbl.font.name = FONT_NAME
-                run_lbl.font.size = Pt(14)
-                run_lbl.font.bold = True
-                run_lbl.font.color.rgb = C_TEXT_MUTED
-                
-                run_val = p.add_run()
-                run_val.text = val
-                run_val.font.name = FONT_NAME
-                run_val.font.size = Pt(14)
-                run_val.font.bold = True
-                run_val.font.color.rgb = C_CYAN_ACCENT if lbl in ["Project Name", "Team Name"] else C_WHITE
 
-# Hero Card
-hero = add_card(s1, Inches(1.54), Inches(4.90), Inches(10.34), Inches(1.20), bg_rgb=RGBColor(15, 23, 42), border_rgb=C_CYAN_ACCENT, border_width_pt=1.5)
-htf = hero.text_frame
-hp1 = htf.paragraphs[0]
-hp1.text = "MISSION: SOLVING THE EMERGENCY 'GOLDEN HOUR' INFORMATION BLACKOUT"
-hp1.font.name = FONT_NAME
-hp1.font.size = Pt(13)
-hp1.font.bold = True
-hp1.font.color.rgb = C_AMBER_ACCENT
+def write(tf, paras):
+    """paras: list of (runs, align, space_before_pt)"""
+    first = True
+    for item in paras:
+        item = tuple(item)
+        defaults = (None, PP_ALIGN.LEFT, 0)
+        runs, align, sb = item + defaults[len(item):]
+        p = tf.paragraphs[0] if first else tf.add_paragraph()
+        first = False
+        p.alignment = align
+        p.space_before = Pt(sb)
+        for text, size, bold, color, italic in runs:
+            r = p.add_run()
+            r.text = text
+            r.font.name = FONT
+            r.font.size = Pt(size)
+            r.font.bold = bold
+            r.font.italic = italic
+            r.font.color.rgb = color
 
-hp2 = htf.add_paragraph()
-hp2.space_before = Pt(4)
-hp2.text = "A decoupled, zero-barrier emergency clinical dossier accessible by ER doctors and paramedics in <3 seconds without hash codes or OTPs, unified with WHO SBAR clinical handover continuity, circadian AI chronotherapy, and live IoT vitals telemetry."
-hp2.font.name = FONT_NAME
-hp2.font.size = Pt(11)
-hp2.font.color.rgb = C_TEXT_MUTED
 
-# ==========================================
-# SLIDE 2: PROBLEM STATEMENT
-# ==========================================
-s2 = prs.slides[1]
-remove_placeholder_type_here(s2)
+def textbox(slide, x, y, w, h, paras, anchor=MSO_ANCHOR.TOP):
+    tb = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = anchor
+    tf.margin_left = tf.margin_right = Inches(0.05)
+    tf.margin_top = tf.margin_bottom = Inches(0.02)
+    write(tf, paras)
+    return tb
 
-for shape in s2.shapes:
-    if shape.has_text_frame and "PROBLEM STATEMENT" in shape.text:
-        shape.text = "PROBLEM STATEMENT: THE EMERGENCY TRIAGE BLINDSPOT"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(22)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
 
-col_w = Inches(3.90)
-gap = Inches(0.22)
-start_x = Inches(0.60)
-top_y = Inches(1.48)
-card_h = Inches(4.55)
+def subtitle(slide, text, y=1.12, w=8.45):
+    textbox(slide, 0.25, y, w, 0.62, [([R(text, 14.5, False, WHITE, True)],)])
 
-# 1. Golden Hour Blackout
-c1 = add_card(s2, start_x, top_y, col_w, card_h, border_rgb=C_RED_ACCENT)
-tf1 = c1.text_frame
-p = tf1.paragraphs[0]
-p.text = "1. THE 'GOLDEN HOUR' BLACKOUT"
-p.font.name = FONT_NAME
-p.font.size = Pt(13)
-p.font.bold = True
-p.font.color.rgb = C_RED_ACCENT
 
-items_c1 = [
-    ("1.5M+ Annual Admissions: ", "Over 1.5 million acute trauma and emergency admissions occur in India every year."),
-    ("Zero History at Arrival: ", "Paramedics and ER triage staff operate with 0 seconds of clinical history when treating unconscious, inebriated, or disoriented patients."),
-    ("33% Preventable Mortalities: ", "1 in 3 emergency complications stem from unknown fatal drug allergies (e.g. Penicillin anaphylaxis), active anticoagulants/blood thinners, or undisclosed diabetes/epilepsy.")
+def bullet(text_bold, text, size=12, sb=5, mark_color=TEAL):
+    runs = [R("▪  ", size, True, mark_color)]
+    if text_bold:
+        runs.append(R(text_bold, size, True, WHITE))
+    runs.append(R(text, size, False, LIGHT))
+    return (runs, PP_ALIGN.LEFT, sb)
+
+
+def arrow(slide, x, y, w=0.32, h=0.34):
+    a = slide.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, Inches(x), Inches(y), Inches(w), Inches(h))
+    a.shadow.inherit = False
+    a.fill.solid()
+    a.fill.fore_color.rgb = TEAL
+    a.line.fill.background()
+
+
+# ================================================================ SLIDE 1
+s = prs.slides[0]
+for sh in s.shapes:
+    if sh.has_text_frame and "Team Name" in sh.text:
+        values = ["Proxy", "New Horizon College of Engineering", "Health Tech"]
+        paras = sh.text_frame.paragraphs
+        for p, val in zip(paras, values):
+            for r in p.runs:
+                if "Type Here" in r.text:
+                    r.text = r.text.replace("Type Here", val)
+        # extra line: project title, cloned from the last line so it keeps template formatting
+        new_p = copy.deepcopy(paras[-1]._p)
+        sh.text_frame._txBody.append(new_p)
+        last = sh.text_frame.paragraphs[-1]
+        runs = last.runs
+        full = "".join(r.text for r in runs)
+        # rebuild text in the cloned runs
+        for r in runs[1:]:
+            r._r.getparent().remove(r._r)
+        runs[0].text = "Project Title   :    E-Healthcare"
+        sh.height = Inches(1.95)
+
+textbox(s, 1.58, 5.25, 10.3, 0.5, [([R("Instant, privacy-safe access to a patient's critical medical information in an emergency",
+                                       16, False, LIME, True)],)])
+
+# ================================================================ SLIDE 2 - PROBLEM
+s = prs.slides[1]
+drop_placeholder(s)
+subtitle(s, "When a person is brought in after an accident or a sudden collapse, the information that decides "
+            "their treatment is missing at the exact moment it is needed.")
+
+card(s, 0.45, 1.85, 12.43, 0.6, [([
+    R("Scale:  ", 13, True, LIME),
+    R("4,61,312 road accidents and 1,68,491 deaths in India in 2022 (MoRTH). Many victims reach hospital "
+      "unconscious, alone and with no medical history.", 13, False, WHITE)],)],
+     line=None, fill=HEAD, alpha=85, anchor=MSO_ANCHOR.MIDDLE)
+
+cols = [
+    ("01", "The patient cannot speak",
+     ["Unconscious or in shock, the patient cannot tell anyone their blood group, drug allergies, "
+      "current medicines or conditions such as diabetes, epilepsy or heart disease.",
+      "Bystanders do not know whom to call."]),
+    ("02", "The information is locked away",
+     ["Details sit in a locked phone, in paper files at another hospital, or in apps that need the "
+      "patient's own OTP, password or access code.",
+      "Consent-first systems assume a conscious, cooperating patient."]),
+    ("03", "The hospital cannot wait",
+     ["Doctors begin treatment without history: a wrong drug can trigger a severe allergic reaction, "
+      "and unknown blood thinners raise bleeding risk in surgery.",
+      "Later, details are lost again during shift handovers."]),
 ]
-for lbl, txt in items_c1:
-    p = tf1.add_paragraph()
-    p.space_before = Pt(6)
-    r1 = p.add_run()
-    r1.text = lbl
-    r1.font.bold = True
-    r1.font.size = Pt(10.5)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = txt
-    r2.font.size = Pt(10)
-    r2.font.color.rgb = C_TEXT_MUTED
+cw, gap, cy, ch = 3.977, 0.25, 2.6, 2.7
+for i, (num, title, body) in enumerate(cols):
+    paras = [([R(num + "  ", 22, True, LIME), R(title, 15, True, WHITE)],)]
+    for b in body:
+        paras.append(bullet(None, b, 13, 8))
+    card(s, 0.45 + i * (cw + gap), cy, cw, ch, paras)
 
-# 2. Cryptographic & Auth Dead-End
-c2 = add_card(s2, start_x + col_w + gap, top_y, col_w, card_h, border_rgb=C_AMBER_ACCENT)
-tf2 = c2.text_frame
-p = tf2.paragraphs[0]
-p.text = "2. THE CRYPTOGRAPHIC & AUTH DEAD-END"
-p.font.name = FONT_NAME
-p.font.size = Pt(13)
-p.font.bold = True
-p.font.color.rgb = C_AMBER_ACCENT
+card(s, 0.45, 5.45, 12.43, 0.68, [([
+    R("Problem:  ", 13.5, True, LIME),
+    R("There is no fast and privacy-safe way for responders and doctors to see a patient's critical medical "
+      "information in an emergency, or to keep it intact through the hospital stay.", 13.5, False, WHITE)],)],
+     line=LIME, anchor=MSO_ANCHOR.MIDDLE)
 
-items_c2 = [
-    ("Flawed Patient Cooperation: ", "Existing digital health vaults (ABHA portals, decentralized Web3 EHRs) assume the patient is awake, alert, and capable of authentication."),
-    ("The Auth Wall Bottleneck: ", "Demanding SMS OTPs (patient's phone is locked or destroyed), biometric thumbprints (unusable in trauma/burns), or 64-character SHA-256 hash codes creates fatal administrative delays."),
-    ("Lethal Latency: ", "In severe trauma, acute myocardial infarction, or stroke, every 60-second delay in clinical baseline discovery increases mortality risk by 7-10%.")
+# ================================================================ SLIDE 3 - SOLUTION
+s = prs.slides[2]
+drop_placeholder(s)
+subtitle(s, "E-Healthcare is a web platform that puts a patient's critical medical information in front of the "
+            "right person within seconds, showing each person only what they need.")
+
+users = [
+    ("BYSTANDER", "Scans the QR sticker on the patient's phone or ID card. No app, no login.",
+     [("Sees only ", "name, blood group and emergency contacts."),
+      ("One tap ", "sends the live GPS location to family by SMS."),
+      ("No medical history ", "is ever shown at this level.")]),
+    ("PARAMEDIC / ER DOCTOR", "Verified clinician login. Searches by patient name, phone or ID. No codes or OTPs.",
+     [("Sees ", "allergies, active medicines, conditions, latest vitals, past consultations, prescriptions and reports."),
+      ("Every emergency access ", "is logged with clinician, time and reason.")]),
+    ("PATIENT & FAMILY", "Personal login for the patient and linked family members.",
+     [("Symptom check ", "by voice or text in English, Tamil, Telugu, Kannada, Malayalam and Hindi."),
+      ("Lab report upload ", "with out-of-range values flagged."),
+      ("Medicine reminders ", "and control over which records are shared.")]),
 ]
-for lbl, txt in items_c2:
-    p = tf2.add_paragraph()
-    p.space_before = Pt(6)
-    r1 = p.add_run()
-    r1.text = lbl
-    r1.font.bold = True
-    r1.font.size = Pt(10.5)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = txt
-    r2.font.size = Pt(10)
-    r2.font.color.rgb = C_TEXT_MUTED
+cw, cy, ch = 3.977, 1.88, 3.22
+for i, (who, access, pts) in enumerate(users):
+    paras = [([R(who, 14, True, LIME)],),
+             ([R(access, 11.5, False, TEAL, True)], PP_ALIGN.LEFT, 4)]
+    for b, t in pts:
+        paras.append(bullet(b, t, 13, 8))
+    card(s, 0.45 + i * (cw + 0.25), cy, cw, ch, paras)
 
-# 3. Handover Errors & Circadian Void
-c3 = add_card(s2, start_x + (col_w + gap)*2, top_y, col_w, card_h, border_rgb=C_CYAN_ACCENT)
-tf3 = c3.text_frame
-p = tf3.paragraphs[0]
-p.text = "3. HANDOVER DRIFT & CIRCADIAN VOID"
-p.font.name = FONT_NAME
-p.font.size = Pt(13)
-p.font.bold = True
-p.font.color.rgb = C_CYAN_ACCENT
+card(s, 0.45, 5.23, 12.43, 0.9, [
+    ([R("After admission:  ", 13, True, LIME),
+      R("Consultations are recorded as structured SBAR handover notes (Situation, Background, Assessment, "
+        "Recommendation), and wearable vitals are graded automatically, raising warning and critical alerts "
+        "on the doctor's dashboard.", 12.5, False, WHITE)],)],
+     line=LIME, anchor=MSO_ANCHOR.MIDDLE)
 
-items_c3 = [
-    ("70% Handover Breakdown: ", "The majority of adverse diagnostic errors occur during emergency-to-ICU or ward shifts due to informal, unstructured verbal communication."),
-    ("Lack of Clinical Frameworks: ", "Global protocols like WHO's SBAR (Situation, Background, Assessment, Recommendation) are almost never embedded natively in digital hospital EMRs."),
-    ("The Circadian Blindspot: ", "Prescriptions use static, dumb timers ignoring circadian pharmacokinetics—drug bioavailability and liver/kidney clearance vary up to 40% across day-night cycles.")
+# ================================================================ SLIDE 4 - ARCHITECTURE
+s = prs.slides[3]
+drop_placeholder(s)
+subtitle(s, "Three-tier web architecture with role-based access: every request is checked against who is asking before any data is returned.", y=1.66, w=12.4)
+
+top = 2.08          # column labels
+bt, bh = 2.38, 2.6  # boxes top / height
+mid = bt + bh / 2 - 0.17
+textbox(s, 0.45, top, 2.0, 0.3, [([R("USERS", 11, True, DIM)],)])
+for j, u in enumerate(["Bystander (QR scan)", "Patient / Family", "Paramedic / Doctor"]):
+    card(s, 0.45, bt + j * 0.91, 2.0, 0.78, [([R(u, 12.5, True, WHITE)], PP_ALIGN.CENTER)],
+         anchor=MSO_ANCHOR.MIDDLE)
+arrow(s, 2.53, mid)
+
+textbox(s, 2.93, top, 2.3, 0.3, [([R("CLIENT", 11, True, DIM)],)])
+card(s, 2.93, bt, 2.3, bh, [
+    ([R("Web Client", 14, True, LIME)],),
+    bullet(None, "HTML5, Bootstrap 5, JavaScript", 11.5, 5),
+    bullet(None, "Patient, doctor and emergency portals", 11.5, 4),
+    bullet(None, "Web Speech API: voice input in 6 languages", 11.5, 4),
+    bullet(None, "Chart.js vitals graphs", 11.5, 4),
+])
+arrow(s, 5.31, mid)
+
+textbox(s, 5.71, top, 4.75, 0.3, [([R("APPLICATION SERVER", 11, True, DIM)],)])
+card(s, 5.71, bt, 4.75, bh, [
+    ([R("FastAPI (Python)  ", 14, True, LIME), R("REST APIs, JWT role-based access", 11.5, False, TEAL)],)])
+mods = ["Emergency passport & QR", "Patient record search", "Break-glass audit log", "Symptom triage model",
+        "Lab report parser", "SBAR handover engine", "Vitals grading & alerts", "Reminder scheduler"]
+mw, mh = 2.19, 0.44
+for k, m in enumerate(mods):
+    cx = 5.85 + (k % 2) * (mw + 0.1)
+    cyy = bt + 0.5 + (k // 2) * (mh + 0.08)
+    card(s, cx, cyy, mw, mh, [([R(m, 11.5, False, WHITE)], PP_ALIGN.CENTER)], fill=HEAD, alpha=90,
+         line=None, anchor=MSO_ANCHOR.MIDDLE, margin=0.06)
+arrow(s, 10.54, mid)
+
+textbox(s, 10.94, top, 1.95, 0.3, [([R("DATA & SERVICES", 11, True, DIM)],)])
+card(s, 10.94, bt, 1.94, 1.24, [
+    ([R("Database", 13, True, LIME)],),
+    ([R("PostgreSQL / SQLite via SQLAlchemy ORM", 11, False, LIGHT)], PP_ALIGN.LEFT, 3)])
+card(s, 10.94, bt + 1.36, 1.94, 1.24, [
+    ([R("External", 13, True, LIME)],),
+    ([R("SMS gateway, map location links, wearable vitals feed", 11, False, LIGHT)], PP_ALIGN.LEFT, 3)])
+
+textbox(s, 0.45, 5.08, 3.0, 0.3, [([R("EMERGENCY ACCESS FLOW", 11, True, DIM)],)])
+steps = ["Scan QR / search name", "Verify role", "Return tiered view", "Write audit entry", "Alert family by SMS"]
+sw = 12.43 / 5
+for k, st in enumerate(steps):
+    shp = MSO_SHAPE.PENTAGON if k == 0 else MSO_SHAPE.CHEVRON
+    card(s, 0.45 + k * sw, 5.4, sw + 0.05, 0.6, [([R(st, 12, True, WHITE if k % 2 == 0 else CARD)], PP_ALIGN.CENTER)],
+         shape=shp, fill=HEAD if k % 2 == 0 else TEAL, alpha=100, line=None, anchor=MSO_ANCHOR.MIDDLE, margin=0.25)
+
+# ================================================================ SLIDE 5 - FEASIBILITY & USP
+s = prs.slides[4]
+drop_placeholder(s)
+subtitle(s, "A working prototype on an open-source stack, built around the cases existing health apps do "
+            "not handle.", y=1.66, w=12.4)
+
+card(s, 0.45, 2.1, 4.85, 4.03, [
+    ([R("FEASIBILITY", 14, True, LIME)],),
+    bullet("Prototype built: ", "patient, doctor and emergency portals with live APIs and a test suite.", 12, 8),
+    bullet("Low cost: ", "open-source tools; runs on one laptop or a small cloud server. No special hardware.", 12, 7),
+    bullet("Any device: ", "works in a phone browser; the QR view needs no installation.", 12, 7),
+    bullet("Interoperable: ", "records map to FHIR resources (Patient, AllergyIntolerance, MedicationStatement, "
+                              "Observation) for ABDM integration.", 12, 7),
+    bullet("Legally grounded: ", "the DPDP Act 2023 (Sec. 7) allows processing personal data in a medical "
+                                 "emergency; the audit log keeps every access accountable.", 12, 7),
+])
+
+rows = [
+    ("", "Typical health apps / EHRs", "E-Healthcare"),
+    ("Patient unconscious", "Needs the patient's OTP or password", "QR scan, or clinician searches by name"),
+    ("Privacy", "All records or nothing", "Three views: bystander, clinician, patient"),
+    ("Accountability", "Access rarely tracked", "Every emergency access logged with reason"),
+    ("Language", "Mostly English", "Voice and text in 6 Indian languages"),
+    ("After admission", "Free-text notes", "SBAR handovers and live vitals alerts"),
 ]
-for lbl, txt in items_c3:
-    p = tf3.add_paragraph()
-    p.space_before = Pt(6)
-    r1 = p.add_run()
-    r1.text = lbl
-    r1.font.bold = True
-    r1.font.size = Pt(10.5)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = txt
-    r2.font.size = Pt(10)
-    r2.font.color.rgb = C_TEXT_MUTED
+tx, ty, tw = 5.5, 2.1, 7.38
+tbl_shape = s.shapes.add_table(len(rows), 3, Inches(tx), Inches(ty), Inches(tw), Inches(4.03))
+tbl = tbl_shape.table
+tbl.first_row = True
+for ci, wdt in enumerate([1.85, 2.6, 2.93]):
+    tbl.columns[ci].width = Inches(wdt)
+for ri, row in enumerate(rows):
+    tbl.rows[ri].height = Inches(0.53 if ri == 0 else 0.7)
+    for ci, val in enumerate(row):
+        cell = tbl.cell(ri, ci)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = HEAD if ri == 0 else (CARD if ri % 2 else RGBColor(20, 32, 60))
+        cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+        cell.margin_left = cell.margin_right = Inches(0.1)
+        tf = cell.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.text = ""
+        r = p.add_run()
+        r.text = val
+        r.font.name = FONT
+        if ri == 0:
+            r.font.size, r.font.bold = Pt(13), True
+            r.font.color.rgb = LIME if ci == 2 else WHITE
+        else:
+            r.font.size = Pt(12)
+            r.font.bold = ci != 1
+            r.font.color.rgb = TEAL if ci == 0 else (DIM if ci == 1 else WHITE)
 
-# ==========================================
-# SLIDE 3: SOLUTION ABSTRACT
-# ==========================================
-s3 = prs.slides[2]
-remove_placeholder_type_here(s3)
+# ================================================================ SLIDE 6 - MARKET & BUSINESS
+s = prs.slides[5]
+drop_placeholder(s)
+subtitle(s, "Free for citizens, paid for by the institutions that save time and lives with it.", y=1.66, w=12.4)
 
-for shape in s3.shapes:
-    if shape.has_text_frame and "SOLUTION ABSTRACT" in shape.text:
-        shape.text = "SOLUTION ABSTRACT: DUAL-TIER ZERO-BARRIER TRIAGE"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(22)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
-
-b_w = Inches(5.95)
-b_h = Inches(4.55)
-b_top = Inches(1.48)
-
-# Left: Decoupled Emergency Dossier
-box_l = add_card(s3, Inches(0.60), b_top, b_w, b_h, border_rgb=C_CYAN_ACCENT)
-tfl = box_l.text_frame
-p = tfl.paragraphs[0]
-p.text = "CORE INNOVATION: DECOUPLED EMERGENCY ACCESS"
-p.font.name = FONT_NAME
-p.font.size = Pt(13)
-p.font.bold = True
-p.font.color.rgb = C_CYAN_ACCENT
-
-left_points = [
-    ("Tier 1: Zero-Barrier Emergency Dossier (<3s): ", "Doctors and paramedics query records directly by patient name, phone, or ID. Completely removes hash code and OTP friction. Instantly surfaces Blood Group, Anaphylactic Allergies, Active Regimens, and Next-of-Kin."),
-    ("Tier 2: Sovereign Patient Vault (Granular Consent): ", "Non-emergency elective records (psychiatric history, diagnostic scans, genetic records) remain securely encrypted under patient-consented time-bound authorization."),
-    ("Cryptographic Break-Glass Audit Trail: ", "Every emergency lookup automatically logs Clinician ID, Hospital, Timestamp, and Clinical Justification onto an immutable audit ledger, guaranteeing complete legal and regulatory compliance.")
+cw, cy, ch = 3.977, 2.1, 2.42
+market = [
+    ("WHO NEEDS IT", [
+        ("Accident and emergency patients: ", "4.6 lakh road accidents a year."),
+        ("Hospital emergency departments ", "treating unknown patients."),
+        ("Ambulance services ", "(108 and private fleets)."),
+        ("Elderly and chronic patients ", "living alone, and their families."),
+    ]),
+    ("REVENUE MODEL", [
+        ("Citizens: ", "free emergency profile and QR."),
+        ("Hospitals: ", "yearly subscription for the clinician console, SBAR and vitals dashboard."),
+        ("Ambulance operators: ", "licence for the paramedic view."),
+        ("Colleges, employers, insurers: ", "bulk QR health IDs; premium family plan."),
+    ]),
+    ("GO-TO-MARKET", [
+        ("Step 1: ", "QR health IDs for students at our own campus."),
+        ("Step 2: ", "pilot with one partner hospital's emergency department."),
+        ("Step 3: ", "tie-up with a private ambulance operator."),
+        ("Step 4: ", "ABDM sandbox integration, then scale city by city."),
+    ]),
 ]
-for title, desc in left_points:
-    p = tfl.add_paragraph()
-    p.space_before = Pt(8)
-    r1 = p.add_run()
-    r1.text = title
-    r1.font.bold = True
-    r1.font.size = Pt(10.5)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = desc
-    r2.font.size = Pt(10)
-    r2.font.color.rgb = C_TEXT_MUTED
+for i, (head, pts) in enumerate(market):
+    paras = [([R(head, 14, True, LIME)],)]
+    for b, t in pts:
+        paras.append(bullet(b, t, 12, 6))
+    card(s, 0.45 + i * (cw + 0.25), cy, cw, ch, paras)
 
-# Right: Continuity & Chrono-Intelligence
-box_r = add_card(s3, Inches(6.80), b_top, b_w, b_h, border_rgb=C_AMBER_ACCENT)
-tfr = box_r.text_frame
-p = tfr.paragraphs[0]
-p.text = "CLINICAL CONTINUITY & INTELLIGENCE ENGINES"
-p.font.name = FONT_NAME
-p.font.size = Pt(13)
-p.font.bold = True
-p.font.color.rgb = C_AMBER_ACCENT
-
-right_points = [
-    ("Native SBAR Clinical Handover Protocol: ", "Natively embeds WHO-standardized Situation, Background, Assessment, and Recommendation workflows into every doctor consultation, eliminating handover communication drift."),
-    ("Circadian AI Chronotherapy Engine: ", "Calculates biologically optimized drug administration timings based on circadian pharmacokinetics (e.g. Statins at 21:00 for peak hepatic HMG-CoA reductase synthesis; Antihypertensives at 07:30 to preempt morning BP surges)."),
-    ("Live Wearable IoT Vitals Telemetry: ", "Continuous streaming of Blood Pressure, SpO2, Heart Rate, and Blood Glucose with automated severity grading (Normal, Warning, Hypertensive Urgency) and instantaneous clinician alerts.")
+alts = [
+    ("PHR / ABHA apps", "Consent-first; need the patient to log in or approve. No emergency mode."),
+    ("Hospital information systems", "Data stays inside one hospital; nothing available on arrival elsewhere."),
+    ("Medical ID cards and bracelets", "Static, rarely updated, no clinician detail and no family alert."),
 ]
-for title, desc in right_points:
-    p = tfr.add_paragraph()
-    p.space_before = Pt(8)
-    r1 = p.add_run()
-    r1.text = title
-    r1.font.bold = True
-    r1.font.size = Pt(10.5)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = desc
-    r2.font.size = Pt(10)
-    r2.font.color.rgb = C_TEXT_MUTED
+card(s, 0.45, 4.63, 12.43, 1.5, [([R("EXISTING ALTERNATIVES AND THE GAP WE FILL", 13, True, LIME)],)], line=LIME)
+aw = 12.1 / 3
+for i, (a, gapt) in enumerate(alts):
+    textbox(s, 0.62 + i * aw, 5.05, aw - 0.15, 1.0, [
+        ([R(a, 12.5, True, WHITE)],),
+        ([R(gapt, 11.5, False, LIGHT)], PP_ALIGN.LEFT, 3)])
 
-# ==========================================
-# SLIDE 4: ARCHITECTURE AND SYSTEM DESIGN
-# ==========================================
-s4 = prs.slides[3]
-remove_placeholder_type_here(s4)
+# ================================================================ SLIDE 7 - RESEARCH & REFERENCES
+s = prs.slides[6]
+drop_placeholder(s)
+subtitle(s, "Our design choices are based on published data, Indian law and open healthcare standards.")
 
-for shape in s4.shapes:
-    if shape.has_text_frame and "ARCHITECTURE" in shape.text:
-        shape.text = "ARCHITECTURE AND SYSTEM DESIGN: HIGH-CONCURRENCY PIPELINE"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(21)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
-
-layer_w = Inches(12.15)
-layer_h = Inches(1.05)
-layer_x = Inches(0.60)
-l_tops = [Inches(1.48), Inches(2.62), Inches(3.76), Inches(4.90)]
-
-layers_data = [
-    ("LAYER 1: PRESENTATION & CLINICAL ERGONOMICS", C_CYAN_ACCENT,
-     "• Tech Stack: Responsive HTML5, Bootstrap 5.3, Vanilla JS (modular ES6), Chart.js for vitals telemetry, WebSockets for real-time notifications.\n• Specialized Interfaces: Paramedic High-Contrast Rapid Triage Console, Attending Doctor EHR Dossier, and Citizen Sovereign Vault."),
-    
-    ("LAYER 2: API GATEWAY & MICROSERVICES (FASTAPI)", C_WHITE,
-     "• Tech Stack: Python 3.11 + FastAPI (Asynchronous ASGI server, Uvicorn), JWT Bearer Authentication, Dependency Injection.\n• Key Endpoints: /api/doctors/patient-records, /api/emergency/live-passport/{name_or_id}, /api/blockchain/break-glass audit logger.\n• Standards: Standardized JSON schemas mapped to HL7 FHIR R4 and ABDM (Ayushman Bharat Digital Mission) Milestone 1-3."),
-    
-    ("LAYER 3: CLINICAL INTELLIGENCE & CHRONO-LOGIC ENGINES", C_AMBER_ACCENT,
-     "• SBAR Handover Parser: Serializes and validates structured clinical handover documentation across hospital department shifts.\n• Chronotherapy Optimizer: Pharmacokinetic algorithm matching medication classes against human circadian bioavailability curves.\n• Triage Grading Engine: Automatic vital sign classification (Normal, Borderline, Hypertensive Crisis) triggering immediate alerts."),
-    
-    ("LAYER 4: PERSISTENCE, DECOUPLED SEARCH & CRYPTOGRAPHIC AUDIT", C_TEXT_MUTED,
-     "• Relational Storage: ACID DB (PostgreSQL / SQLite) with tokenized case-insensitive substring search (ilike) across Name, Phone, and Email.\n• Security & Auditing: SHA-256 cryptographic break-glass access logging capturing Clinician ID, Hospital, Timestamp, and Clinical Justification.")
+left = [
+    ("Ministry of Road Transport & Highways, ", "Road Accidents in India 2022, Transport Research Wing, Govt. of India.",
+     "Scale of the problem"),
+    ("Supreme Court of India, ", "Parmanand Katara v. Union of India (1989).",
+     "Duty to give immediate medical aid to accident victims"),
+    ("Digital Personal Data Protection Act, 2023, ", "Section 7 (legitimate uses).",
+     "Legal basis for emergency access without prior consent"),
+    ("WHO Collaborating Centre for Patient Safety, ", "Communication During Patient Hand-Overs, Patient Safety Solutions, Vol. 1, Sol. 3 (2007).",
+     "Structured handover (SBAR)"),
 ]
-
-for idx, (title, col, desc) in enumerate(layers_data):
-    card = add_card(s4, layer_x, l_tops[idx], layer_w, layer_h, border_rgb=col if col != C_WHITE else C_CARD_BORDER)
-    ctf = card.text_frame
-    p = ctf.paragraphs[0]
-    p.text = title
-    p.font.name = FONT_NAME
-    p.font.size = Pt(11.5)
-    p.font.bold = True
-    p.font.color.rgb = col
-    
-    p2 = ctf.add_paragraph()
-    p2.text = desc
-    p2.font.name = FONT_NAME
-    p2.font.size = Pt(9.5)
-    p2.font.color.rgb = C_TEXT_MUTED
-
-# ==========================================
-# SLIDE 5: FEASIBILITY AND UNIQUE SELLING POINTS
-# ==========================================
-s5 = prs.slides[4]
-remove_placeholder_type_here(s5)
-
-for shape in s5.shapes:
-    if shape.has_text_frame and "FEASIBILITY" in shape.text:
-        shape.text = "FEASIBILITY AND UNIQUE SELLING POINTS (USP)"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(22)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
-
-grid_w = Inches(5.95)
-grid_h = Inches(2.20)
-gx1, gx2 = Inches(0.60), Inches(6.80)
-gy1, gy2 = Inches(1.48), Inches(3.82)
-
-usps = [
-    ("USP 1: ZERO-BARRIER NAME/ID EMERGENCY LOOKUP", C_RED_ACCENT, gx1, gy1,
-     [("The Problem in Others: ", "Conventional EHRs and ABHA apps enforce OTPs or biometrics—paralyzing triage when a patient is unconscious."),
-      ("AegisHealth Edge: ", "Clinicians enter only the patient's name or ID; the critical safety baseline loads in <3 seconds without requiring hash codes or phone access."),
-      ("Safety Check: ", "Audited with immutable break-glass logs to prevent unauthorized browsing.")]),
-    
-    ("USP 2: NATIVE SBAR CLINICAL CONTINUITY", C_CYAN_ACCENT, gx2, gy1,
-     [("The Problem in Others: ", "Free-text notes or chaotic paper slips cause 70% of inter-shift medical errors."),
-      ("AegisHealth Edge: ", "Natively embeds WHO SBAR structure into every doctor consultation note."),
-      ("Outcome: ", "Standardizes communication between triage nurses, ER physicians, and ICU intensivists.")]),
-    
-    ("USP 3: CIRCADIAN AI CHRONOTHERAPY ENGINE", C_AMBER_ACCENT, gx1, gy2,
-     [("The Problem in Others: ", "Existing medication apps use dumb reminder timers (e.g. 'take at 9 AM') ignoring biological rhythms."),
-      ("AegisHealth Edge: ", "Dynamically optimizes drug administration according to circadian peak bioavailability (e.g. Statins at night, ACE-inhibitors in early morning)."),
-      ("Outcome: ", "Maximizes therapeutic efficacy and cuts adverse drug reactions by up to 28%.")]),
-    
-    ("USP 4: PRODUCTION-READY MVP & TECHNICAL FEASIBILITY", C_WHITE, gx2, gy2,
-     [("Build Feasibility: ", "100% functional, live-tested codebase (FastAPI, SQLite/PostgreSQL, modular frontend) requiring zero external proprietary hardware."),
-      ("Deployment: ", "Can be deployed on hospital intranets, portable edge servers, or cloud in <15 minutes."),
-      ("Scalability: ", "Sub-50ms query response times under high concurrency; FHIR R4 schema compliance ensures seamless hospital integration.")])
-]
-
-for title, col, x, y, pts in usps:
-    card = add_card(s5, x, y, grid_w, grid_h, border_rgb=col if col != C_WHITE else C_CYAN_ACCENT)
-    ctf = card.text_frame
-    p = ctf.paragraphs[0]
-    p.text = title
-    p.font.name = FONT_NAME
-    p.font.size = Pt(11.5)
-    p.font.bold = True
-    p.font.color.rgb = col
-    
-    for lbl, desc in pts:
-        p = ctf.add_paragraph()
-        p.space_before = Pt(3)
-        r1 = p.add_run()
-        r1.text = lbl
-        r1.font.bold = True
-        r1.font.size = Pt(10)
-        r1.font.color.rgb = C_WHITE
-        r2 = p.add_run()
-        r2.text = desc
-        r2.font.size = Pt(9.5)
-        r2.font.color.rgb = C_TEXT_MUTED
-
-# ==========================================
-# SLIDE 6: MARKET STUDY AND BUSINESS MODEL
-# ==========================================
-s6 = prs.slides[5]
-remove_placeholder_type_here(s6)
-
-for shape in s6.shapes:
-    if shape.has_text_frame and "MARKET STUDY" in shape.text:
-        shape.text = "MARKET STUDY AND BUSINESS MODEL"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(22)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
-
-m_w = Inches(3.90)
-m_h = Inches(4.55)
-m_x1, m_x2, m_x3 = Inches(0.60), Inches(4.75), Inches(8.90)
-m_top = Inches(1.48)
-
-# Col 1: Market
-mc1 = add_card(s6, m_x1, m_top, m_w, m_h, border_rgb=C_CYAN_ACCENT)
-t1 = mc1.text_frame
-p = t1.paragraphs[0]
-p.text = "MARKET SIZING (TAM / SAM / SOM)"
-p.font.name = FONT_NAME
-p.font.size = Pt(12.5)
-p.font.bold = True
-p.font.color.rgb = C_CYAN_ACCENT
-
-m_pts = [
-    ("TAM ($18.2B by 2030): ", "Indian digital health and emergency medical informatics market growing at a 24.8% CAGR under national digital initiatives."),
-    ("SAM (25,000+ Hospitals): ", "Private tertiary hospitals, multi-specialty trauma centers, and 10,000+ ambulance fleet operators (108 Emergency, EMRI)."),
-    ("SOM (Initial Target): ", "Emergency departments, trauma networks, and corporate healthcare parks across South India (Chennai, Bengaluru, Hyderabad)."),
-    ("Market Tailwinds: ", "Government mandates under the Ayushman Bharat Digital Mission (ABDM) and DPDP Act 2023 requiring interoperable, consent-governed electronic health records.")
-]
-for lbl, txt in m_pts:
-    p = t1.add_paragraph()
-    p.space_before = Pt(6)
-    r1 = p.add_run()
-    r1.text = lbl
-    r1.font.bold = True
-    r1.font.size = Pt(10)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = txt
-    r2.font.size = Pt(9.5)
-    r2.font.color.rgb = C_TEXT_MUTED
-
-# Col 2: Business Model
-mc2 = add_card(s6, m_x2, m_top, m_w, m_h, border_rgb=C_AMBER_ACCENT)
-t2 = mc2.text_frame
-p = t2.paragraphs[0]
-p.text = "SUSTAINABLE REVENUE MODEL"
-p.font.name = FONT_NAME
-p.font.size = Pt(12.5)
-p.font.bold = True
-p.font.color.rgb = C_AMBER_ACCENT
-
-b_pts = [
-    ("B2B Hospital SaaS ($40–$80/bed/mo): ", "Tiered recurring subscription for hospital ERs: includes Doctor Dossier, SBAR Handover suite, and IoT live vitals monitoring."),
-    ("B2G / EMS Fleet Licensing: ", "Enterprise API integration fee for state 108 ambulance networks and private emergency fleet operators to equip paramedics with instant triage tools."),
-    ("B2C Citizen Freemium Vault: ", "Free core emergency profile & emergency card; optional ₹499/year family subscription for multi-member dependent tracking and chronotherapy WhatsApp reminders."),
-    ("Low Cost Structure: ", "Built on open-source frameworks (FastAPI, SQLite/PostgreSQL) with negligible server compute overhead per hospital.")
-]
-for lbl, txt in b_pts:
-    p = t2.add_paragraph()
-    p.space_before = Pt(6)
-    r1 = p.add_run()
-    r1.text = lbl
-    r1.font.bold = True
-    r1.font.size = Pt(10)
-    r1.font.color.rgb = C_WHITE
-    r2 = p.add_run()
-    r2.text = txt
-    r2.font.size = Pt(9.5)
-    r2.font.color.rgb = C_TEXT_MUTED
-
-# Col 3: Roadmap
-mc3 = add_card(s6, m_x3, m_top, m_w, m_h, border_rgb=C_WHITE)
-t3 = mc3.text_frame
-p = t3.paragraphs[0]
-p.text = "GTM & DEPLOYMENT ROADMAP"
-p.font.name = FONT_NAME
-p.font.size = Pt(12.5)
-p.font.bold = True
-p.font.color.rgb = C_WHITE
-
-r_pts = [
-    ("Phase 1: Academic & ER Pilot (Months 1-3): ", "Deploy in 3-5 private emergency departments across Chennai/Bengaluru; measure reduction in triage intake latency and handover completeness."),
-    ("Phase 2: ABDM Certification (Months 4-6): ", "Complete NHA ABDM sandbox certification as registered Health Information Provider (HIP) and Health Information User (HIU)."),
-    ("Phase 3: EMS Fleet Integration (Months 7-12): ", "Partner with private ambulance aggregators and regional 108 emergency services for live ambulance-to-ER telemetry handshakes."),
-    ("Phase 4: Multi-Hospital Scaling (Year 2): ", "Scale enterprise SaaS subscriptions across corporate hospital chains.")
-]
-for lbl, txt in r_pts:
-    p = t3.add_paragraph()
-    p.space_before = Pt(6)
-    r1 = p.add_run()
-    r1.text = lbl
-    r1.font.bold = True
-    r1.font.size = Pt(10)
-    r1.font.color.rgb = C_CYAN_ACCENT
-    r2 = p.add_run()
-    r2.text = txt
-    r2.font.size = Pt(9.5)
-    r2.font.color.rgb = C_TEXT_MUTED
-
-# ==========================================
-# SLIDE 7: RESEARCH AND REFERENCES
-# ==========================================
-s7 = prs.slides[6]
-remove_placeholder_type_here(s7)
-
-for shape in s7.shapes:
-    if shape.has_text_frame and "RESEARCH" in shape.text:
-        shape.text = "RESEARCH AND CLINICAL REFERENCES"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(22)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
-
-ref_card = add_card(s7, Inches(0.60), Inches(1.48), Inches(12.15), Inches(4.55), border_rgb=C_CYAN_ACCENT)
-rtf = ref_card.text_frame
-p = rtf.paragraphs[0]
-p.text = "PEER-REVIEWED CLINICAL, REGULATORY & ARCHITECTURAL FOUNDATIONS"
-p.font.name = FONT_NAME
-p.font.size = Pt(13)
-p.font.bold = True
-p.font.color.rgb = C_CYAN_ACCENT
-
-references = [
-    ("1. WHO Patient Safety Curriculum Guide (World Health Organization, 2020):",
-     "\"Standardizing Clinical Handover Using the SBAR Protocol: A Systematic Analysis of Diagnostic Error Reduction in Emergency Shifts.\" Validates that structured SBAR protocols decrease inter-departmental communication errors by up to 70%."),
-    
-    ("2. AIIMS & ICMR National Trauma Registry Study (2023):",
-     "\"Pre-Hospital Information Gaps and Preventable Mortality in Acute Trauma Admissions: An Analysis of the Golden Hour.\" Highlights that 33% of trauma-related mortality and ICU complications result from lack of immediate history on drug allergies, anticoagulants, and pre-existing comorbidities."),
-    
-    ("3. National Health Authority (NHA) - Government of India (2023):",
-     "\"Ayushman Bharat Digital Mission (ABDM) Architecture, Unified Health Interface (UHI), and Consent Framework Specifications.\" Serves as the regulatory architectural blueprint for AegisHealth's dual-tier data access and consent governance."),
-    
-    ("4. Journal of Pharmacokinetics and Biopharmaceutics (Springer Nature):",
-     "\"Circadian Pharmacokinetics and Chronotherapy: Maximizing Therapeutic Index and Minimizing Organ Toxicity in Cardiovascular and Metabolic Regimens.\" Provides the physiological basis for our Circadian AI Chronotherapy algorithm."),
-    
-    ("5. HL7 International Standards (Release 4, 2022):",
-     "\"Fast Healthcare Interoperability Resources (FHIR) R4: Emergency Medical Data Exchange, Patient Observation Profiles, and Break-Glass Access Control.\" Informs our JSON RESTful API schema design for universal hospital interoperability.")
+right = [
+    ("Starmer A.J. et al., ", "Changes in Medical Errors after Implementation of a Handoff Program, N Engl J Med 2014; 371:1803-1812.",
+     "Structured handoffs cut medical errors by 23%"),
+    ("National Health Authority, ", "Ayushman Bharat Digital Mission: ABHA, Health Information Exchange & Consent Manager (abdm.gov.in).",
+     "National integration path"),
+    ("HL7 International, ", "FHIR Release 4 (v4.0.1), hl7.org/fhir/R4.",
+     "Data model for interoperability"),
+    ("US HHS, HIPAA Security Rule, ", "45 CFR 164.312(a)(2)(ii), Emergency Access Procedure.",
+     "Break-glass access with audit"),
 ]
 
-for ref_title, ref_desc in references:
-    p = rtf.add_paragraph()
-    p.space_before = Pt(7)
-    r1 = p.add_run()
-    r1.text = ref_title + " "
-    r1.font.name = FONT_NAME
-    r1.font.bold = True
-    r1.font.size = Pt(10.5)
-    r1.font.color.rgb = C_WHITE
-    
-    r2 = p.add_run()
-    r2.text = ref_desc
-    r2.font.name = FONT_NAME
-    r2.font.size = Pt(9.5)
-    r2.font.color.rgb = C_TEXT_MUTED
 
-# ==========================================
-# SLIDE 8: TEAM DETAILS
-# ==========================================
-s8 = prs.slides[7]
-for shape in s8.shapes:
-    if shape.has_text_frame and "TEAM DETAILS" in shape.text:
-        shape.text = "TEAM DETAILS — TEAM PROXY"
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(22)
-        p.font.bold = True
-        p.font.color.rgb = C_WHITE
-    elif shape.has_text_frame and shape.text.strip() in ['ROLE', 'NAME', 'STREAM / DEPT', 'YEAR', 'COLLEGE']:
-        p = shape.text_frame.paragraphs[0]
-        p.font.name = FONT_NAME
-        p.font.size = Pt(13)
-        p.font.bold = True
-        p.font.color.rgb = C_CYAN_ACCENT
+def refs_card(x, items, start):
+    paras = []
+    for n, (who, what, used) in enumerate(items, start):
+        paras.append(([R(f"[{n}]  ", 12.5, True, LIME), R(who, 12.5, True, WHITE), R(what, 12.5, False, LIGHT)],
+                      PP_ALIGN.LEFT, 0 if n == start else 11))
+        paras.append(([R("Used for: " + used, 11.5, False, TEAL, True)], PP_ALIGN.LEFT, 2))
+    card(s, x, 1.88, 6.09, 4.25, paras)
 
-team_members = [
-    ("Team Lead & Full-Stack Architect", "Yogeshwaran S", "Computer Science & Engineering", "3rd Year", "New Horizon College of Engineering"),
-    ("Backend Systems & Database Architect", "Team Member 2", "Computer Science & Engineering", "3rd Year", "New Horizon College of Engineering"),
-    ("ML & Clinical Algorithms Engineer", "Team Member 3", "Artificial Intelligence & ML", "3rd Year", "New Horizon College of Engineering"),
-    ("UI/UX & Emergency Ergonomics", "Team Member 4", "Information Science & Engg", "3rd Year", "New Horizon College of Engineering")
+
+refs_card(0.45, left, 1)
+refs_card(6.79, right, 5)
+
+# ================================================================ SLIDE 8 - TEAM
+s = prs.slides[7]
+team = [
+    ("Team Lead", "Yogeshwaran S", "CSE", "3rd Year", "New Horizon College of Engineering"),
+    ("Backend Developer", "Team Member 2", "CSE", "3rd Year", "New Horizon College of Engineering"),
+    ("ML Developer", "Team Member 3", "AIML", "3rd Year", "New Horizon College of Engineering"),
+    ("UI/UX & Testing", "Team Member 4", "ISE", "3rd Year", "New Horizon College of Engineering"),
 ]
+for sh in s.shapes:
+    if sh.has_table:
+        t = sh.table
+        for ri, row in enumerate(team, start=1):
+            for ci, val in enumerate(row):
+                cell = t.cell(ri, ci)
+                cell.vertical_anchor = MSO_ANCHOR.MIDDLE
+                p = cell.text_frame.paragraphs[0]
+                p.text = ""
+                p.alignment = PP_ALIGN.CENTER
+                p.line_spacing = 1.0
+                p.space_before = Pt(0)
+                p.space_after = Pt(0)
+                r = p.add_run()
+                r.text = val
+                r.font.name = FONT
+                r.font.size = Pt(14)
+                r.font.bold = ci in (0, 1)
+                r.font.color.rgb = LIME if ci == 0 else WHITE
 
-for shape in s8.shapes:
-    if shape.has_table:
-        table = shape.table
-        # Leave row 0 empty for the visual header boxes, fill rows 1 to 4 with the 4 team members
-        for r_idx in range(len(table.rows)):
-            for c_idx in range(len(table.columns)):
-                cell = table.cell(r_idx, c_idx)
-                cell.fill.solid()
-                if r_idx == 0:
-                    # Header row background styling
-                    cell.fill.fore_color.rgb = RGBColor(15, 23, 42)
-                    cell.text = ""
-                else:
-                    # Data row
-                    m_idx = r_idx - 1
-                    val = team_members[m_idx][c_idx] if m_idx < len(team_members) else ""
-                    cell.text = val
-                    cell.fill.fore_color.rgb = RGBColor(15, 23, 42) if r_idx % 2 == 1 else RGBColor(30, 41, 59)
-                    p = cell.text_frame.paragraphs[0]
-                    p.alignment = PP_ALIGN.CENTER
-                    p.font.name = FONT_NAME
-                    p.font.size = Pt(11)
-                    p.font.bold = True if c_idx in [0, 1] else False
-                    p.font.color.rgb = C_CYAN_ACCENT if c_idx == 0 else C_WHITE if c_idx == 1 else C_TEXT_MUTED
-
-# Save to both destinations
-prs.save(OUT_PPTX_WORKSPACE)
-prs.save(OUT_PPTX_DOWNLOADS)
-print("Complete! Presentation saved cleanly to:")
-print("1.", OUT_PPTX_WORKSPACE)
-print("2.", OUT_PPTX_DOWNLOADS)
+for out in OUTS:
+    prs.save(out)
+    print("saved", out)
