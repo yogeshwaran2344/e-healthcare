@@ -315,7 +315,7 @@ card(s, 0.45, 2.08, 4.75, 4.05, [
 ], line=LIME)
 
 rows = [
-    ("Core Capability", "Existing Apps (ABHA / Practo / EMRs)", "E-Healthcare (Our USP)"),
+    ("Core Capability", "Standard Health Apps / Isolated EMRs", "E-Healthcare (Our USP)"),
     ("Unconscious Patient Access", "Blocked by phone lock, OTP, or 64-char hash code", "15s QR scan + Doctor lookup by Name (<3s)"),
     ("Bystander Privacy Protection", "Static QR cards expose full medical history to all", "Dual-Role Split View (Bystander sees only Blood + SOS)"),
     ("Doctor Accountability", "No tracking of emergency record lookups", "SHA-256 Break-Glass Audit + instant family SMS alert"),
@@ -388,17 +388,20 @@ for i, (head, sub, pts) in enumerate(market):
     card(s, 0.45 + i * (cw + 0.25), cy, cw, ch, paras, line=LIME if i == 1 else TEAL, margin=0.12)
 
 alts = [
-    ("ABHA / PHR Apps", "Primarily support digital health identity and health-record exchange; our focus is rapid emergency access."),
-    ("Hospital EMRs", "Often operate within individual hospital systems, making cross-institution access a challenge."),
-    ("Static Medical ID Bracelets", "Provide limited static information without dynamic access control or emergency communication."),
+    ("ABHA / PHR Apps",
+     "Focuses on health identity & record exchange. Our differentiation: emergency-first access to selected critical medical information."),
+    ("Hospital EMRs",
+     "Manages clinical records within an institution. Our differentiation: designed to support emergency access across institutional boundaries."),
+    ("Static Medical ID Bracelets",
+     "Displays fixed printed text only. Our differentiation: dynamic QR access, emergency communication and access accountability."),
 ]
-card(s, 0.45, 4.68, 12.43, 1.48, [([R("WHY EXISTING ALTERNATIVES LEAVE AN EMERGENCY GAP OPEN", 12, True, LIME)],)],
+card(s, 0.45, 4.68, 12.43, 1.48, [([R("EXISTING ALTERNATIVES & OUR SPECIFIC DIFFERENTIATION", 12, True, LIME)],)],
      line=LIME, margin=0.12)
 aw = 12.1 / 3
 for i, (a, gapt) in enumerate(alts):
     textbox(s, 0.62 + i * aw, 4.98, aw - 0.15, 0.74, [
         ([R(a, 11.5, True, WHITE)],),
-        ([R(gapt, 10.5, False, LIGHT)], PP_ALIGN.LEFT, 2)])
+        ([R(gapt, 10.3, False, LIGHT)], PP_ALIGN.LEFT, 2)])
 
 textbox(s, 0.62, 5.76, 12.1, 0.34, [([
     R("Value Proposition:  ", 11, True, LIME),
