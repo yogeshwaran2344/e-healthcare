@@ -103,8 +103,8 @@ def textbox(slide, x, y, w, h, paras, anchor=MSO_ANCHOR.TOP):
     return tb
 
 
-def subtitle(slide, text, y=1.12, w=8.45):
-    textbox(slide, 0.25, y, w, 0.62, [([R(text, 14.5, False, WHITE, True)],)])
+def subtitle(slide, text, y=1.18, w=12.4):
+    textbox(slide, 0.45, y, w, 0.45, [([R(text, 14, False, WHITE, True)],)])
 
 
 def bullet(text_bold, text, size=12, sb=6, mark_color=TEAL):
@@ -412,7 +412,7 @@ textbox(s, 0.62, 5.76, 12.1, 0.34, [([
 s = prs.slides[6]
 drop_placeholder(s)
 subtitle(s, "Every core feature of E-Healthcare is grounded in government accident data, Indian data-protection "
-            "law, and clinical interoperability standards.")
+            "law, and clinical interoperability standards.", y=1.64, w=12.4)
 
 left = [
     ("Ministry of Road Transport & Highways (MoRTH), ",
@@ -441,10 +441,10 @@ right = [
 def refs_card(x, items, start):
     paras = []
     for n, (who, what, used) in enumerate(items, start):
-        paras.append(([R(f"[{n}]  ", 13, True, LIME), R(who, 13, True, WHITE), R(what, 12.5, False, LIGHT)],
-                      PP_ALIGN.LEFT, 0 if n == start else 14))
-        paras.append(([R("▸ Directly supports: " + used, 11.8, True, TEAL, False)], PP_ALIGN.LEFT, 4))
-    card(s, x, 1.88, 6.09, 4.25, paras)
+        paras.append(([R(f"[{n}]  ", 12.5, True, LIME), R(who, 12.5, True, WHITE), R(what, 12, False, LIGHT)],
+                      PP_ALIGN.LEFT, 0 if n == start else 11))
+        paras.append(([R("▸ Directly supports: " + used, 11.2, True, TEAL, False)], PP_ALIGN.LEFT, 3))
+    card(s, x, 2.08, 6.09, 4.05, paras)
 
 
 refs_card(0.45, left, 1)
