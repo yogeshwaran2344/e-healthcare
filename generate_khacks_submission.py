@@ -354,46 +354,56 @@ for ri, row in enumerate(rows):
 # ================================================================ SLIDE 6 - MARKET STUDY & BUSINESS MODEL
 s = prs.slides[5]
 drop_placeholder(s)
-subtitle(s, "Free emergency protection for every citizen, funded by hospitals, ambulance fleets, and campuses "
-            "that save critical triage time.", y=1.64, w=12.4)
+subtitle(s, "Free basic emergency protection for citizens, supported by institutional healthcare subscriptions.",
+         y=1.64, w=12.4)
 
-cw, cy, ch = 3.977, 2.08, 2.50
+cw, cy, ch = 3.977, 2.02, 2.58
 market = [
-    ("MARKET OPPORTUNITY", [
-        ("TAM — $18.2B Digital Health: ", "4.61 lakh road accidents & 1.5M+ trauma admissions/year in India."),
-        ("SAM — 25,000+ Hospitals: ", "Private/tertiary trauma ERs + 10,000+ ambulance fleets (108 & private)."),
-        ("SOM — Phase-1 Beachhead: ", "150+ multi-specialty ERs, ambulance chains & campuses in Chennai & Bengaluru."),
+    ("MARKET OPPORTUNITY", "Who needs E-Healthcare?", [
+        ("Primary Customers: ", "Hospitals, emergency departments, ambulance operators and healthcare institutions."),
+        ("Secondary Users: ", "Students, elderly individuals, chronic patients and their families."),
+        ("Initial Target Market: ", "Multi-specialty hospitals, ambulance services and educational institutions in Chennai and Bengaluru."),
+        ("Market Need: ", "Faster access to critical medical information, emergency communication and accountable patient-record access."),
     ]),
-    ("B2B / B2G REVENUE MODEL", [
-        ("Citizens (Free Forever): ", "Free Emergency QR Sticker, 6-language voice triage & basic vault."),
-        ("Hospital ER SaaS (₹15k/mo): ", "Doctor Name-Lookup console, lab flagger & break-glass audit suite."),
-        ("Ambulance Fleet License: ", "Per-vehicle annual license for paramedic trauma pre-arrival lookup."),
-        ("Campus & Corporate Packs: ", "₹99/person/yr for pre-printed QR ID badges with family SOS."),
+    ("B2B / B2G REVENUE MODEL", "How will it earn?", [
+        ("Citizens: ", "Free basic emergency QR profile and emergency contact access."),
+        ("Hospital ER Subscription: ", "Proposed ₹15,000/month for clinician access, emergency record retrieval, audit logs and lab-report flagging."),
+        ("Ambulance Fleet License: ", "Annual subscription for emergency information access and paramedic support."),
+        ("Campus & Corporate Plans: ", "Proposed ₹99/person/year for QR-based emergency identification and family SOS features."),
     ]),
-    ("GO-TO-MARKET & ROI", [
-        ("Hospital ROI: ", "Cuts baseline discovery from 30 mins to <15s; prevents fatal allergy errors."),
-        ("Phase 1 (Months 1–3): ", "Roll out QR Health IDs across 5,000+ students at our campus."),
-        ("Phase 2 (Months 4–6): ", "Pilot Doctor Name-Lookup in 3 partner hospital ERs."),
-        ("Phase 3 (Months 7–12): ", "ABDM sandbox certification & ambulance fleet tie-ups."),
+    ("GO-TO-MARKET STRATEGY", "How will it grow?", [
+        ("Phase 1 – Campus Pilot: ", "Introduce QR-based emergency IDs within our college community and evaluate usability."),
+        ("Phase 2 – Hospital Pilot: ", "Approach partner hospitals to evaluate clinician name lookup and emergency record access."),
+        ("Phase 3 – Ambulance Integration: ", "Explore partnerships with ambulance operators for emergency information sharing."),
+        ("Phase 4 – Expansion: ", "Work towards FHIR-based interoperability and potential ABDM integration."),
     ]),
 ]
-for i, (head, pts) in enumerate(market):
-    paras = [([R(head, 13.5, True, LIME)],)]
+for i, (head, sub, pts) in enumerate(market):
+    paras = [
+        ([R(head, 12.5, True, LIME)],),
+        ([R(sub, 10.5, False, TEAL, True)], PP_ALIGN.LEFT, 1),
+    ]
     for b, t in pts:
-        paras.append(bullet(b, t, 11.5, 5))
-    card(s, 0.45 + i * (cw + 0.25), cy, cw, ch, paras, line=LIME if i == 1 else TEAL)
+        paras.append(bullet(b, t, 10.2, 3))
+    card(s, 0.45 + i * (cw + 0.25), cy, cw, ch, paras, line=LIME if i == 1 else TEAL, margin=0.12)
 
 alts = [
-    ("ABHA / PHR Apps", "Built for routine OPD visits; require the patient's own OTP or login—unusable when unconscious."),
-    ("Hospital EMRs (Practo / HIS)", "Records are siloed inside a single hospital chain; nothing is visible when brought to a new ER."),
-    ("Static Medical ID Bracelets", "No privacy control (anyone sees full conditions), no live GPS SMS alert, and no doctor dossier."),
+    ("ABHA / PHR Apps", "Primarily support digital health identity and health-record exchange; our focus is rapid emergency access."),
+    ("Hospital EMRs", "Often operate within individual hospital systems, making cross-institution access a challenge."),
+    ("Static Medical ID Bracelets", "Provide limited static information without dynamic access control or emergency communication."),
 ]
-card(s, 0.45, 4.70, 12.43, 1.43, [([R("WHY EXISTING ALTERNATIVES LEAVE THE EMERGENCY GAP OPEN", 12.5, True, LIME)],)], line=LIME)
+card(s, 0.45, 4.68, 12.43, 1.48, [([R("WHY EXISTING ALTERNATIVES LEAVE AN EMERGENCY GAP OPEN", 12, True, LIME)],)],
+     line=LIME, margin=0.12)
 aw = 12.1 / 3
 for i, (a, gapt) in enumerate(alts):
-    textbox(s, 0.62 + i * aw, 5.08, aw - 0.15, 0.98, [
-        ([R(a, 12, True, WHITE)],),
-        ([R(gapt, 11.2, False, LIGHT)], PP_ALIGN.LEFT, 3)])
+    textbox(s, 0.62 + i * aw, 4.98, aw - 0.15, 0.74, [
+        ([R(a, 11.5, True, WHITE)],),
+        ([R(gapt, 10.5, False, LIGHT)], PP_ALIGN.LEFT, 2)])
+
+textbox(s, 0.62, 5.76, 12.1, 0.34, [([
+    R("Value Proposition:  ", 11, True, LIME),
+    R("Reduce delays in accessing critical patient information, improve emergency communication, and provide "
+      "accountable medical-record access.", 11, False, WHITE, True)],)])
 
 # ================================================================ SLIDE 7 - RESEARCH AND REFERENCES
 s = prs.slides[6]
