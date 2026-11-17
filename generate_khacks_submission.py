@@ -414,10 +414,10 @@ refs_card(6.79, right, 5)
 # ================================================================ SLIDE 8 - TEAM
 s = prs.slides[7]
 team = [
-    ("Team Lead", "Yogeshwaran S", "CSE", "3rd Year", "New Horizon College of Engineering"),
-    ("Backend Developer", "Team Member 2", "CSE", "3rd Year", "New Horizon College of Engineering"),
-    ("ML Developer", "Team Member 3", "AIML", "3rd Year", "New Horizon College of Engineering"),
-    ("UI/UX & Testing", "Team Member 4", "ISE", "3rd Year", "New Horizon College of Engineering"),
+    ("Team Lead", "Yogeshwaran S", "AIML", "3rd Year", "New Horizon College of Engineering"),
+    ("Backend Developer", "Sampreetha", "AIML", "3rd Year", "New Horizon College of Engineering"),
+    ("ML Developer", "Sunku Joshika", "AIML", "3rd Year", "New Horizon College of Engineering"),
+    ("UI/UX & Testing", "V Vikas", "AIML", "3rd Year", "New Horizon College of Engineering"),
 ]
 for sh in s.shapes:
     if sh.has_table:
