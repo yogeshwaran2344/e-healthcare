@@ -748,13 +748,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     try { renderFamilyVaultButtons(); switchFamilyVault('self', true); } catch (e) { console.warn("Family Vault init:", e); }
 
     // Proactively pre-populate modules so the UI is immediately populated
-    loadPredictiveTab().catch(() => {});
     loadIoTTab().catch(() => {});
     loadLiveEmergencyPassport().catch(() => {});
     loadPatientEmergencyAudit().catch(() => {});
-    loadDigitalHealthTimeline().catch(() => {});
     loadBlockchainTab().catch(() => {});
-    loadAccessHistoryTab().catch(() => {});
     loadCommunityTab().catch(() => {});
     loadAdaptiveRemindersTab().catch(() => {});
     loadConsultations().catch(() => {});

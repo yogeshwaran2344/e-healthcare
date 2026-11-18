@@ -69,8 +69,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     initDoctorPatientPickers().catch(() => {});
 
     // Proactively pre-populate all clinical dashboard tabs
-    loadDoctorCalibration().catch(() => {});
-    loadDoctorDisagreements().catch(() => {});
     loadDoctorBlockchain().catch(() => {});
     loadDoctorQueue().catch(() => {});
     loadDoctorERFeed().catch(() => {});
