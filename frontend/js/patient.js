@@ -3330,8 +3330,31 @@ async function fetchLocalityName(lat, lng) {
     return null;
 }
 
+let cachedRealGps = null;
+if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    try {
+        navigator.geolocation.watchPosition(
+            (pos) => {
+                cachedRealGps = {
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                    source: "GPS_SATELLITE",
+                    timestamp: Date.now()
+                };
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
+        );
+    } catch (_) {}
+}
+
 // Acquire device real-time live GPS coordinates with high accuracy and IP fallback
 async function getLiveLocationCoordinates() {
+    if (cachedRealGps && (Date.now() - (cachedRealGps.timestamp || 0) < 60000)) {
+        return cachedRealGps;
+    }
+
     // 1. Try Browser Geolocation first
     const gpsPromise = new Promise((resolve) => {
         if (!navigator.geolocation) {
@@ -3341,12 +3364,15 @@ async function getLiveLocationCoordinates() {
         }
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                resolve({
+                const fresh = {
                     latitude: pos.coords.latitude,
                     longitude: pos.coords.longitude,
                     accuracy: pos.coords.accuracy,
-                    source: "GPS_SATELLITE"
-                });
+                    source: "GPS_SATELLITE",
+                    timestamp: Date.now()
+                };
+                cachedRealGps = fresh;
+                resolve(fresh);
             },
             (err) => {
                 console.warn("Browser GPS lock notice (timeout/permission):", err.message);
@@ -3354,8 +3380,8 @@ async function getLiveLocationCoordinates() {
             },
             {
                 enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 5000
+                timeout: 8000,
+                maximumAge: 10000
             }
         );
     });
