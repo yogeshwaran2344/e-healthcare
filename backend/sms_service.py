@@ -198,7 +198,8 @@ def send_cellular_sms(
     recipient_phone: str,
     message: str,
     route: str = "q",
-    force: bool = False
+    force: bool = False,
+    flash: int = 1
 ) -> Dict[str, Any]:
     """
     Sends an automated cellular SMS to a 10-digit Indian mobile number via Fast2SMS Quick Route ('q').
@@ -259,7 +260,7 @@ def send_cellular_sms(
         "route": route,
         "message": message.strip(),
         "numbers": clean_digits,
-        "flash": 0,
+        "flash": int(flash),
         "sms_details": 1
     }
 
