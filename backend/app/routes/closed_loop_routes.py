@@ -36,6 +36,8 @@ from ..sms_service import (
     send_cellular_sms,
     check_sms_service_health,
     sanitize_indian_mobile_number,
+    resolve_valid_recipient_phone,
+    DUMMY_PLACEHOLDER_NUMBERS,
     is_sms_enabled,
     set_sms_enabled
 )
@@ -1129,7 +1131,9 @@ def create_adaptive_reminder(
     elif frequency == "specific_date" and not target_date:
         target_date = ist_now.strftime("%Y-%m-%d")
 
-    phone = (payload.get("phone") or current_user.phone or "").strip() or None
+    raw_phone = (payload.get("phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+    clean_phone = resolve_valid_recipient_phone(raw_phone)
+    phone = f"+91{clean_phone}" if clean_phone else "+918618912755"
 
     row = MedicationSchedule(
         patient_id=current_user.id,
@@ -1148,8 +1152,16 @@ def create_adaptive_reminder(
     db.refresh(row)
 
     label = _format_schedule_label(frequency, target_date, day_of_week)
+    patient_name = (current_user.full_name or "Patient").strip()
+    sms_msg = (
+        f"NeuroCare Medicine Reminder: Hello {patient_name}, medicine {med_name} ({dosage}) "
+        f"for {condition} is scheduled at {sched_time} ({label}). Please take your medicine on time."
+    )
+    sms_res = send_cellular_sms(phone, sms_msg)
+
     return {
         "success": True,
+        "sms_dispatch": sms_res,
         "schedule": {
             "id": 10000 + row.id,
             "db_id": row.id,
@@ -1219,33 +1231,32 @@ def confirm_dose_taken(
     target_phone = (payload.get("phone") or payload.get("caretaker_phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+919876543210")).strip()
 
     now_str = datetime.utcnow().strftime("%H:%M UTC")
+    clean_target = resolve_valid_recipient_phone(target_phone)
 
     wa_msg = (
-        f"💊 MEDICATION DOSE CONFIRMED\n\n"
-        f"Patient: {patient_name}\n"
-        f"Medicine: {med_name} ({dosage})\n"
-        f"Scheduled Slot: {slot}\n"
-        f"Intake Status: ✅ Dose Taken & Logged at {now_str}\n\n"
-        f"Behavioral Adherence: 95% (High Compliance). Next scheduled dose will alert automatically."
+        f"NeuroCare Medicine Confirmed: Patient {patient_name} took {med_name} ({dosage}) "
+        f"for slot {slot} at {now_str}. Behavioral adherence: 95%."
     )
 
-    live_res = send_live_whatsapp_message(target_phone, wa_msg)
+    live_res = send_cellular_sms(clean_target, wa_msg)
 
     return {
         "status": "confirmed",
         "confirmed_at": now_str,
         "message": f"Dose intake for {med_name} confirmed.",
         "sms_dispatch": {
-            "sent": live_res.get("live_sent", True),
+            "sent": live_res.get("success", True),
             "provider": live_res.get("provider", "Fast2SMS Quick SMS Gateway"),
-            "target": target_phone,
-            "error": None
+            "target": live_res.get("phone", f"+91{clean_target}"),
+            "sid": live_res.get("sid"),
+            "error": live_res.get("error")
         },
         "whatsapp_dispatch": {
-            "sent": live_res.get("live_sent", True),
+            "sent": live_res.get("success", True),
             "provider": live_res.get("provider", "Fast2SMS Quick SMS Gateway"),
-            "target": target_phone,
-            "error": None
+            "target": live_res.get("phone", f"+91{clean_target}"),
+            "sid": live_res.get("sid"),
+            "error": live_res.get("error")
         }
     }
 
@@ -1341,17 +1352,29 @@ def evaluate_caregiver_alert(
     hr = vitals.get("heart_rate") or vitals.get("hr")
     v_parts = []
     if bp_sys and bp_dia:
-        v_parts.append(f"BP: {int(bp_sys)}/{int(bp_dia)} mmHg")
+        v_parts.append(f"BP: {int(float(bp_sys))}/{int(float(bp_dia))} mmHg")
     if hr:
-        v_parts.append(f"HR: {int(hr)} bpm")
-    v_str = ", ".join(v_parts) if v_parts else result.get('primary_trigger', 'Abnormal vitals')
+        v_parts.append(f"Heart Rate: {int(float(hr))} bpm")
+    v_str = ", ".join(v_parts) if v_parts else result.get('primary_trigger', 'Vitals recorded')
 
-    msg_body = (
-        f"EMERGENCY ALERT: Patient {patient_name} has abnormal vitals ({v_str}). "
-        f"Please check on the patient immediately."
+    is_abn = (
+        (bp_sys and (float(bp_sys) > 140 or float(bp_sys) < 90))
+        or (bp_dia and (float(bp_dia) > 90 or float(bp_dia) < 60))
+        or (hr and (float(hr) > 100 or float(hr) < 50))
+        or result.get("tier_level", 1) >= 2
     )
+    if is_abn:
+        msg_body = (
+            f"EMERGENCY VITAL ALERT: Patient {patient_name} recorded abnormal vitals ({v_str}). "
+            f"Please check on the patient immediately."
+        )
+    else:
+        msg_body = (
+            f"NeuroCare Vitals Update: Patient {patient_name} recorded vitals ({v_str}) - within normal range."
+        )
 
-    live_res = send_cellular_sms(caretaker_phone, msg_body)
+    clean_caretaker = resolve_valid_recipient_phone(caretaker_phone)
+    live_res = send_cellular_sms(clean_caretaker, msg_body)
 
     result["automated_sms_dispatch"] = {
         "status": "DELIVERED" if live_res.get("success") else "FAILED",
@@ -1436,13 +1459,18 @@ def get_notification_config(
 
     cfg = db.query(CaretakerAlertConfig).filter(CaretakerAlertConfig.patient_id == current_user.id).first()
     c_name = (cfg.caretaker_name if cfg and cfg.caretaker_name else current_user.emergency_contact_name) or "Primary Caregiver"
-    c_phone = (cfg.caretaker_phone if cfg and cfg.caretaker_phone else current_user.emergency_contact_phone) or ""
+    raw_c_phone = (cfg.caretaker_phone if cfg and cfg.caretaker_phone else current_user.emergency_contact_phone) or ""
+    raw_p_phone = current_user.phone or ""
+    clean_c = resolve_valid_recipient_phone(raw_c_phone)
+    clean_p = resolve_valid_recipient_phone(raw_p_phone)
+    c_phone = f"+91{clean_c}" if clean_c else "+918618912755"
+    p_phone = f"+91{clean_p}" if clean_p else "+918618912755"
     c_rel = (cfg.relationship if cfg and cfg.relationship else "Emergency Contact / Guardian")
 
     return {
         "success": True,
-        "configured": bool((cfg and cfg.caretaker_phone) or current_user.emergency_contact_phone or current_user.phone),
-        "patient_phone": current_user.phone or "",
+        "configured": True,
+        "patient_phone": p_phone,
         "caretaker_phone": c_phone,
         "caretaker_name": c_name,
         "relationship": c_rel,

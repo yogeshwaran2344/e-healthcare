@@ -66,25 +66,36 @@ def get_fast2sms_config() -> Dict[str, str]:
 
 SMS_SETTINGS_FILE = _PROJECT_ROOT / "sms_settings.json"
 
+DUMMY_PLACEHOLDER_NUMBERS = {
+    "9876543210",
+    "9845099887",
+    "9845011223",
+    "9000011111",
+    "8217515702",
+    "9999999999",
+    "0000000000",
+    "1234567890",
+}
+
 def is_sms_enabled() -> bool:
     """
     Checks if cellular SMS dispatch is enabled.
-    Defaults to FALSE so the user is never charged / depleted of SMS balance unexpectedly.
-    Can be turned ON via UI toggle or environment variable ENABLE_CELLULAR_SMS=true.
+    Defaults to TRUE so alerts for SOS, Medicines, BP, and Heart Rate are reliably delivered.
     """
-    env_setting = os.getenv("ENABLE_CELLULAR_SMS")
-    if env_setting is not None and env_setting.strip():
-        return env_setting.strip().lower() in ("1", "true", "yes", "on")
-
     if SMS_SETTINGS_FILE.exists():
         try:
             with open(SMS_SETTINGS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return bool(data.get("sms_enabled", False))
+                if "sms_enabled" in data:
+                    return bool(data.get("sms_enabled", True))
         except Exception as e:
             logger.warning(f"Could not read sms_settings.json: {e}")
-            return False
-    return False
+
+    env_setting = os.getenv("ENABLE_CELLULAR_SMS")
+    if env_setting is not None and env_setting.strip():
+        return env_setting.strip().lower() in ("1", "true", "yes", "on")
+
+    return True
 
 
 def set_sms_enabled(enabled: bool) -> bool:
@@ -138,6 +149,20 @@ sanitize_sms_recipient_digits = sanitize_indian_mobile_number
 sanitize_phone_number = sanitize_indian_mobile_number
 
 
+def resolve_valid_recipient_phone(phone: Optional[str]) -> str:
+    """
+    Sanitizes a phone number to 10-digit Indian format.
+    If empty, invalid, or a known dummy placeholder seed number, automatically falls back
+    to DEFAULT_ALERT_RECIPIENT (8618912755) so live SMS always reaches the user's real device.
+    """
+    clean = sanitize_indian_mobile_number(phone or "")
+    if not clean or len(clean) != 10 or clean in DUMMY_PLACEHOLDER_NUMBERS:
+        default_num = get_fast2sms_config().get("default_recipient", "+918618912755")
+        fallback_clean = sanitize_indian_mobile_number(default_num)
+        return fallback_clean if (fallback_clean and len(fallback_clean) == 10) else "8618912755"
+    return clean
+
+
 from whatsapp_service import (
     send_whatsapp,
     format_whatsapp_recipient,
@@ -178,9 +203,9 @@ def send_cellular_sms(
     """
     Sends an automated cellular SMS to a 10-digit Indian mobile number via Fast2SMS Quick Route ('q').
     Does not require DLT registration or entity approvals.
-    Respects the master SMS toggle (disabled by default to prevent recharge exhaustion).
+    Automatically replaces dummy seed phone numbers with DEFAULT_ALERT_RECIPIENT.
     """
-    clean_digits = sanitize_indian_mobile_number(recipient_phone)
+    clean_digits = resolve_valid_recipient_phone(recipient_phone)
     if not clean_digits or len(clean_digits) != 10:
         error_msg = f"Invalid 10-digit Indian mobile number: '{recipient_phone}'"
         logger.error(error_msg)

@@ -1,3 +1,4 @@
+import os
 import json
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
@@ -172,14 +173,37 @@ def simulate_iot_stream(
     db.commit()
     db.refresh(reading)
 
-    # Workflow 2: Automated Caretaker Health Alert if vital reading is outside configured limits
+    # Workflow 2: Automated Caretaker Health Alert for vital stream
     caretaker_alert_info = None
-    if reading.is_anomaly or reading.alert_severity in ("WARNING", "CRITICAL"):
-        try:
-            from ..health_alerts import evaluate_patient_latest_vitals
-            caretaker_alert_info = evaluate_patient_latest_vitals(patient_id=current_user.id, db=db)
-        except Exception as ex:
-            caretaker_alert_info = {"error": str(ex)}
+    try:
+        from ..health_alerts import evaluate_patient_latest_vitals
+        from ..sms_service import send_cellular_sms, resolve_valid_recipient_phone
+        caretaker_alert_info = evaluate_patient_latest_vitals(
+            patient_id=current_user.id,
+            db=db,
+            bypass_cooldown=True
+        )
+        # If reading itself wasn't abnormal BP/HR (e.g., normal BP sync or SpO2 breach), ensure an SMS is still dispatched
+        if not caretaker_alert_info or not caretaker_alert_info.get("alert_required"):
+            target_phone = resolve_valid_recipient_phone(current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755"))
+            p_name = (current_user.full_name or "Patient").strip()
+            if reading.metric_type == "blood_pressure":
+                v_text = f"BP: {int(reading.primary_value)}/{int(reading.secondary_value or 80)} mmHg ({reading.alert_severity})"
+            elif reading.metric_type == "heart_rate":
+                v_text = f"Heart Rate: {int(reading.primary_value)} bpm ({reading.alert_severity})"
+            else:
+                v_text = f"{reading.metric_type.upper()}: {reading.primary_value} {reading.unit} ({reading.alert_severity}) - {reading.alert_message}"
+            sms_msg = f"NeuroCare Vitals Alert: Patient {p_name} recorded {v_text}."
+            sms_res = send_cellular_sms(target_phone, sms_msg)
+            caretaker_alert_info = {
+                "alert_required": True,
+                "severity": reading.alert_severity,
+                "message": sms_msg,
+                "notification": sms_res,
+                "sms_notification": sms_res
+            }
+    except Exception as ex:
+        caretaker_alert_info = {"error": str(ex)}
 
     return {
         "status": "success",
@@ -224,7 +248,7 @@ def record_vital_reading(
     device = db.query(IoTDevice).filter(IoTDevice.patient_id == current_user.id).first()
     dev_id = device.id if device else 1
 
-    thresh = evaluate_vital_thresholds(metric_type, primary_val, secondary_val)
+    sev, is_a, msg = evaluate_vital_thresholds(metric_type, primary_val, secondary_val)
 
     reading = IoTVitalReading(
         patient_id=current_user.id,
@@ -233,9 +257,9 @@ def record_vital_reading(
         primary_value=primary_val,
         secondary_value=secondary_val,
         unit="mmHg" if metric_type == "blood_pressure" else "bpm",
-        is_anomaly=thresh["is_anomaly"],
-        alert_severity=thresh["severity"],
-        alert_message=thresh["message"],
+        is_anomaly=is_a,
+        alert_severity=sev,
+        alert_message=msg,
         recorded_at=datetime.utcnow()
     )
     db.add(reading)
@@ -243,16 +267,16 @@ def record_vital_reading(
     # If incoming payload contains both BP and HR from the smartwatch, record HR reading as well
     if metric_type == "blood_pressure" and incoming_hr is not None:
         hr_val = float(incoming_hr)
-        hr_thresh = evaluate_vital_thresholds("heart_rate", hr_val)
+        hr_sev, hr_is_a, hr_msg = evaluate_vital_thresholds("heart_rate", hr_val)
         hr_reading = IoTVitalReading(
             patient_id=current_user.id,
             device_id=dev_id,
             metric_type="heart_rate",
             primary_value=hr_val,
             unit="bpm",
-            is_anomaly=hr_thresh["is_anomaly"],
-            alert_severity=hr_thresh["severity"],
-            alert_message=hr_thresh["message"],
+            is_anomaly=hr_is_a,
+            alert_severity=hr_sev,
+            alert_message=hr_msg,
             recorded_at=datetime.utcnow()
         )
         db.add(hr_reading)
@@ -266,8 +290,8 @@ def record_vital_reading(
     eval_hr = incoming_hr if metric_type == "blood_pressure" else (primary_val if metric_type == "heart_rate" else None)
 
     caretaker_alert_info = None
-    # Trigger automated Caretaker WhatsApp alert if BP or HR is abnormal
-    is_abnormal = thresh["is_anomaly"] or thresh["severity"] in ("WARNING", "CRITICAL")
+    # Trigger automated Caretaker SMS alert if BP or HR is abnormal
+    is_abnormal = is_a or sev in ("WARNING", "CRITICAL")
     if eval_hr and (float(eval_hr) < 50.0 or float(eval_hr) > 100.0):
         is_abnormal = True
     if eval_sys and (float(eval_sys) < 90.0 or float(eval_sys) > 140.0):
@@ -285,6 +309,28 @@ def record_vital_reading(
                 heart_rate=float(eval_hr) if eval_hr is not None else None,
                 bypass_cooldown=bool(payload.get("bypass_cooldown", True))
             )
+        except Exception as ex:
+            caretaker_alert_info = {"error": str(ex)}
+    elif payload.get("send_sms_on_normal", True):
+        try:
+            from ..sms_service import send_cellular_sms, resolve_valid_recipient_phone
+            target_phone = resolve_valid_recipient_phone(current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755"))
+            p_name = (current_user.full_name or "Patient").strip()
+            parts = []
+            if eval_sys is not None and eval_dia is not None:
+                parts.append(f"BP: {int(float(eval_sys))}/{int(float(eval_dia))} mmHg")
+            if eval_hr is not None:
+                parts.append(f"Heart Rate: {int(float(eval_hr))} bpm")
+            v_str = ", ".join(parts) if parts else f"{metric_type}: {primary_val}"
+            sms_msg = f"NeuroCare Vitals Update: Patient {p_name} vitals normalized ({v_str}). Within safe range."
+            sms_res = send_cellular_sms(target_phone, sms_msg)
+            caretaker_alert_info = {
+                "alert_required": False,
+                "severity": "NORMAL",
+                "message": sms_msg,
+                "notification": sms_res,
+                "sms_notification": sms_res
+            }
         except Exception as ex:
             caretaker_alert_info = {"error": str(ex)}
 

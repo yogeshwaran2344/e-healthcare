@@ -98,9 +98,30 @@ def auto_migrate():
                 doc_profile.hospital_affiliation = "NeuroCare Multi-Specialty Health Center"
                 doc_profile.is_available = True
             db.commit()
+
+        # Sync any dummy placeholder phone numbers on active user and caretaker records to DEFAULT_ALERT_RECIPIENT
+        from .models import CaretakerAlertConfig, MedicationSchedule
+        from .sms_service import resolve_valid_recipient_phone, DUMMY_PLACEHOLDER_NUMBERS, sanitize_indian_mobile_number
+        default_phone = f"+91{resolve_valid_recipient_phone('')}"
+        for u in db.query(User).all():
+            if not u.phone or sanitize_indian_mobile_number(u.phone) in DUMMY_PLACEHOLDER_NUMBERS:
+                u.phone = default_phone
+            if not u.emergency_contact_phone or sanitize_indian_mobile_number(u.emergency_contact_phone) in DUMMY_PLACEHOLDER_NUMBERS:
+                u.emergency_contact_phone = default_phone
+        for cfg in db.query(CaretakerAlertConfig).all():
+            if not cfg.caretaker_phone or sanitize_indian_mobile_number(cfg.caretaker_phone) in DUMMY_PLACEHOLDER_NUMBERS:
+                cfg.caretaker_phone = default_phone
+            if cfg.secondary_phone and sanitize_indian_mobile_number(cfg.secondary_phone) in DUMMY_PLACEHOLDER_NUMBERS:
+                cfg.secondary_phone = default_phone
+        for ms in db.query(MedicationSchedule).all():
+            if not ms.patient_phone or sanitize_indian_mobile_number(ms.patient_phone) in DUMMY_PLACEHOLDER_NUMBERS:
+                ms.patient_phone = default_phone
+        db.commit()
         db.close()
     except Exception as e:
         print(f"Startup clean/doctor sync notice: {e}")
+
+auto_migrate()
 
 from contextlib import asynccontextmanager
 from .medication_reminders import start_medication_scheduler, stop_medication_scheduler

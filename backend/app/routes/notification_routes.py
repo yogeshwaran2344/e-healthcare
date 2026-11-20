@@ -133,7 +133,10 @@ def create_medication_schedule(
     if not med_name or not sched_time:
         raise HTTPException(status_code=400, detail="medication_name and scheduled_time are required.")
 
-    phone = (payload.get("patient_phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+    raw_phone = (payload.get("patient_phone") or current_user.phone or os.getenv("DEFAULT_ALERT_RECIPIENT", "+918618912755")).strip()
+    from ..sms_service import resolve_valid_recipient_phone, send_cellular_sms
+    clean_p = resolve_valid_recipient_phone(raw_phone)
+    phone = f"+91{clean_p}" if clean_p else "+918618912755"
 
     sched = MedicationSchedule(
         patient_id=current_user.id,
@@ -151,9 +154,18 @@ def create_medication_schedule(
     db.commit()
     db.refresh(sched)
 
+    sms_res = send_medication_reminder(
+        patient_phone=phone,
+        medication_name=sched.medication_name,
+        scheduled_time=sched.scheduled_time,
+        dosage=sched.dosage or "",
+        patient_name=current_user.full_name or "Patient"
+    )
+
     return {
         "success": True,
         "message": f"Medication schedule for {med_name} created.",
+        "sms_dispatch": sms_res,
         "schedule": {
             "id": sched.id,
             "medication_name": sched.medication_name,

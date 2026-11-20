@@ -50,13 +50,13 @@ def trigger_rapid_sos(
     accuracy = payload.get("accuracy")
     emergency_type = payload.get("emergency_type", "ONE_TAP_SOS_LIVE_LOCATION")
 
-    # 1. Idempotency Check: Prevent duplicate dispatch within 45 seconds unless forced
+    # 1. Idempotency Check: Prevent accidental double-click within 3 seconds unless forced
     recent_alert = (
         db.query(EmergencyAlert)
         .filter(
             EmergencyAlert.patient_id == current_user.id,
             EmergencyAlert.status != "resolved",
-            EmergencyAlert.created_at >= datetime.utcnow() - timedelta(seconds=45)
+            EmergencyAlert.created_at >= datetime.utcnow() - timedelta(seconds=3)
         )
         .order_by(EmergencyAlert.created_at.desc())
         .first()
@@ -129,7 +129,8 @@ def trigger_rapid_sos(
     if not primary_name:
         primary_name = "Primary Caregiver"
 
-    clean_primary_phone = sanitize_indian_mobile_number(primary_phone)
+    from ..sms_service import resolve_valid_recipient_phone, DUMMY_PLACEHOLDER_NUMBERS
+    clean_primary_phone = resolve_valid_recipient_phone(primary_phone)
     if clean_primary_phone:
         contacts_to_notify.append({
             "name": primary_name,
@@ -137,7 +138,7 @@ def trigger_rapid_sos(
             "role": "Primary Caregiver"
         })
 
-    # Secondary Contact (if configured and distinct from primary)
+    # Secondary Contact (if configured and distinct from primary and not a dummy seed number)
     sec_phone = (payload.get("secondary_phone") or "").strip()
     sec_name = (payload.get("secondary_name") or "").strip()
 
@@ -151,11 +152,11 @@ def trigger_rapid_sos(
             sec_phone = ec_phone
             sec_name = getattr(current_user, "emergency_contact_name", None) or "Secondary Emergency Contact"
 
-    clean_sec_phone = sanitize_indian_mobile_number(sec_phone)
-    if clean_sec_phone and clean_sec_phone != clean_primary_phone:
+    raw_clean_sec = sanitize_indian_mobile_number(sec_phone)
+    if raw_clean_sec and raw_clean_sec not in DUMMY_PLACEHOLDER_NUMBERS and raw_clean_sec != clean_primary_phone:
         contacts_to_notify.append({
             "name": sec_name or "Secondary Emergency Contact",
-            "phone": clean_sec_phone,
+            "phone": raw_clean_sec,
             "role": "Secondary Caregiver"
         })
 

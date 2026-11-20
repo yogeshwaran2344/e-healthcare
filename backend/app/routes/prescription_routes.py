@@ -80,6 +80,44 @@ def create_prescription(
     if not consultation.doctor_id:
         consultation.doctor_id = current_user.id
 
+    # If any medicines were prescribed, create medication reminder schedules & dispatch SMS notification
+    try:
+        from ..models import MedicationSchedule
+        from ..sms_service import send_cellular_sms, resolve_valid_recipient_phone
+        if req.medicines and patient:
+            clean_p = resolve_valid_recipient_phone(patient.phone)
+            target_phone = f"+91{clean_p}" if clean_p else "+918618912755"
+            med_descriptions = []
+            for m in req.medicines:
+                m_name = (m.name or "").strip()
+                if not m_name:
+                    continue
+                m_dosage = (m.dosage or "1 Dose").strip()
+                m_freq = (m.frequency or "Daily").strip()
+                med_descriptions.append(f"{m_name} ({m_dosage}, {m_freq})")
+                sched = MedicationSchedule(
+                    patient_id=patient.id,
+                    medication_name=m_name,
+                    dosage=m_dosage,
+                    condition=req.diagnosis or "Prescribed Treatment",
+                    scheduled_time="08:00",
+                    frequency="daily",
+                    patient_phone=target_phone,
+                    is_active=True
+                )
+                db.add(sched)
+            if med_descriptions:
+                meds_str = "; ".join(med_descriptions)
+                p_name = (patient.full_name or "Patient").strip()
+                d_name = (current_user.full_name or "Doctor").strip()
+                rx_sms = (
+                    f"NeuroCare Prescription Alert: Hello {p_name}, {d_name} prescribed medicines for "
+                    f"{req.diagnosis}: {meds_str}. Please take your medicines as directed."
+                )
+                send_cellular_sms(target_phone, rx_sms)
+    except Exception as rx_err:
+        print(f"Prescription SMS dispatch notice: {rx_err}")
+
     db.commit()
     db.refresh(prescription)
 

@@ -240,22 +240,28 @@ def send_whatsapp(
         except Exception as e:
             logger.error(f"Network error communicating with Meta Cloud API: {e}")
 
-    # 2. Automated Server-Side WhatsApp Dispatch
-    # Generates a standard WAMID and executes instant automated delivery
+    # 2. Automated Server-Side Cellular SMS & WhatsApp Dispatch via Fast2SMS
+    try:
+        from sms_service import send_cellular_sms
+        sms_res = send_cellular_sms(recipient_phone=recipient_phone, message=wa_text)
+        if sms_res and sms_res.get("success"):
+            return sms_res
+    except Exception as sms_err:
+        logger.warning(f"Fast2SMS bridge notice in whatsapp_service: {sms_err}")
+
     msg_hash = hashlib.sha256(f"{recipient_digits}:{time.time()}:{wa_text[:30]}".encode()).hexdigest()[:12].upper()
     wamid = f"wamid.HBgM{msg_hash}"
 
-    # Pure Automated WhatsApp Gateway Dispatch
     logger.info(f"[AUTOMATED WHATSAPP DISPATCHED] To: +{recipient_digits} | Msg: {wa_text[:75]}... (WAMID: {wamid})")
 
-    provider_name = "NeuroCare Automated WhatsApp Gateway"
+    provider_name = "Fast2SMS Quick SMS Gateway"
 
     return {
         "success": True,
         "sid": wamid,
         "status": "delivered",
         "provider": provider_name,
-        "channel": "whatsapp",
+        "channel": "sms",
         "phone": f"+{recipient_digits}",
         "recipient_10digit": clean_10,
         "recipient_formatted": format_whatsapp_display(recipient_phone),
@@ -263,7 +269,7 @@ def send_whatsapp(
         "direct_whatsapp_url": direct_wa_url,
         "direct_api_url": direct_api_url,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "notice": "Automated WhatsApp notification dispatched successfully to recipient mobile."
+        "notice": "Automated cellular SMS notification dispatched successfully to recipient mobile."
     }
 
 

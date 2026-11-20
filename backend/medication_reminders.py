@@ -24,6 +24,7 @@ from sms_service import (
     send_cellular_sms,
     send_sms,
     sanitize_indian_mobile_number,
+    resolve_valid_recipient_phone,
     is_sms_enabled
 )
 
@@ -53,7 +54,7 @@ def send_medication_reminder(
     "NeuroCare Reminder: Hello John, your scheduled dose of Metformin 500mg (1 tablet)
      is due now (08:00 AM). Please take your prescribed medication on time."
     """
-    clean_phone = sanitize_indian_mobile_number(patient_phone)
+    clean_phone = resolve_valid_recipient_phone(patient_phone)
     if not clean_phone or len(clean_phone) != 10:
         logger.error(f"Cannot send medication reminder: invalid 10-digit phone '{patient_phone}'")
         return {

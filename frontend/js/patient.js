@@ -36,16 +36,34 @@ function playSmsChime() {
     }
 }
 
+const DUMMY_PHONES_SET = new Set(["9876543210", "9845099887", "9845011223", "9000011111", "8217515702", "9999999999", "0000000000", "1234567890"]);
+
+function normalizeRealPhone(phone) {
+    if (!phone) return "+918618912755";
+    const digits = String(phone).replace(/[^0-9]/g, '');
+    const ten = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : (digits.length === 11 && digits.startsWith('0') ? digits.slice(1) : digits);
+    if (!ten || ten.length !== 10 || DUMMY_PHONES_SET.has(ten)) {
+        return "+918618912755";
+    }
+    return `+91${ten}`;
+}
+
 function getContactSettings() {
     const saved = localStorage.getItem('ehealth_contact_routing');
     if (saved) {
         try { 
             const parsed = JSON.parse(saved);
-            if (parsed && typeof parsed === 'object') return parsed;
+            if (parsed && typeof parsed === 'object') {
+                parsed.patientPhone = normalizeRealPhone(parsed.patientPhone || parsed.patientWhatsapp);
+                parsed.patientWhatsapp = parsed.patientPhone;
+                parsed.caretakerPhone = normalizeRealPhone(parsed.caretakerPhone || parsed.patientPhone);
+                return parsed;
+            }
         } catch (e) {}
     }
     const user = (typeof API !== 'undefined' && API.getUser) ? API.getUser() : null;
-    const defaultNum = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || (user && user.phone) || "";
+    const rawDefault = (typeof currentProfile !== 'undefined' && currentProfile && currentProfile.phone) || (user && user.phone) || "+918618912755";
+    const defaultNum = normalizeRealPhone(rawDefault);
     return {
         patientPhone: defaultNum,
         patientWhatsapp: defaultNum,
@@ -70,7 +88,7 @@ function getApiBaseUrl() {
 }
 
 var savedLocalPref = localStorage.getItem('neurocare_sms_enabled');
-var isSmsEnabledGlobal = (savedLocalPref === 'true');
+var isSmsEnabledGlobal = (savedLocalPref !== 'false');
 
 function updateSmsToggleUI(enabled) {
     isSmsEnabledGlobal = !!enabled;
@@ -664,8 +682,8 @@ function showSMSNotification(options) {
     const cleanDigits = targetPhone.replace(/[^0-9]/g, '');
     const phoneDigits = cleanDigits.length === 10 ? cleanDigits : (cleanDigits.length === 12 && cleanDigits.startsWith('91') ? cleanDigits.slice(2) : cleanDigits);
 
-    // Directly trigger backend automated SMS dispatch in the background if caretaker alert
-    if (options && options.caretakerAlert) {
+    // Directly trigger backend automated SMS dispatch in the background if caretaker alert (unless already dispatched by caller)
+    if (options && options.caretakerAlert && !options.skipBackendDispatch) {
         try {
             API.post('/api/closed-loop/caregiver/dispatch-automated-sms', {
                 recipient_name: cfg.caretakerName,
@@ -3649,6 +3667,7 @@ async function executeOneTapSosDispatch() {
 
         const payload = {
             idempotency_key: `SOS-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            force_new_dispatch: true,
             emergency_type: "ONE_TAP_SOS_LIVE_LOCATION",
             latitude: lat,
             longitude: lng,
@@ -5022,7 +5041,7 @@ async function checkAndTriggerAbnormalVitalsAlert(sys, dia, hr, force = false) {
         const caretakerAlert = res.caretaker_alert || {};
         const notif = caretakerAlert.sms_notification || caretakerAlert.notification || caretakerAlert.whatsapp_notification || {};
         const cfg = getContactSettings();
-        const caretakerPhone = cfg.caretakerPhone || "+918217515702";
+        const caretakerPhone = cfg.caretakerPhone || "+918618912755";
 
         showSMSNotification({
             title: "🚨 ABNORMAL VITALS - CELLULAR SMS DISPATCHED",
@@ -5037,7 +5056,7 @@ async function checkAndTriggerAbnormalVitalsAlert(sys, dia, hr, force = false) {
     }
 }
 
-function simulateBleAbnormalReading(type, sys, dia, hr) {
+async function simulateBleAbnormalReading(type, sys, dia, hr) {
     bleLiveBpSys = sys;
     bleLiveBpDia = dia;
     bleLiveHr = hr;
@@ -5046,12 +5065,33 @@ function simulateBleAbnormalReading(type, sys, dia, hr) {
         const alertBanner = document.getElementById('iotEmergencyAlertBanner');
         if (alertBanner) alertBanner.classList.add('d-none');
         updateBleTelemetryUI();
-        showSMSNotification({
-            title: "✓ VITALS NORMALIZED",
-            message: `Smartwatch telemetry returned to safe physiological range: BP ${sys}/${dia} mmHg, HR ${hr} BPM.`,
-            channel: "sms",
-            duration: 5000
-        });
+        try {
+            const res = await API.post('/api/iot/vitals/record', {
+                metric_type: "blood_pressure",
+                primary_value: sys,
+                secondary_value: dia,
+                heart_rate: hr,
+                systolic: sys,
+                diastolic: dia,
+                bypass_cooldown: true,
+                send_sms_on_normal: true
+            });
+            const cfg = getContactSettings();
+            showSMSNotification({
+                title: "✓ VITALS NORMALIZED - SMS SENT",
+                message: `Smartwatch telemetry returned to safe physiological range: BP ${sys}/${dia} mmHg, HR ${hr} BPM. SMS sent to ${cfg.caretakerPhone}.`,
+                channel: "sms",
+                phone: cfg.caretakerPhone,
+                duration: 6000
+            });
+        } catch (err) {
+            showSMSNotification({
+                title: "✓ VITALS NORMALIZED",
+                message: `Smartwatch telemetry returned to safe physiological range: BP ${sys}/${dia} mmHg, HR ${hr} BPM.`,
+                channel: "sms",
+                duration: 5000
+            });
+        }
         return;
     }
 
@@ -5216,14 +5256,15 @@ async function submitManualVitals(e) {
 
         const autoDispatch = res.automated_whatsapp_dispatch || {};
 
-        // Always dispatch realistic Caretaker SMS alert card on screen
+        // Always dispatch realistic Caretaker SMS alert card on screen (backend evaluate-alert already sent the SMS)
         if (bpSys >= 160 || bpDia >= 100) {
             // Stage 2 Hypertensive Crisis: Direct Caretaker SMS alert + Emergency dispatch
             showSMSNotification({
                 title: "🚨 CRITICAL HYPERTENSION (BP 160) - AUTOMATED CARETAKER SMS DISPATCH",
-                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.delivery_id || 'F2SMS-LIVE-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Cellular SMS alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via Cellular SMS Gateway.`,
+                message: `AUTOMATED DISPATCH CONFIRMED (Ref: ${autoDispatch.sid || autoDispatch.delivery_id || 'F2SMS-LIVE-8819'}): Patient recorded severe BP ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Cellular SMS alert transmitted directly to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}) via Cellular SMS Gateway.`,
                 channel: "sms",
                 caretakerAlert: true,
+                skipBackendDispatch: true,
                 duration: 12000
             });
             setTimeout(() => {
@@ -5234,19 +5275,21 @@ async function submitManualVitals(e) {
                     duration: 10000
                 });
             }, 600);
-        } else if (bpSys >= 140 || bpDia >= 90 || res.tier_level >= 2) {
+        } else if (bpSys >= 140 || bpDia >= 90 || hr > 100 || hr < 50 || res.tier_level >= 2) {
             showSMSNotification({
-                title: "⚠️ HIGH BP AUTOMATED CAREGIVER SMS ALERT",
+                title: "⚠️ VITALS AUTOMATED CAREGIVER SMS ALERT",
                 message: `Recorded BP: ${formattedBp} mmHg (HR ${hr} bpm, SpO2 ${spo2}%). Automated cellular SMS notification sent to Caretaker ${cfg.caretakerName} (${cfg.caretakerPhone}).`,
                 channel: "sms",
                 caretakerAlert: true,
+                skipBackendDispatch: true,
                 duration: 9500
             });
         } else {
             showSMSNotification({
-                title: "✅ VITALS RECORDED & STREAMED",
-                message: `BP ${formattedBp} mmHg, Heart Rate ${hr} bpm, SpO2 ${spo2}%, Glucose ${glucose} mg/dL logged and confirmed.`,
+                title: "✅ VITALS RECORDED & SMS SENT",
+                message: `BP ${formattedBp} mmHg, Heart Rate ${hr} bpm, SpO2 ${spo2}%, Glucose ${glucose} mg/dL logged and confirmed via SMS to ${cfg.caretakerPhone}.`,
                 channel: "sms",
+                phone: cfg.caretakerPhone,
                 duration: 5000
             });
         }

@@ -25,7 +25,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 from sms_service import (
     send_sms,
     send_cellular_sms,
-    sanitize_indian_mobile_number
+    sanitize_indian_mobile_number,
+    resolve_valid_recipient_phone
 )
 from whatsapp_service import (
     send_whatsapp,
@@ -227,9 +228,7 @@ def check_vitals(
         f"Please check on the patient immediately."
     )
 
-    clean_caretaker_phone = sanitize_indian_mobile_number(caretaker_phone)
-    if not clean_caretaker_phone:
-        clean_caretaker_phone = sanitize_indian_mobile_number(os.getenv("DEFAULT_ALERT_RECIPIENT", "8618912755"))
+    clean_caretaker_phone = resolve_valid_recipient_phone(caretaker_phone)
 
     # 5. Send Live Cellular SMS Alert to Caretaker
     logger.warning(f"Dispatching [{severity}] caretaker cellular SMS health alert for patient {patient_id} to +91{clean_caretaker_phone}...")
