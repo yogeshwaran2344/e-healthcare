@@ -259,7 +259,8 @@ def send_cellular_sms(
         "route": route,
         "message": message.strip(),
         "numbers": clean_digits,
-        "flash": 0
+        "flash": 0,
+        "sms_details": 1
     }
 
     try:

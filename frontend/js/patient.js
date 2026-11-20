@@ -3531,6 +3531,19 @@ function showSosDispatchModal(res, mapsUrl, lat, lng, acc, locality) {
     if (callBtn) {
         callBtn.href = res.caretaker_phone ? `tel:${res.caretaker_phone}` : 'javascript:void(0)';
     }
+    const waCaretakerBtn = document.getElementById('modalSosWhatsAppCaretakerBtn');
+    if (waCaretakerBtn) {
+        if (res.caretaker_phone) {
+            const cleanDigits = res.caretaker_phone.replace(/[^0-9]/g, '');
+            const intlDigits = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
+            const waText = encodeURIComponent(res.message_sent || `🚨 EMERGENCY SOS: Medical alert for patient! Incident: ${res.incident_id || 'LIVE'}`);
+            waCaretakerBtn.href = `https://wa.me/${intlDigits}?text=${waText}`;
+            waCaretakerBtn.classList.remove('disabled');
+        } else {
+            waCaretakerBtn.href = 'javascript:void(0)';
+            waCaretakerBtn.classList.add('disabled');
+        }
+    }
 
     // Accurate delivery status tracking
     if (statusBadge) {
