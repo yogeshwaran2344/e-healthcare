@@ -179,7 +179,8 @@ def trigger_rapid_sos(
 
     sos_message = (
         f"EMERGENCY SOS: {patient_name} needs IMMEDIATE medical care! "
-        f"Location: Lat {lat:.4f}, Lng {lng:.4f} ({clean_loc}). "
+        f"GPS: Lat {lat:.5f}, Lng {lng:.5f} ({clean_loc}). "
+        f"Map: {maps_url}. "
         f"Time: {now_time}. Incident: {incident_id}."
     )
 

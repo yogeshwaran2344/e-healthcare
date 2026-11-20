@@ -3531,6 +3531,21 @@ function showSosDispatchModal(res, mapsUrl, lat, lng, acc, locality) {
     if (callBtn) {
         callBtn.href = res.caretaker_phone ? `tel:${res.caretaker_phone}` : 'javascript:void(0)';
     }
+    const smsDirectBtn = document.getElementById('modalSosDirectSmsBtn');
+    if (smsDirectBtn) {
+        if (res.caretaker_phone) {
+            const cleanDigits = res.caretaker_phone.replace(/[^0-9]/g, '');
+            const intlDigits = cleanDigits.length === 10 ? `+91${cleanDigits}` : (cleanDigits.startsWith('+') ? cleanDigits : `+${cleanDigits}`);
+            const smsBody = encodeURIComponent(res.message_sent || `EMERGENCY SOS: Immediate medical care needed! GPS: ${mapsUrl}`);
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            smsDirectBtn.href = isIOS ? `sms:${intlDigits}&body=${smsBody}` : `sms:${intlDigits}?body=${smsBody}`;
+            smsDirectBtn.classList.remove('disabled');
+        } else {
+            smsDirectBtn.href = 'javascript:void(0)';
+            smsDirectBtn.classList.add('disabled');
+        }
+    }
+
     const waCaretakerBtn = document.getElementById('modalSosWhatsAppCaretakerBtn');
     if (waCaretakerBtn) {
         if (res.caretaker_phone) {
