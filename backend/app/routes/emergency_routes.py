@@ -45,8 +45,16 @@ def trigger_rapid_sos(
     - Records tamper-evident audit record with zero medical privacy leakage
     """
     idempotency_key = payload.get("idempotency_key")
-    lat = float(payload.get("latitude", 12.9716))
-    lng = float(payload.get("longitude", 77.5946))
+    raw_lat = payload.get("latitude")
+    raw_lng = payload.get("longitude")
+    try:
+        lat = float(raw_lat) if raw_lat is not None else 12.9716
+    except (ValueError, TypeError):
+        lat = 12.9716
+    try:
+        lng = float(raw_lng) if raw_lng is not None else 77.5946
+    except (ValueError, TypeError):
+        lng = 77.5946
     accuracy = payload.get("accuracy")
     emergency_type = payload.get("emergency_type", "ONE_TAP_SOS_LIVE_LOCATION")
 
@@ -242,35 +250,45 @@ def trigger_rapid_sos(
         failure_fallback_triggered=(overall_delivery_status == "FAILED"),
         status="dispatched"
     )
-    db.add(alert)
-    db.commit()
-    db.refresh(alert)
+    alert_id = None
+    try:
+        db.add(alert)
+        db.commit()
+        db.refresh(alert)
+        alert_id = alert.id
+    except Exception as db_err:
+        logger.error(f"Failed to persist EmergencyAlert record: {db_err}")
+        db.rollback()
 
-    AMBULANCE_STEP_TRACKER[alert.id] = 1
+    if alert_id:
+        AMBULANCE_STEP_TRACKER[alert_id] = 1
 
     # 5. Record Access Audit (Without leaking sensitive clinical records)
-    record_emergency_access(
-        db,
-        accessor=current_user,
-        patient_id=current_user.id,
-        purpose=f"1-Tap SOS Incident {incident_id} at {clean_loc} at {now_time}",
-        information_type="emergency_sos_dispatch",
-        is_emergency=True,
-        access_channel="sos",
-        context_scope="SOS_DISPATCH",
-        status="SUCCESS" if overall_delivery_status == "GATEWAY_ACCEPTED" else "DISPATCH_FALLBACK",
-        consent_status="EXPLICIT_OVERRIDE",
-        fields_viewed=["patient_name", "live_latitude", "live_longitude", "location_name", "maps_url", "timestamp_ist"],
-        accessor_name=current_user.full_name or "Patient",
-        accessor_role="patient"
-    )
+    try:
+        record_emergency_access(
+            db,
+            accessor=current_user,
+            patient_id=current_user.id,
+            purpose=f"1-Tap SOS Incident {incident_id} at {clean_loc} at {now_time}",
+            information_type="emergency_sos_dispatch",
+            is_emergency=True,
+            access_channel="sos",
+            context_scope="SOS_DISPATCH",
+            status="SUCCESS" if overall_delivery_status == "GATEWAY_ACCEPTED" else "DISPATCH_FALLBACK",
+            consent_status="EXPLICIT_OVERRIDE",
+            fields_viewed=["patient_name", "live_latitude", "live_longitude", "location_name", "maps_url", "timestamp_ist"],
+            accessor_name=current_user.full_name or "Patient",
+            accessor_role="patient"
+        )
+    except Exception as audit_err:
+        logger.warning(f"Audit log recording error during SOS: {audit_err}")
 
     primary_contact_info = contacts_to_notify[0] if contacts_to_notify else {"name": "Primary Caregiver", "phone": ""}
 
     return {
         "status": "EMERGENCY_DISPATCHED",
         "incident_id": incident_id,
-        "alert_id": alert.id,
+        "alert_id": alert.id or 1,
         "patient_name": patient_name,
         "delivery_status": overall_delivery_status,
         "delivery_status_label": "Gateway Accepted (Carrier Hand-Off in Progress)" if overall_delivery_status == "GATEWAY_ACCEPTED" else "Carrier SMS Failed / Blocked",

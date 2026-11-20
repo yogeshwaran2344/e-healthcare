@@ -42,7 +42,52 @@ def migrate_schema_columns():
                 u_cols = {c["name"] for c in insp.get_columns("users")}
                 if "date_of_birth" not in u_cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN date_of_birth VARCHAR(30)"))
-                    conn.commit()
+                if "is_profile_verified" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_profile_verified BOOLEAN DEFAULT 0"))
+                if "profile_verified_at" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN profile_verified_at TIMESTAMP"))
+                if "profile_updated_at" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN profile_updated_at TIMESTAMP"))
+                if "emergency_contact_name" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN emergency_contact_name VARCHAR(100)"))
+                if "emergency_contact_phone" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN emergency_contact_phone VARCHAR(30)"))
+                conn.commit()
+
+            if "emergency_alerts" in tables:
+                ea_cols = {c["name"] for c in insp.get_columns("emergency_alerts")}
+                if "incident_id" not in ea_cols:
+                    conn.execute(text("ALTER TABLE emergency_alerts ADD COLUMN incident_id VARCHAR(50)"))
+                if "idempotency_key" not in ea_cols:
+                    conn.execute(text("ALTER TABLE emergency_alerts ADD COLUMN idempotency_key VARCHAR(100)"))
+                if "delivery_status" not in ea_cols:
+                    conn.execute(text("ALTER TABLE emergency_alerts ADD COLUMN delivery_status VARCHAR(50) DEFAULT 'QUEUED'"))
+                if "delivery_details" not in ea_cols:
+                    conn.execute(text("ALTER TABLE emergency_alerts ADD COLUMN delivery_details TEXT"))
+                if "contacts_contacted" not in ea_cols:
+                    conn.execute(text("ALTER TABLE emergency_alerts ADD COLUMN contacts_contacted TEXT"))
+                if "failure_fallback_triggered" not in ea_cols:
+                    conn.execute(text("ALTER TABLE emergency_alerts ADD COLUMN failure_fallback_triggered BOOLEAN DEFAULT 0"))
+                conn.commit()
+
+            if "caretaker_alert_configs" in tables:
+                cac_cols = {c["name"] for c in insp.get_columns("caretaker_alert_configs")}
+                if "alert_preference_sos" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN alert_preference_sos BOOLEAN DEFAULT 1"))
+                if "alert_preference_vitals" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN alert_preference_vitals BOOLEAN DEFAULT 1"))
+                if "alert_preference_meds" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN alert_preference_meds BOOLEAN DEFAULT 1"))
+                if "secondary_name" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN secondary_name VARCHAR(100)"))
+                if "secondary_phone" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN secondary_phone VARCHAR(30)"))
+                if "last_acknowledgement_at" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN last_acknowledgement_at TIMESTAMP"))
+                if "last_acknowledgement_status" not in cac_cols:
+                    conn.execute(text("ALTER TABLE caretaker_alert_configs ADD COLUMN last_acknowledgement_status VARCHAR(50)"))
+                conn.commit()
+
             if "medication_schedules" in tables:
                 s_cols = {c["name"] for c in insp.get_columns("medication_schedules")}
                 if "frequency" not in s_cols:

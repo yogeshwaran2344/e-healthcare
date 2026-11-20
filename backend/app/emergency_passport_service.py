@@ -83,7 +83,7 @@ def fetch_latest_vitals(db: Session, patient_id: int) -> Dict[str, Any]:
             continue
         grade_info = grade_vital_reading(r.metric_type, r.primary_value, r.secondary_value)
         time_str = r.recorded_at.strftime("%I:%M %p, %b %d") if r.recorded_at else "Recent"
-        src_label = "IoT Continuous Monitor" if r.source == "iot_wearable" else "Clinical Measurement"
+        src_label = "IoT Continuous Monitor" if getattr(r, "source", None) == "iot_wearable" or getattr(r, "device_id", None) else "Clinical Measurement"
 
         if r.metric_type == "blood_pressure":
             val = f"{int(r.primary_value)}/{int(r.secondary_value or 80)} mmHg"
